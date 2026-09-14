@@ -109,10 +109,6 @@ p {
 small {
   color: var(--muted);
 }
-kbd {
-  font: 11px var(--mono);
-  color: var(--muted);
-}
 .icon {
   width: 20px;
   height: 20px;
@@ -217,9 +213,6 @@ kbd {
   font-size: 14px;
   gap: 9px;
   padding: 7px 10px;
-}
-.nav-search kbd {
-  margin-left: auto;
 }
 .nav-scroll {
   overflow: auto;

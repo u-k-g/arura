@@ -39,6 +39,16 @@ Deno.test({
         page.getByRole("button", { name: "Expand sidebar", exact: true }),
       ).toBeVisible();
       await page.keyboard.press("Control+k");
+      await expect(
+        page.getByRole("dialog", { name: "Find anything", exact: true }),
+      ).toHaveCount(0);
+      await page.keyboard.press("Control+.");
+      await expect(
+        page.getByRole("button", { name: "Expand sidebar", exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Search conversations", exact: true })
+        .click();
       const search = page.getByRole("combobox", {
         name: "Search conversations and actions",
         exact: true,

@@ -788,17 +788,6 @@ export default function Chat(props: {
                   return;
                 }
               }
-              if (
-                e.key === "Enter" &&
-                !e.shiftKey &&
-                !e.isComposing &&
-                !matchMedia(
-                  "(max-width: 720px), (pointer: coarse) and (hover: none)",
-                ).matches
-              ) {
-                e.preventDefault();
-                (e.target as HTMLElement).closest("form")?.requestSubmit();
-              }
             }}
             onPasteFiles={(files) => void run(() => upload(files))}
           />

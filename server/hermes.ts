@@ -1,4 +1,4 @@
-import type { RpcFrame, RpcResult } from "../shared/contracts.ts";
+import { record, type RpcFrame, type RpcResult } from "../shared/contracts.ts";
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import WebSocket from "ws";
@@ -645,6 +645,7 @@ export class Hermes extends EventEmitter {
       sourceId,
       profile,
       title: "New conversation",
+      pendingPersistence: true,
       activityAt: Date.now(),
     };
   }
@@ -848,9 +849,38 @@ export class Hermes extends EventEmitter {
       offset: String(offset),
       order: "latest",
     });
-    const data = await this.rest(
-      `/api/sessions/${encodeURIComponent(id)}/messages?${q}`,
-    );
+    let data: { messages?: Record<string, unknown>[]; session_id?: string };
+    try {
+      data = await this.rest(
+        `/api/sessions/${encodeURIComponent(id)}/messages?${q}`,
+      );
+    } catch (error) {
+      if (
+        !(error instanceof HermesHttpError) ||
+        error.status !== 404 ||
+        offset !== 0
+      ) {
+        throw error;
+      }
+      // Fresh sessions exist in the gateway before their first database row.
+      // Verify that exact live session; never hide a missing saved transcript.
+      const live = await this.call("session.resume", {
+        session_id: id,
+        profile,
+      });
+      if (
+        live.stored_session_id !== id ||
+        record(live.info).lazy !== true ||
+        !Array.isArray(live.messages)
+      ) {
+        throw error;
+      }
+      assertSession(live);
+      this.runtime.set(key, live.session_id);
+      this.reverse.set(live.session_id, key);
+      this.restoreTurn(key, live);
+      data = { messages: live.messages, session_id: id };
+    }
     return {
       conversation: key,
       offset,

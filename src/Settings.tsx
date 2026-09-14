@@ -1,6 +1,5 @@
 import type { Doc } from "../shared/contracts.ts";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
-import { shortcutFromEvent, shortcuts } from "../shared/shortcuts.ts";
 import {
   inform,
   logout,
@@ -26,7 +25,7 @@ const groups = [
       ["storage", "Storage & offline", "download"],
       ["navigation", "Conversations & archive", "archive"],
       ["notifications", "Notifications", "bell"],
-      ["appearance", "Appearance & shortcuts", "settings"],
+      ["appearance", "Appearance", "settings"],
     ],
   },
   {
@@ -369,55 +368,6 @@ export default function Settings(props: {
               <option value="dark">Dark</option>
             </select>
           </Field>
-          <h3>Keyboard shortcuts</h3>
-          <p>
-            Focus a shortcut, then press your preferred Ctrl/⌘ combination.
-            These preferences sync across devices.
-          </p>
-          <For each={shortcuts}>
-            {(shortcut) => (
-              <Field label={shortcut.label}>
-                <input
-                  readOnly
-                  value={(
-                    workspace()?.settings?.shortcuts?.[shortcut.id] ??
-                      shortcut.default
-                  ).replace("Mod", "Ctrl/⌘")}
-                  onKeyDown={(event) => {
-                    const value = shortcutFromEvent(event);
-                    if (!value) return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    const current = workspace()?.settings?.shortcuts ?? {};
-                    if (
-                      shortcuts.some(
-                        (other) => other.id !== shortcut.id &&
-                          (current[other.id] ?? other.default) === value,
-                      )
-                    ) {
-                      inform("That shortcut is already assigned");
-                      return;
-                    }
-                    void run(() =>
-                      mutate("workspace.setting", {
-                        key: "shortcuts",
-                        value: { ...current, [shortcut.id]: value },
-                      })
-                    );
-                  }}
-                />
-              </Field>
-            )}
-          </For>
-          <button
-            type="button"
-            onClick={() =>
-              void run(() =>
-                mutate("workspace.setting", { key: "shortcuts", value: {} })
-              )}
-          >
-            Reset shortcuts
-          </button>
           <Field label="Message text size">
             <input
               type="range"

@@ -41,6 +41,7 @@ export default defineSchema({
     profile: v.string(),
     bot: v.optional(v.boolean()),
     sourceId: v.string(),
+    pendingPersistence: v.optional(v.boolean()),
     title: v.string(),
     activityAt: v.number(),
     section: v.union(

@@ -32,7 +32,6 @@ import {
   saveCache,
 } from "./cache.ts";
 import type { Conversation } from "../shared/model.ts";
-import { shortcutFromEvent, shortcuts } from "../shared/shortcuts.ts";
 import CommandPalette, { type PaletteItem } from "./CommandPalette.tsx";
 const Chat = lazy(() => import("./Chat.tsx"));
 const Settings = lazy(() => import("./Settings.tsx"));
@@ -181,30 +180,6 @@ export default function App() {
       `${Math.min(20, Math.max(14, size))}px`,
     );
     void start();
-    const keyboard = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.isComposing || event.repeat) return;
-      const pressed = shortcutFromEvent(event);
-      if (!pressed) return;
-      const action = shortcuts.find(
-        (shortcut) =>
-          (workspace()?.settings?.shortcuts?.[shortcut.id] ??
-            shortcut.default) === pressed,
-      )?.id;
-      if (action === "palette") {
-        event.preventDefault();
-        setPalette((x) => !x);
-      }
-      if (action === "newChat" && authorized()) {
-        event.preventDefault();
-        void newChat();
-      }
-      if (action === "sidebar" && authorized()) {
-        event.preventDefault();
-        toggleSidebar();
-      }
-    };
-    globalThis.addEventListener("keydown", keyboard);
-    onCleanup(() => globalThis.removeEventListener("keydown", keyboard));
   });
   createEffect(() => {
     if (authorized()) {
@@ -331,9 +306,6 @@ export default function App() {
         label: "New conversation",
         icon: "plus",
         group: "Actions",
-        shortcut: String(
-          workspace()?.settings?.shortcuts?.newChat ?? "Mod+Shift+o",
-        ).replace("Mod", "Ctrl/⌘"),
         run: () => void newChat(),
       },
       {
@@ -341,9 +313,6 @@ export default function App() {
         label: collapsed() ? "Expand sidebar" : "Collapse sidebar",
         icon: "menu",
         group: "Actions",
-        shortcut: String(
-          workspace()?.settings?.shortcuts?.sidebar ?? "Mod+.",
-        ).replace("Mod", "Ctrl/⌘"),
         run: () => {
           toggleSidebar();
           setPalette(false);
@@ -440,14 +409,6 @@ export default function App() {
         >
           <Icon name="bot" />
           <span>New session</span>
-          <kbd>
-            {String(
-              workspace()?.settings?.shortcuts?.newChat ?? "Mod+Shift+o",
-            ).replace(
-              "Mod",
-              /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl",
-            )}
-          </kbd>
         </button>
         <button
           type="button"
@@ -804,7 +765,7 @@ export default function App() {
               />
             </Show>
             <span class="view-title">
-              {selected()
+              {selected() || view().startsWith("[")
                 ? ""
                 : view() === "capabilities"
                 ? "Capabilities"

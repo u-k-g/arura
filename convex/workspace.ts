@@ -17,8 +17,18 @@ export const sourceKeys = query({
   handler: async (ctx) => {
     await adapter(ctx);
     return (await ctx.db.query("conversations").collect())
-      .filter((c) => !c.deleted)
+      .filter((c) => !c.deleted && !c.pendingPersistence)
       .map((c) => c.key);
+  },
+});
+// New gateway sessions are live before Hermes writes their first history row.
+export const pendingSessions = query({
+  args: {},
+  handler: async (ctx) => {
+    await adapter(ctx);
+    return (await ctx.db.query("conversations").collect()).filter(
+      (c) => c.pendingPersistence && !c.deleted,
+    );
   },
 });
 export const overview = query({
@@ -252,7 +262,7 @@ export const setting = mutation({
   args: { key: v.string(), value: v.any() },
   handler: async (ctx, args) => {
     await device(ctx);
-    if (!["modelFavorites", "shortcuts", "appearance"].includes(args.key)) {
+    if (!["modelFavorites", "appearance"].includes(args.key)) {
       throw new Error("Unknown preference");
     }
     const old = await ctx.db
@@ -389,6 +399,7 @@ export const ingest = mutation({
       const data = {
         key: String(input.key),
         sourceId: String(input.sourceId),
+        pendingPersistence: input.pendingPersistence === true,
         profile: String(input.profile),
         bot: Boolean(input.bot),
         title: String(input.title),

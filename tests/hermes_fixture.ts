@@ -55,6 +55,7 @@ export function hermesFixture(
       last_active: number;
       messages: Row[];
       hidden?: boolean;
+      pendingPersistence?: boolean;
       profile: string;
     }
   >();
@@ -115,6 +116,7 @@ export function hermesFixture(
       last_active: Date.now() / 1000,
       messages: [] as Row[],
       hidden: false,
+      pendingPersistence: id !== "fixture-chat",
       profile: "default",
     };
     sessions.set(id, s);
@@ -184,6 +186,7 @@ export function hermesFixture(
   >();
   async function answer(sid: string, text: string) {
     const s = sessions.get(sid)!;
+    s.pendingPersistence = false;
     s.messages.push({ id: rowId++, role: "user", content: text });
     event("message.start", sid, {});
     if (text === "ARURA_TEST_CONTROLS") {
@@ -335,7 +338,10 @@ export function hermesFixture(
             };
           } else if (method === "session.title") {
             const session = sessions.get(params.session_id);
-            if (session) session.title = params.title;
+            if (session) {
+              session.title = params.title;
+              session.pendingPersistence = false;
+            }
             event("sessions.changed", "", {});
           } else if (method === "profiles.list") {
             result = {
@@ -385,11 +391,31 @@ export function hermesFixture(
           } else if (method === "profiles.set_asset") {
             avatarData = params.clear ? "" : params.data;
             result = { ok: true };
+          } else if (method === "session.close") {
+            sessions.delete(params.session_id);
           } else if (method === "session.resume") {
+            const live = sessions.get(params.session_id);
+            if (!live) {
+              socket.send(
+                JSON.stringify({
+                  jsonrpc: "2.0",
+                  id,
+                  error: { code: 4007, message: "Session not found" },
+                }),
+              );
+              return;
+            }
             subscriptions.get(socket)!.add(params.session_id);
             result = {
               session_id: params.session_id,
               session_key: params.session_id,
+              ...(live.pendingPersistence
+                ? {
+                  stored_session_id: live.id,
+                  info: { lazy: true },
+                  messages: live.messages,
+                }
+                : {}),
               running: false,
               ...hooks.resume?.(params.session_id),
             };
@@ -620,13 +646,15 @@ export function hermesFixture(
       if (path === "/api/profiles/sessions") {
         return json({
           sessions: [...sessions.values()]
+            .filter((session) => !session.pendingPersistence)
             .filter((session) => !session.hidden)
             .slice(0, 1),
           profile_totals: Object.fromEntries(
             [...profiles.keys()].map((name) => [
               name,
               [...sessions.values()].filter(
-                (session) => session.profile === name,
+                (session) =>
+                  session.profile === name && !session.pendingPersistence,
               ).length,
             ]),
           ),
@@ -636,6 +664,7 @@ export function hermesFixture(
       if (path === "/api/sessions") {
         return json({
           sessions: [...sessions.values()]
+            .filter((session) => !session.pendingPersistence)
             .filter(
               (session) =>
                 session.profile ===
@@ -647,6 +676,7 @@ export function hermesFixture(
             ),
           total: [...sessions.values()].filter(
             (session) =>
+              !session.pendingPersistence &&
               session.profile ===
                 (url.searchParams.get("profile") ?? "default"),
           ).length,
@@ -678,7 +708,12 @@ export function hermesFixture(
       const match = path.match(/^\/api\/sessions\/([^/]+)(\/messages)?$/);
       if (match) {
         const s = sessions.get(decodeURIComponent(match[1]));
-        if (!s) return new Response("Not found", { status: 404 });
+        if (!s || s.pendingPersistence) {
+          return Response.json(
+            { detail: "Session not found" },
+            { status: 404 },
+          );
+        }
         if (match[2]) {
           return json({
             messages: s.messages,

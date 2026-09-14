@@ -1800,7 +1800,6 @@ export default function Resources(props: {
             </Show>
             <FileEditor
               readOnly={f().readOnly}
-              save={() => void run(saveTextFile)}
               path={f().path}
               content={f().content}
               change={(content) => {
@@ -1809,10 +1808,7 @@ export default function Resources(props: {
               }}
               select={(text, from, to) => setSelection({ text, from, to })}
             />
-            <p>
-              Find: Ctrl/⌘ F · Undo: Ctrl/⌘ Z · Select lines to add context to a
-              conversation.
-            </p>
+            <p>Select lines to add context to a conversation.</p>
           </Dialog>
         )}
       </Show>

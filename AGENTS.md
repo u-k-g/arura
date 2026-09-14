@@ -1,5 +1,9 @@
 Arura is a minimal web ui for the hermes agent.
 
+App keyboard shortcuts are disabled for now, including Enter-to-send and file
+save shortcuts. Keep actions available through buttons. Preserve ordinary text
+editing, browser shortcuts and accessible focus/menu navigation.
+
 Read [ADR-0001](docs/adr/0001-independent-solid-convex-client.md) when designing
 or implementing the client, changing feature scope, or working on sync, storage,
 access, or deployment. It records the accepted SolidJS/TypeScript and

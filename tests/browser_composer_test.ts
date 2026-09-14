@@ -132,6 +132,16 @@ Deno.test({
       // Replacing the reference must also exclude the upload from the payload.
       await input.fill("A fresh conversation");
       await input.press("Enter");
+      await page.keyboard.insertText("Second line");
+      await expect(input).toContainText("Second line");
+      await expect(
+        page
+          .locator(".markdown")
+          .filter({ hasText: "Received: A fresh conversation" }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Send message", exact: true })
+        .click();
       await expect(
         page
           .locator(".markdown")
@@ -156,7 +166,7 @@ Deno.test({
       const sent = transcript.commands.find(
         (item: { kind: string }) => item.kind === "send",
       );
-      expect(sent.payload.text).toBe("A fresh conversation");
+      expect(sent.payload.text).toBe("A fresh conversation\nSecond line");
       expect(sent.payload.attachments).toEqual([]);
       expect(errors).toEqual([]);
     } finally {

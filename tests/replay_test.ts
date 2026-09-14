@@ -156,3 +156,45 @@ for (const restart of [false, true]) {
     }
   });
 }
+
+Deno.test("new sessions load before persistence and survive adapter reconnection", async () => {
+  const fixture = hermesFixture(0);
+  const before = Deno.env.get("HERMES_URL");
+  Deno.env.set("HERMES_URL", `http://127.0.0.1:${fixture.server.addr.port}`);
+  const first = new Hermes(),
+    second = new Hermes();
+  try {
+    await first.connect();
+    const created = await first.create();
+    equal(created.pendingPersistence, true);
+    equal(
+      (await first.list()).some((c) => c.key === created.key),
+      false,
+    );
+    equal((await first.history(created.key)).messages.length, 0);
+    first.close();
+    await second.connect();
+    equal((await second.history(created.key)).messages.length, 0);
+    await rejects(
+      second.history(JSON.stringify(["default", "missing-session"])),
+      /not found/i,
+    );
+    const session_id = await second.attach(created.key);
+    await second.call("prompt.submit", {
+      session_id,
+      text: "First message",
+      profile: "default",
+    });
+    equal(
+      (await second.list()).some((c) => c.key === created.key),
+      true,
+    );
+    equal((await second.history(created.key)).messages.length > 0, true);
+  } finally {
+    first.close();
+    second.close();
+    await fixture.close();
+    if (before === undefined) Deno.env.delete("HERMES_URL");
+    else Deno.env.set("HERMES_URL", before);
+  }
+});

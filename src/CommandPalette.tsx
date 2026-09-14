@@ -7,7 +7,6 @@ export type PaletteItem = {
   group: string;
   icon: string;
   detail?: string;
-  shortcut?: string;
   run: () => void;
 };
 
@@ -65,7 +64,6 @@ export default function CommandPalette(props: {
             }
           }}
         />
-        <kbd>Esc</kbd>
       </div>
       <div
         class="palette-results"
@@ -100,14 +98,6 @@ export default function CommandPalette(props: {
                     <small>{item.detail}</small>
                   </Show>
                 </span>
-                <Show when={item.shortcut}>
-                  <kbd>{item.shortcut}</kbd>
-                </Show>
-                <Show when={index() === active()}>
-                  <span class="palette-enter" aria-hidden="true">
-                    ↵
-                  </span>
-                </Show>
               </button>
             </>
           )}
@@ -128,17 +118,6 @@ export default function CommandPalette(props: {
           {props.error}
         </p>
       </Show>
-      <footer class="palette-help">
-        <span>
-          <kbd>↑ ↓</kbd> Navigate
-        </span>
-        <span>
-          <kbd>↵</kbd> Open
-        </span>
-        <span>
-          <kbd>Esc</kbd> Close
-        </span>
-      </footer>
     </Dialog>
   );
 }

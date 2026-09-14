@@ -1,4 +1,4 @@
-import { record } from "../shared/contracts.ts";
+import { type Doc, record } from "../shared/contracts.ts";
 import "dotenv/config";
 import { spawn } from "node:child_process";
 import { readFile, stat } from "node:fs/promises";
@@ -416,13 +416,46 @@ async function processCommands() {
           }
         } else if (kind === "rename" || kind === "delete") {
           const [profile, id] = JSON.parse(key);
-          result = await hermes.rest(
-            `/api/sessions/${encodeURIComponent(id)}${
-              kind === "delete" ? "?" + new URLSearchParams({ profile }) : ""
-            }`,
-            kind === "delete" ? "DELETE" : "PATCH",
-            kind === "rename" ? { title: payload.title, profile } : undefined,
-          );
+          try {
+            result = await hermes.rest(
+              `/api/sessions/${encodeURIComponent(id)}${
+                kind === "delete" ? "?" + new URLSearchParams({ profile }) : ""
+              }`,
+              kind === "delete" ? "DELETE" : "PATCH",
+              kind === "rename" ? { title: payload.title, profile } : undefined,
+            );
+          } catch (error) {
+            if (!(error instanceof HermesHttpError) || error.status !== 404) {
+              throw error;
+            }
+            const pendingSession = (
+              await convex.query(anyApi.workspace.pendingSessions, {})
+            ).find((c: Doc<"conversations">) => c.key === key);
+            if (pendingSession) {
+              const session_id = await hermes.attach(key);
+              result = await hermes.call(
+                kind === "rename" ? "session.title" : "session.close",
+                {
+                  session_id,
+                  ...(kind === "rename" ? { title: payload.title } : {}),
+                },
+              );
+              if (kind === "rename") {
+                await convex.mutation(anyApi.workspace.ingest, {
+                  conversations: [
+                    { ...pendingSession, title: String(payload.title) },
+                  ],
+                });
+              }
+            } else {
+              throw error;
+            }
+          }
+          if (kind === "delete") {
+            await convex.mutation(anyApi.workspace.ingest, {
+              deletedKeys: [key],
+            });
+          }
           await reconcile();
         } else if (kind === "rpc") {
           if (!rpcAllowlist.has(payload.method)) {

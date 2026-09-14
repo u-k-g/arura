@@ -12,7 +12,6 @@ export type Workspace = {
     hiddenModels?: string[];
     autoArchiveDays?: number;
     archiveDays?: number;
-    shortcuts?: Record<string, string>;
   };
   recentCursor: string;
   recentHasMore: boolean;

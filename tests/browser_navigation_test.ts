@@ -2,7 +2,7 @@ import { chromium, expect, type Page } from "@playwright/test";
 
 Deno.test({
   name:
-    "conversation rename, context, independent views, shortcuts, notices and deletion work across devices",
+    "conversation rename, context, independent views, notices and deletion work across devices",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -42,6 +42,17 @@ Deno.test({
       const a = await device("Navigation desktop"),
         b = await device("Navigation second device");
       const original = await newChat(a);
+      // Hermes hasn't saved a database row yet. A reconciliation and reload
+      // must preserve the live session instead of treating it as deleted.
+      await a.waitForTimeout(6000);
+      await a.reload();
+      await expect(
+        a.getByLabel("Message Hermes", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        a.getByText("Session not found", { exact: true }),
+      ).toHaveCount(0);
+      await expect(a.locator(".topbar")).not.toContainText(original!);
       const title = `Garden notes ${crypto.randomUUID().slice(0, 6)}`;
       await a
         .getByRole("button", { name: "Conversation actions", exact: true })
@@ -131,33 +142,10 @@ Deno.test({
         .getByRole("button", { name: "Close", exact: true })
         .click();
       await a.getByRole("button", { name: "Settings", exact: true }).click();
-      await a
-        .getByRole("button", { name: "Appearance & shortcuts", exact: true })
-        .click();
-      const shortcut = a.getByLabel("Find conversations and actions", {
-        exact: true,
-      });
-      await shortcut.focus();
-      await a.keyboard.press("Control+Shift+j");
-      await expect(shortcut).toHaveValue("Ctrl/⌘+Shift+j");
-      await b.getByRole("button", { name: "Settings", exact: true }).click();
-      await b
-        .getByRole("button", { name: "Appearance & shortcuts", exact: true })
-        .click();
+      await a.getByRole("button", { name: "Appearance", exact: true }).click();
       await expect(
-        b.getByLabel("Find conversations and actions", { exact: true }),
-      ).toHaveValue("Ctrl/⌘+Shift+j");
-      await b
-        .getByRole("button", { name: "Reset shortcuts", exact: true })
-        .focus();
-      await b.keyboard.press("Control+Shift+j");
-      await expect(
-        b.getByRole("dialog", { name: "Find anything", exact: true }),
-      ).toBeVisible();
-      await b.keyboard.press("Escape");
-      await a
-        .getByRole("button", { name: "Reset shortcuts", exact: true })
-        .click();
+        a.getByRole("heading", { name: "Keyboard shortcuts", exact: true }),
+      ).toHaveCount(0);
       await a.getByRole("button", { name: title, exact: true }).click();
       await a
         .getByRole("button", { name: "Conversation actions", exact: true })

@@ -52,11 +52,6 @@
   font-weight: 400;
   gap: 10px;
 }
-.sidebar-actions kbd {
-  margin-left: auto;
-  font-size: 10px;
-  color: var(--subtle);
-}
 .sidebar-actions .icon {
   width: 17px;
   height: 17px;
@@ -459,11 +454,6 @@ dialog.conversation-menu {
   font-size: 16px;
   min-width: 0;
 }
-.palette-search kbd {
-  border: var(--hairline) solid var(--line);
-  padding: 2px 4px;
-  border-radius: 4px;
-}
 .command-palette .palette-results {
   padding: 8px;
   max-height: min(52dvh, 440px);
@@ -500,20 +490,6 @@ dialog.conversation-menu {
 }
 .palette-item-text small {
   font-size: 11px;
-}
-.palette-enter {
-  color: var(--muted);
-}
-.palette-help {
-  display: flex;
-  gap: 16px;
-  padding: 12px 18px;
-  border-top: var(--hairline) solid var(--line);
-  color: var(--subtle);
-  font-size: 11px;
-}
-.palette-help kbd {
-  margin-right: 4px;
 }
 .palette-status,
 .palette-empty {

@@ -1,7 +1,7 @@
 import { createEffect, onCleanup, onMount } from "solid-js";
-import { basicSetup } from "codemirror";
+import { minimalSetup } from "codemirror";
 import { Compartment, EditorState } from "@codemirror/state";
-import { EditorView, keymap } from "@codemirror/view";
+import { EditorView, lineNumbers } from "@codemirror/view";
 
 export default function FileEditor(props: {
   path: string;
@@ -9,7 +9,6 @@ export default function FileEditor(props: {
   readOnly?: boolean;
   change: (text: string) => void;
   select: (text: string, from: number, to: number) => void;
-  save?: () => void;
 }) {
   let parent!: HTMLDivElement, view: EditorView | undefined;
   let applying = false,
@@ -30,16 +29,8 @@ export default function FileEditor(props: {
       parent,
       doc: props.content,
       extensions: [
-        basicSetup,
-        keymap.of([
-          {
-            key: "Mod-s",
-            run: () => {
-              if (!props.readOnly) props.save?.();
-              return true;
-            },
-          },
-        ]),
+        minimalSetup,
+        lineNumbers(),
         EditorView.lineWrapping,
         language.of([]),
         editing.of([
