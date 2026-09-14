@@ -1,39 +1,40 @@
+import DOMPurify from "dompurify";
+import { marked } from "marked";
 import {
-  createSignal,
-  createMemo,
-  lazy,
-  Suspense,
   createEffect,
+  createMemo,
+  createSignal,
+  For,
+  lazy,
   onCleanup,
   onMount,
-  For,
   Show,
+  Suspense,
 } from "solid-js";
-import {
-  command,
-  subscribe,
-  connected,
-  resource,
-  workspace,
-  mutate,
-  inform,
-  request,
-} from "./client";
-import { draft, draftAttachments, loadCache, saveCache } from "./cache";
-import { Icon, IconButton, Dialog, Field, run } from "./ui";
+import { fileReferences } from "../shared/artifacts";
 import {
   elapsed,
   groupMessages,
   type Message,
   type Turn,
 } from "../shared/model";
-import { marked } from "marked";
-import DOMPurify from "dompurify";
 import { rpcQueries } from "../shared/resources";
-import { fileReferences } from "../shared/artifacts";
-
+import { draft, draftAttachments, loadCache, saveCache } from "./cache";
+import {
+  command,
+  connected,
+  inform,
+  mutate,
+  request,
+  resource,
+  subscribe,
+  workspace,
+} from "./client";
 import type { ControlView } from "./RunControls";
+import { Dialog, Field, Icon, IconButton, run } from "./ui";
+
 const RunControls = lazy(() => import("./RunControls"));
+const Clarification = lazy(() => import("./Clarification"));
 
 DOMPurify.addHook("beforeSanitizeAttributes", (node) => {
   if (node.nodeName !== "A") return;
@@ -43,11 +44,12 @@ DOMPurify.addHook("beforeSanitizeAttributes", (node) => {
   const file = fileReferences([
     { role: "assistant", content: `[file](<${href}>)` },
   ])[0];
-  if (file)
+  if (file) {
     element.setAttribute(
       "href",
       `/api/download?path=${encodeURIComponent(file.path)}`,
     );
+  }
 });
 DOMPurify.addHook("afterSanitizeAttributes", (node) => {
   if (node.tagName === "A") {
@@ -84,6 +86,16 @@ export default function Chat(props: {
   const [tool, setTool] = createSignal<Message>(),
     [models, setModels] = createSignal<any[]>([]),
     [model, setModel] = createSignal("");
+  const [customizeModels, setCustomizeModels] = createSignal(false);
+  const modelKey = (entry: any) =>
+    JSON.stringify([entry.provider ?? "", entry.id ?? entry.model ?? entry]);
+  const modelLabel = (entry: any) =>
+    entry.name ?? entry.label ?? entry.id ?? String(entry);
+  const hiddenModels = createMemo(
+    () => new Set<string>(workspace()?.settings?.hiddenModels ?? []),
+  );
+  const visibleModels = () =>
+    models().filter((entry) => !hiddenModels().has(modelKey(entry)));
   const [suggestions, setSuggestions] = createSignal<any[]>([]),
     [attachment, setAttachment] = createSignal(false),
     [reference, setReference] = createSignal("");
@@ -93,9 +105,10 @@ export default function Chat(props: {
   const [completionIndex, setCompletionIndex] = createSignal(0),
     [cursor, setCursor] = createSignal(0);
   const excludedCommand = (value: string) =>
-    /^\/(?:image|imagine|flux|voice|wake|terminal|shell|hud|radio|pet|browser)(?:[-\s]|$)/i.test(
-      value,
-    );
+    /^\/(?:image|imagine|flux|voice|wake|terminal|shell|hud|radio|pet|browser)(?:[-\s]|$)/i
+      .test(
+        value,
+      );
   let scroller!: HTMLDivElement;
   let input!: HTMLTextAreaElement;
   let fileInput!: HTMLInputElement;
@@ -129,8 +142,9 @@ export default function Chat(props: {
     setEdit(undefined);
     setUploads([]);
     void draftAttachments(key).then((value) => {
-      if (props.conversation === key && uploads().length === 0)
+      if (props.conversation === key && uploads().length === 0) {
         setUploads(value);
+      }
     });
     void draft(key).then((value) => {
       if (props.conversation === key && text() === "") setText(value ?? "");
@@ -140,8 +154,9 @@ export default function Chat(props: {
         value &&
         props.conversation === key &&
         transcriptRevision === revision
-      )
+      ) {
         setData(value);
+      }
     });
   });
   createEffect(() => {
@@ -155,8 +170,7 @@ export default function Chat(props: {
       { conversation: key, pages: count },
       (value) => {
         transcriptRevision++;
-        const nearBottom =
-          !scroller ||
+        const nearBottom = !scroller ||
           scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <
             180;
         setData(value);
@@ -174,25 +188,27 @@ export default function Chat(props: {
           ) {
             requested.add(requestId);
             void command("load", key, { offset }).catch((error) =>
-              inform(error.message),
+              inform(error.message)
             );
           }
         }
         void saveCache("chat:" + key, value);
-        if (nearBottom)
+        if (nearBottom) {
           requestAnimationFrame(() =>
             scroller?.scrollTo({
               top: scroller.scrollHeight,
               behavior: "instant",
-            }),
+            })
           );
+        }
       },
     );
     onCleanup(stop);
-    if (connected())
+    if (connected()) {
       void command("load", key, { offset: 0 }).catch((error) =>
-        inform(error.message),
+        inform(error.message)
       );
+    }
   });
   const changeText = (value: string) => {
     setText(value);
@@ -237,8 +253,9 @@ export default function Chat(props: {
       const result = await r.json();
       if (!r.ok) throw new Error(result.error ?? "Upload failed");
       const path = result.path ?? result.file?.path ?? result.files?.[0]?.path;
-      if (!path)
+      if (!path) {
         throw new Error("Hermes did not return an uploaded file reference");
+      }
       const attachments = [
         ...(await draftAttachments(key)),
         { path, name: file.name, image: file.type.startsWith("image/") },
@@ -256,10 +273,10 @@ export default function Chat(props: {
   const rpc = (method: string, params: Record<string, unknown> = {}) =>
     rpcQueries.has(method)
       ? request("/api/query", {
-          method,
-          params,
-          conversation: props.conversation,
-        })
+        method,
+        params,
+        conversation: props.conversation,
+      })
       : command("rpc", props.conversation, { method, params });
   createEffect(() => {
     const value = text(),
@@ -273,7 +290,7 @@ export default function Chat(props: {
     const timer = setTimeout(() => {
       void rpc("complete.slash", { text: match[1] })
         .then((result) => {
-          if (!disposed)
+          if (!disposed) {
             setCompletions(
               (result.items ?? [])
                 .filter(
@@ -283,6 +300,7 @@ export default function Chat(props: {
                 )
                 .slice(0, 8),
             );
+          }
         })
         .catch(() => {
           /* Completion is optional; the composer stays usable. */
@@ -335,8 +353,9 @@ export default function Chat(props: {
             icon="page"
             label="Copy message"
             onClick={() =>
-              void run(() => navigator.clipboard.writeText(message.text))
-            }
+              void run(() =>
+                navigator.clipboard.writeText(message.text)
+              )}
           />
           <Show when={message.role === "user"}>
             <IconButton
@@ -359,8 +378,7 @@ export default function Chat(props: {
                 });
                 inform("Conversation branched");
                 props.navigate(result.key);
-              })
-            }
+              })}
           />
         </div>
       </Show>
@@ -389,14 +407,14 @@ export default function Chat(props: {
                     id,
                     provider: provider.slug,
                     name: `${id} · ${provider.name}`,
-                  })),
+                  }))
                 ) ??
                   result.models ??
                   [],
               );
               setModel("choose");
-            })
-          }
+              setCustomizeModels(false);
+            })}
         >
           <Icon name="chat-bubble" />
           Model
@@ -415,8 +433,7 @@ export default function Chat(props: {
           onClick={() =>
             void run(async () => {
               setControls("context");
-            })
-          }
+            })}
         >
           Context
         </button>
@@ -426,8 +443,7 @@ export default function Chat(props: {
           onClick={() =>
             void run(async () => {
               setControls("subagents");
-            })
-          }
+            })}
         >
           Delegated work
         </button>
@@ -457,13 +473,11 @@ export default function Chat(props: {
                     <summary>
                       Worked
                       <Show
-                        when={
-                          group.prompt?.createdAt && group.answer?.createdAt
-                        }
+                        when={group.prompt?.createdAt &&
+                          group.answer?.createdAt}
                       >
                         {" "}
-                        for{" "}
-                        {elapsed(
+                        for {elapsed(
                           group.prompt?.createdAt ?? 0,
                           group.answer?.createdAt ?? 0,
                         )}
@@ -480,16 +494,13 @@ export default function Chat(props: {
               <article
                 class="message assistant live-message"
                 classList={{
-                  "settled-work":
-                    t().state !== "running" &&
+                  "settled-work": t().state !== "running" &&
                     messages().at(-1)?.text === t().text,
                 }}
               >
                 <Show
-                  when={
-                    t().state === "running" ||
-                    messages().at(-1)?.text !== t().text
-                  }
+                  when={t().state === "running" ||
+                    messages().at(-1)?.text !== t().text}
                 >
                   <div class="message-label">
                     Hermes{" "}
@@ -529,89 +540,96 @@ export default function Chat(props: {
                     {t().error}
                   </p>
                 </Show>
-                <For each={t().interactions}>
-                  {(i) => (
-                    <div class="interaction">
-                      <h3>
-                        {i.kind === "approval"
-                          ? "Approval needed"
-                          : i.kind === "secret"
-                            ? "Input needed"
-                            : "A question from Hermes"}
-                      </h3>
-                      <p>{i.text}</p>
-                      <Show
-                        when={i.kind === "approval"}
-                        fallback={
-                          <form
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              const value = new FormData(e.currentTarget).get(
-                                "answer",
-                              );
-                              if (i.kind === "secret") e.currentTarget.reset();
-                              void run(() =>
-                                i.kind === "secret"
-                                  ? request("/api/respond", {
-                                      conversation: props.conversation,
-                                      requestId: i.id,
-                                      value,
+                <For each={t().interactions.map((item) => item.id)}>
+                  {(id) => {
+                    const interaction = () =>
+                      t().interactions.find((item) => item.id === id);
+                    return (
+                      <Show when={interaction()}>
+                        {(i) => (
+                          <div class="interaction">
+                            <h3>
+                              {i().kind === "approval"
+                                ? "Approval needed"
+                                : i().kind === "secret"
+                                ? "Input needed"
+                                : "A question from Hermes"}
+                            </h3>
+                            <p>{i().text}</p>
+                            <Show
+                              when={i().kind === "approval"}
+                              fallback={
+                                <Show
+                                  when={i().kind === "clarify"}
+                                  fallback={
+                                    <form
+                                      onSubmit={(e) => {
+                                        e.preventDefault();
+                                        const value = new FormData(
+                                          e.currentTarget,
+                                        ).get("answer");
+                                        e.currentTarget.reset();
+                                        void run(() =>
+                                          request("/api/respond", {
+                                            conversation: props.conversation,
+                                            requestId: i().id,
+                                            value,
+                                          })
+                                        );
+                                      }}
+                                    >
+                                      <input
+                                        name="answer"
+                                        aria-label="Secret or verification code"
+                                        type="password"
+                                        autocomplete="off"
+                                        required
+                                      />
+                                      <button type="submit" class="primary">
+                                        Answer
+                                      </button>
+                                    </form>
+                                  }
+                                >
+                                  <Clarification
+                                    interaction={i()}
+                                    respond={(params) =>
+                                      rpc("clarify.respond", params)}
+                                  />
+                                </Show>
+                              }
+                            >
+                              <button
+                                type="button"
+                                class="primary"
+                                onClick={() =>
+                                  void run(() =>
+                                    rpc("approval.respond", {
+                                      request_id: i().id,
+                                      choice: "once",
                                     })
-                                  : rpc("clarify.respond", {
-                                      request_id: i.id,
-                                      answer: value,
-                                    }),
-                              );
-                            }}
-                          >
-                            <input
-                              name="answer"
-                              type={i.kind === "secret" ? "password" : "text"}
-                              autocomplete="off"
-                              required
-                              list={"answers-" + i.id}
-                            />
-                            <datalist id={"answers-" + i.id}>
-                              <For each={i.options ?? []}>
-                                {(option) => <option value={option} />}
-                              </For>
-                            </datalist>
-                            <button type="submit" class="primary">
-                              Answer
-                            </button>
-                          </form>
-                        }
-                      >
-                        <button
-                          type="button"
-                          class="primary"
-                          onClick={() =>
-                            void run(() =>
-                              rpc("approval.respond", {
-                                request_id: i.id,
-                                choice: "once",
-                              }),
-                            )
-                          }
-                        >
-                          Allow once
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            void run(() =>
-                              rpc("approval.respond", {
-                                request_id: i.id,
-                                choice: "deny",
-                              }),
-                            )
-                          }
-                        >
-                          Deny
-                        </button>
+                                  )}
+                              >
+                                Allow once
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void run(() =>
+                                    rpc("approval.respond", {
+                                      request_id: i().id,
+                                      choice: "deny",
+                                    })
+                                  )}
+                              >
+                                Deny
+                              </button>
+                            </Show>
+                          </div>
+                        )}
                       </Show>
-                    </div>
-                  )}
+                    );
+                  }}
                 </For>
               </article>
             )}
@@ -633,7 +651,7 @@ export default function Chat(props: {
           </For>
           <For
             each={data().commands.filter((c: any) =>
-              ["unknown", "error"].includes(c.status),
+              ["unknown", "error"].includes(c.status)
             )}
           >
             {(c: any) => (
@@ -691,19 +709,19 @@ export default function Chat(props: {
                     label="Edit queued message"
                     onClick={() => {
                       const text = prompt("Queued message", c.payload.text);
-                      if (text !== null)
+                      if (text !== null) {
                         void run(() =>
-                          mutate("commands.edit", { id: c._id, text }),
+                          mutate("commands.edit", { id: c._id, text })
                         );
+                      }
                     }}
                   />
                   <button
                     type="button"
                     onClick={() =>
                       void run(() =>
-                        mutate("commands.edit", { id: c._id, next: true }),
-                      )
-                    }
+                        mutate("commands.edit", { id: c._id, next: true })
+                      )}
                   >
                     Send next
                   </button>
@@ -712,9 +730,8 @@ export default function Chat(props: {
                     label="Remove queued message"
                     onClick={() =>
                       void run(() =>
-                        mutate("commands.edit", { id: c._id, cancel: true }),
-                      )
-                    }
+                        mutate("commands.edit", { id: c._id, cancel: true })
+                      )}
                   />
                 </div>
               )}
@@ -745,25 +762,24 @@ export default function Chat(props: {
               !confirm(
                 "Replace the conversation after this message? Files and external actions will not be undone.",
               )
-            )
+            ) {
               return;
+            }
             void run(send);
           }}
         >
           <textarea
             ref={input}
             aria-label="Message Hermes"
-            aria-controls={
-              completions().length ? "composer-completions" : undefined
-            }
-            aria-activedescendant={
-              completions().length
-                ? `completion-${completionIndex()}`
-                : undefined
-            }
-            placeholder={
-              connected() ? "Message Hermes…" : "Write a draft while offline…"
-            }
+            aria-controls={completions().length
+              ? "composer-completions"
+              : undefined}
+            aria-activedescendant={completions().length
+              ? `completion-${completionIndex()}`
+              : undefined}
+            placeholder={connected()
+              ? "Message Hermes…"
+              : "Write a draft while offline…"}
             value={text()}
             onInput={(e) => {
               changeText(e.currentTarget.value);
@@ -839,13 +855,13 @@ export default function Chat(props: {
                         }))
                         .filter(
                           (item: { command: string }) =>
-                            !/^\/(?:image|voice|wake|terminal|shell|hud|radio|pet|browser)(?:\s|$)/i.test(
-                              item.command,
-                            ),
+                            !/^\/(?:image|voice|wake|terminal|shell|hud|radio|pet|browser)(?:\s|$)/i
+                              .test(
+                                item.command,
+                              ),
                         ),
                     );
-                  })
-                }
+                  })}
               >
                 / Commands
               </button>
@@ -862,14 +878,14 @@ export default function Chat(props: {
                       const result = await rpc("session.steer", {
                         text: value,
                       });
-                      if (result.status === "rejected")
+                      if (result.status === "rejected") {
                         throw new Error(
                           "Hermes could not accept steering at this point",
                         );
+                      }
                       changeText("");
                       inform("Instructions sent to the active run");
-                    })
-                  }
+                    })}
                 >
                   Steer
                 </button>
@@ -885,9 +901,9 @@ export default function Chat(props: {
               <button
                 class="send"
                 type="submit"
-                aria-label={
-                  turn()?.state === "running" ? "Queue message" : "Send message"
-                }
+                aria-label={turn()?.state === "running"
+                  ? "Queue message"
+                  : "Send message"}
                 disabled={!text().trim() || !connected() || sending()}
               >
                 <Icon name="send" />
@@ -899,8 +915,8 @@ export default function Chat(props: {
           {!connected()
             ? "Draft saved on this device. Connect to send."
             : turn()?.state === "running"
-              ? "Messages sent now join the queue."
-              : "Hermes runs on your host."}
+            ? "Messages sent now join the queue."
+            : "Hermes runs on your host."}
         </p>
         <input
           ref={fileInput}
@@ -949,37 +965,79 @@ export default function Chat(props: {
       </Show>
       <Show when={model()}>
         <Dialog title="Choose a model" close={() => setModel("")}>
-          <For each={models()}>
-            {(m) => (
-              <button
-                type="button"
-                class="list-button"
-                onClick={() =>
-                  void run(async () => {
-                    const value = `${JSON.stringify(m.id ?? m.model ?? m)}${m.provider ? ` --provider ${JSON.stringify(m.provider)}` : ""}`;
-                    const result = await rpc("config.set", {
-                      key: "model",
-                      value,
-                      scope: "session",
-                    });
-                    if (result.confirm_required) {
-                      if (!confirm(result.confirm_message || "Use this model?"))
-                        return;
-                      await rpc("config.set", {
+          <button
+            type="button"
+            onClick={() => setCustomizeModels((value) => !value)}
+          >
+            {customizeModels() ? "Done customizing" : "Customize model list"}
+          </button>
+          <Show when={customizeModels()}>
+            <p>
+              Choose the models shown in your picker. This list syncs across
+              your devices.
+            </p>
+            <For each={models()}>
+              {(entry) => (
+                <Field label={modelLabel(entry)}>
+                  <input
+                    type="checkbox"
+                    checked={!hiddenModels().has(modelKey(entry))}
+                    onChange={(event) =>
+                      void run(() =>
+                        mutate("workspace.modelVisibility", {
+                          model: modelKey(entry),
+                          hidden: !event.currentTarget.checked,
+                        })
+                      )}
+                  />
+                </Field>
+              )}
+            </For>
+          </Show>
+          <Show when={!customizeModels()}>
+            <Show when={!visibleModels().length}>
+              <p>
+                No models are visible. Use Customize model list to show them.
+              </p>
+            </Show>
+            <For each={visibleModels()}>
+              {(m) => (
+                <button
+                  type="button"
+                  class="list-button"
+                  onClick={() =>
+                    void run(async () => {
+                      const value = `${JSON.stringify(m.id ?? m.model ?? m)}${
+                        m.provider
+                          ? ` --provider ${JSON.stringify(m.provider)}`
+                          : ""
+                      }`;
+                      const result = await rpc("config.set", {
                         key: "model",
                         value,
                         scope: "session",
-                        confirm_expensive_model: true,
                       });
-                    }
-                    setModel("");
-                  })
-                }
-              >
-                {m.name ?? m.label ?? m.id ?? String(m)}
-              </button>
-            )}
-          </For>
+                      if (result.confirm_required) {
+                        if (
+                          !confirm(result.confirm_message || "Use this model?")
+                        ) {
+                          return;
+                        }
+                        await rpc("config.set", {
+                          key: "model",
+                          value,
+                          scope: "session",
+                          confirm_expensive_model: true,
+                        });
+                      }
+                      setModel("");
+                    })}
+                >
+                  {modelLabel(m)}
+                </button>
+              )}
+            </For>
+          </Show>
           <Field label="Reasoning effort">
             <select
               aria-label="Reasoning effort"
@@ -989,9 +1047,8 @@ export default function Chat(props: {
                     key: "reasoning",
                     value: e.currentTarget.value,
                     scope: "session",
-                  }),
-                )
-              }
+                  })
+                )}
             >
               <option value="">Choose effort</option>
               <For each={["none", "minimal", "low", "medium", "high", "xhigh"]}>

@@ -33,7 +33,7 @@ const db = Promise.resolve()
         db.createObjectStore("cache");
         db.createObjectStore("drafts");
       },
-    }),
+    })
   )
   .catch((error) => {
     unavailable(error);
@@ -52,8 +52,8 @@ export async function draftAttachments(
   }
   return (
     attachmentDrafts.get(key) ??
-    (await loadCache<DraftAttachment[]>("attachments:" + key)) ??
-    []
+      (await loadCache<DraftAttachment[]>("attachments:" + key)) ??
+      []
   );
 }
 let generation = 0;

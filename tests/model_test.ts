@@ -1,14 +1,50 @@
 import { deepStrictEqual, equal } from "node:assert/strict";
 import { fileReferences } from "../shared/artifacts.ts";
 import {
+  type Conversation,
+  groupMessages,
+  interactionFromEvent,
   normalizeMessages,
   shouldArchive,
+  subagentTranscript,
   visibleText,
   withoutReasoning,
-  subagentTranscript,
-  groupMessages,
-  type Conversation,
 } from "../shared/model.ts";
+
+Deno.test("clarification projection keeps question IDs, choices and restored answers without reasoning", () => {
+  const value = interactionFromEvent("clarify.request", {
+    request_id: "request",
+    reasoning: "PRIVATE",
+    questions: [
+      {
+        qid: "color",
+        question: "<think>PRIVATE</think>Choose colors",
+        choices: ["Blue", "Green"],
+        multi_select: true,
+      },
+      { qid: "place", question: "Where?", choices: [] },
+    ],
+    answers: { color: '["Blue"]' },
+  });
+  deepStrictEqual(value.questions, [
+    {
+      id: "color",
+      text: "Choose colors",
+      options: ["Blue", "Green"],
+      multiple: true,
+      answer: '["Blue"]',
+    },
+    { id: "place", text: "Where?", options: [], multiple: false },
+  ]);
+  equal(JSON.stringify(value).includes("PRIVATE"), false);
+  deepStrictEqual(
+    interactionFromEvent("clarify.request", {
+      question: "Which?",
+      choices: ["A", "B"],
+    }).options,
+    ["A", "B"],
+  );
+});
 
 Deno.test("reasoning never enters visible history or nested RPC results", () => {
   equal(visibleText("<think>private</think>Public answer"), "Public answer");
@@ -125,14 +161,17 @@ Deno.test("archive protects pinned folders, active work, input, and recently res
     pendingInput: false,
   };
   equal(shouldArchive(c, 7, now), true);
-  for (const patch of [
-    { section: "essential" },
-    { section: "pinned" },
-    { folderId: "folder" },
-    { running: true },
-    { pendingInput: true },
-    { unarchivedAt: now - 1000 },
-  ])
+  for (
+    const patch of [
+      { section: "essential" },
+      { section: "pinned" },
+      { folderId: "folder" },
+      { running: true },
+      { pendingInput: true },
+      { unarchivedAt: now - 1000 },
+    ]
+  ) {
     equal(shouldArchive({ ...c, ...patch } as Conversation, 7, now), false);
+  }
   equal(shouldArchive({ ...c, activityAt: now - 7 * 86400000 }, 7, now), true);
 });

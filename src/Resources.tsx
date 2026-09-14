@@ -1,23 +1,23 @@
 import {
-  createSignal,
-  onCleanup,
   createEffect,
   createMemo,
-  lazy,
+  createSignal,
   For,
+  lazy,
+  onCleanup,
   Show,
 } from "solid-js";
-import { resource, revision, inform, workspace } from "./client";
+import { inform, resource, revision, workspace } from "./client";
 import { draft, preferences } from "./cache";
-import { operations, type Field as FormField } from "../shared/resources";
-import { Icon, IconButton, Field, Dialog, Empty, run } from "./ui";
+import { type Field as FormField, operations } from "../shared/resources";
+import { Dialog, Empty, Field, Icon, IconButton, run } from "./ui";
 import {
   editableJob,
-  jobPatch,
   endpointBody,
+  jobPatch,
+  mcpBody,
   pairingRows,
   platformBody,
-  mcpBody,
 } from "../shared/resource-forms";
 const ProfileAvatar = lazy(() => import("./ProfileAvatar"));
 const RuntimeSettings = lazy(() => import("./RuntimeSettings"));
@@ -212,15 +212,17 @@ const dataRows = (data: any, keys: string[] = []) => {
   if (Array.isArray(data)) return data;
   for (const key of keys) {
     if (Array.isArray(data?.[key])) return data[key];
-    if (data?.[key] && typeof data[key] === "object")
+    if (data?.[key] && typeof data[key] === "object") {
       return dataRows(data[key]);
+    }
   }
-  if (data && typeof data === "object")
+  if (data && typeof data === "object") {
     return Object.entries(data).map(([name, value]) =>
       typeof value === "object" && value !== null
         ? { name, ...value }
-        : { name, value },
+        : { name, value }
     );
+  }
   return [];
 };
 
@@ -234,11 +236,10 @@ function Value(props: { value: any }) {
         <For each={Object.entries(props.value ?? {})}>
           {([key, value]) => (
             <Show
-              when={
-                !/^(?:token|access_token|refresh_token|secret|password|api_key|reasoning(?:_text|_content|_delta)?|thinking)$/i.test(
+              when={!/^(?:token|access_token|refresh_token|secret|password|api_key|reasoning(?:_text|_content|_delta)?|thinking)$/i
+                .test(
                   key,
-                )
-              }
+                )}
             >
               <div>
                 <dt>{human(key)}</dt>
@@ -302,11 +303,9 @@ function Editor(props: {
           return (
             <Show when={!hidden}>
               <Show
-                when={
-                  value() !== null &&
+                when={value() !== null &&
                   typeof value() === "object" &&
-                  !Array.isArray(value())
-                }
+                  !Array.isArray(value())}
                 fallback={
                   <Field label={human(key)}>
                     <Show
@@ -316,21 +315,18 @@ function Editor(props: {
                           when={typeof value() === "boolean"}
                           fallback={
                             <input
-                              type={
-                                /key|secret|password|token/i.test(key)
-                                  ? "password"
-                                  : typeof value() === "number"
-                                    ? "number"
-                                    : "text"
-                              }
+                              type={/key|secret|password|token/i.test(key)
+                                ? "password"
+                                : typeof value() === "number"
+                                ? "number"
+                                : "text"}
                               value={String(value() ?? "")}
                               onInput={(e) =>
                                 update(
                                   typeof value() === "number"
                                     ? Number(e.currentTarget.value)
                                     : e.currentTarget.value,
-                                )
-                              }
+                                )}
                             />
                           }
                         >
@@ -347,7 +343,7 @@ function Editor(props: {
                           .map((item) =>
                             typeof item === "object"
                               ? JSON.stringify(item)
-                              : String(item),
+                              : String(item)
                           )
                           .join("\n")}
                         onChange={(e) => {
@@ -368,10 +364,11 @@ function Editor(props: {
                                     typeof next !== typeof example ||
                                     Array.isArray(next) !==
                                       Array.isArray(example)
-                                  )
+                                  ) {
                                     throw new Error(
                                       "Keep the existing entry type",
                                     );
+                                  }
                                   return next;
                                 }
                                 return line;
@@ -427,11 +424,13 @@ export default function Resources(props: {
     preferences.getItem("arura.lastConversation") ?? "",
   );
   const [path, setPath] = createSignal(""),
-    [file, setFile] = createSignal<{
-      path: string;
-      content: string;
-      readOnly?: boolean;
-    } | null>(null),
+    [file, setFile] = createSignal<
+      {
+        path: string;
+        content: string;
+        readOnly?: boolean;
+      } | null
+    >(null),
     [dirty, setDirty] = createSignal(false);
   const [original, setOriginal] = createSignal("");
   const [fileChanged, setFileChanged] = createSignal(false);
@@ -443,10 +442,11 @@ export default function Resources(props: {
     void resource("file", { path: target })
       .then((result) => {
         if (file()?.path !== target) return;
-        if (result.binary)
+        if (result.binary) {
           throw new Error(
             "This is now a binary file. Use Open with browser or Download.",
           );
+        }
         const content = result.content ?? result.text ?? "";
         const readOnly = Boolean(
           result.truncated || content.includes("\uFFFD"),
@@ -479,12 +479,13 @@ export default function Resources(props: {
         const next = await resource("mcpAuthFlow", { id: flow.flow_id });
         if (!disposed) setMcpFlow(next);
       } catch (error) {
-        if (!disposed)
+        if (!disposed) {
           setMcpFlow({
             ...flow,
             status: "error",
             error: (error as Error).message,
           });
+        }
       } finally {
         busy = false;
       }
@@ -496,8 +497,9 @@ export default function Resources(props: {
   });
   async function closeMcpFlow() {
     const flow = mcpFlow();
-    if (flow && !["approved", "error"].includes(flow.status))
+    if (flow && !["approved", "error"].includes(flow.status)) {
       await resource("cancelMcpAuth", { id: flow.flow_id }, {});
+    }
     setMcpFlow(undefined);
   }
   const [toolConfig, setToolConfig] = createSignal<any>();
@@ -528,10 +530,11 @@ export default function Resources(props: {
         },
       },
     );
-    if (result.applied?.ui_meta !== true)
+    if (result.applied?.ui_meta !== true) {
       throw new Error(
         "Appearance changed elsewhere. Reopen the avatar editor and try again.",
       );
+    }
   }
   async function avatarUpload(file?: File) {
     const profile = avatarEditor();
@@ -539,8 +542,9 @@ export default function Resources(props: {
     if (
       file.size > 2_000_000 ||
       !["image/png", "image/jpeg", "image/webp"].includes(file.type)
-    )
+    ) {
       throw new Error("Choose a PNG, JPEG, or WebP image smaller than 2 MB.");
+    }
     const data = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result));
@@ -554,21 +558,24 @@ export default function Resources(props: {
     );
     if (result.ok === false) throw new Error("Could not save the avatar");
     await avatarKind(profile.name, "photo");
-    if (avatarEditor()?.name === profile.name)
+    if (avatarEditor()?.name === profile.name) {
       setAvatarEditor({ name: profile.name, data });
+    }
     inform("Avatar saved");
     await refresh();
   }
   const [selection, setSelection] = createSignal({ text: "", from: 1, to: 1 });
   const [attachSelection, setAttachSelection] = createSignal(false);
-  const [form, setForm] = createSignal<{
-      operation: string;
-      params: Record<string, unknown>;
-      values: any;
-      original?: Record<string, unknown>;
-      fields?: FormField[];
-      title: string;
-    } | null>(null),
+  const [form, setForm] = createSignal<
+      {
+        operation: string;
+        params: Record<string, unknown>;
+        values: any;
+        original?: Record<string, unknown>;
+        fields?: FormField[];
+        title: string;
+      } | null
+    >(null),
     [detail, setDetail] = createSignal<any>();
   let refreshVersion = 0;
   onCleanup(() => {
@@ -597,8 +604,8 @@ export default function Resources(props: {
         props.name === "files"
           ? { path: path() }
           : props.name === "connectors"
-            ? { conversation: connectionConversation() }
-            : {},
+          ? { conversation: connectionConversation() }
+          : {},
       );
       if (version === refreshVersion) setData(value);
     } catch (e) {
@@ -624,8 +631,7 @@ export default function Resources(props: {
   const rows = () =>
     (props.name === "pairing"
       ? pairingRows(data())
-      : dataRows(data(), surface().list)
-    )
+      : dataRows(data(), surface().list))
       .filter(
         (r: any) =>
           !(
@@ -638,7 +644,7 @@ export default function Resources(props: {
       .filter((r: any) =>
         String(r.name ?? r.title ?? r.id ?? "")
           .toLowerCase()
-          .includes(filter().toLowerCase()),
+          .includes(filter().toLowerCase())
       );
   async function action(operation: string, item: any = {}) {
     const id = String(
@@ -701,10 +707,9 @@ export default function Resources(props: {
         fields: [
           {
             key: "content",
-            label:
-              operation === "soul"
-                ? "Personality & instructions"
-                : "Skill content",
+            label: operation === "soul"
+              ? "Personality & instructions"
+              : "Skill content",
             type: "textarea",
           },
         ],
@@ -720,8 +725,8 @@ export default function Resources(props: {
         operation === "deleteEnv"
           ? { key: item.name }
           : operation === "revokePairing"
-            ? { platform: item.platform, user_id: item.user_id }
-            : { ...item },
+          ? { platform: item.platform, user_id: item.user_id }
+          : { ...item },
       );
       await refresh();
       return;
@@ -786,15 +791,18 @@ export default function Resources(props: {
         ),
         fields: (config.fields ?? []).map((field: any) => ({
           key: field.key,
-          label: `${field.label}${field.kind === "secret" && field.is_set ? " (saved; blank keeps current)" : ""}`,
-          type:
-            field.kind === "secret"
-              ? "password"
-              : field.kind === "boolean"
-                ? "boolean"
-                : ["integer", "number"].includes(field.kind)
-                  ? "number"
-                  : "text",
+          label: `${field.label}${
+            field.kind === "secret" && field.is_set
+              ? " (saved; blank keeps current)"
+              : ""
+          }`,
+          type: field.kind === "secret"
+            ? "password"
+            : field.kind === "boolean"
+            ? "boolean"
+            : ["integer", "number"].includes(field.kind)
+            ? "number"
+            : "text",
           required: field.required && !field.is_set,
         })),
       });
@@ -843,62 +851,64 @@ export default function Resources(props: {
   async function save() {
     const f = form();
     if (!f) return;
-    const body =
-      f.operation === "profileAppearance"
-        ? {
-            name: f.params.name,
-            ui_meta: {
-              "hermes-bots": {
-                ...((f.original?.metadata as Record<string, unknown>) ?? {}),
-                ...f.values,
-              },
-            },
-            ui_meta_expected_revisions: {
-              "hermes-bots": f.original?.revision ?? 0,
-            },
-          }
-        : f.operation === "saveConfig"
-          ? { config: f.values }
-          : f.operation === "saveJob"
-            ? { updates: jobPatch(f.values, f.original ?? {}) }
-            : f.operation === "saveEndpoint"
-              ? endpointBody(f.values)
-              : f.operation === "savePlatform"
-                ? platformBody(f.values)
-                : f.operation === "addMcp"
-                  ? mcpBody(f.values)
-                  : f.operation === "saveMemoryConfig"
-                    ? { values: f.values }
-                    : f.operation === "toolsetEnv"
-                      ? {
-                          env: Object.fromEntries(
-                            Object.entries(f.values).filter(
-                              ([, value]) => value !== "",
-                            ),
-                          ),
-                        }
-                      : f.operation === "setAuxModel"
-                        ? { scope: "auxiliary", ...f.values }
-                        : f.operation === "setModel"
-                          ? { scope: "main", ...f.values }
-                          : f.values;
+    const body = f.operation === "profileAppearance"
+      ? {
+        name: f.params.name,
+        ui_meta: {
+          "hermes-bots": {
+            ...((f.original?.metadata as Record<string, unknown>) ?? {}),
+            ...f.values,
+          },
+        },
+        ui_meta_expected_revisions: {
+          "hermes-bots": f.original?.revision ?? 0,
+        },
+      }
+      : f.operation === "saveConfig"
+      ? { config: f.values }
+      : f.operation === "saveJob"
+      ? { updates: jobPatch(f.values, f.original ?? {}) }
+      : f.operation === "saveEndpoint"
+      ? endpointBody(f.values)
+      : f.operation === "savePlatform"
+      ? platformBody(f.values)
+      : f.operation === "addMcp"
+      ? mcpBody(f.values)
+      : f.operation === "saveMemoryConfig"
+      ? { values: f.values }
+      : f.operation === "toolsetEnv"
+      ? {
+        env: Object.fromEntries(
+          Object.entries(f.values).filter(
+            ([, value]) => value !== "",
+          ),
+        ),
+      }
+      : f.operation === "setAuxModel"
+      ? { scope: "auxiliary", ...f.values }
+      : f.operation === "setModel"
+      ? { scope: "main", ...f.values }
+      : f.values;
     let result = await resource(f.operation, f.params, body);
     if (result?.confirm_required) {
-      if (!confirm(result.confirm_message ?? "Confirm this model selection?"))
+      if (!confirm(result.confirm_message ?? "Confirm this model selection?")) {
         return;
+      }
       result = await resource(f.operation, f.params, {
         ...body,
         confirm_expensive_model: true,
       });
     }
-    if (result?.applied?.ui_meta === false)
+    if (result?.applied?.ui_meta === false) {
       throw new Error(
         "Bot appearance changed elsewhere. Close and reopen this form before saving.",
       );
-    if (result?.ok === false)
+    }
+    if (result?.ok === false) {
       throw new Error(
         result.error ?? result.confirm_message ?? "The change was not accepted",
       );
+    }
     setForm(null);
     inform("Saved");
     await refresh();
@@ -912,15 +922,17 @@ export default function Resources(props: {
       latest.binary ||
       latest.truncated ||
       String(latest.content ?? latest.text ?? "").includes("\uFFFD")
-    )
+    ) {
       throw new Error(
         "Only a complete UTF-8 text file can be edited. Use Open with browser or Download for this file.",
       );
+    }
     if (
       (latest.content ?? latest.text ?? "") !== original() &&
       !confirm("This file changed on the host. Overwrite it with your edits?")
-    )
+    ) {
       return;
+    }
     await resource("saveFile", {}, current);
     setOriginal(current.content);
     setDirty(file()?.content !== current.content);
@@ -939,10 +951,11 @@ export default function Resources(props: {
       return;
     }
     const result = await resource("file", { path: p });
-    if (result.binary)
+    if (result.binary) {
       throw new Error(
         "This is a binary file. Use Open with browser or Download.",
       );
+    }
     const content = result.content ?? result.text ?? "";
     setFile({
       path: p,
@@ -970,8 +983,7 @@ export default function Resources(props: {
             void run(async () => {
               await resource("enableWebhooks", {}, {});
               await refresh();
-            })
-          }
+            })}
         >
           Enable incoming webhooks
         </button>
@@ -1056,10 +1068,8 @@ export default function Resources(props: {
       </Show>
       <Show
         keyed
-        when={
-          ["computer", "delegation", "resources"].includes(props.name) &&
-          props.name
-        }
+        when={["computer", "delegation", "resources"].includes(props.name) &&
+          props.name}
       >
         {(kind) => <RuntimeSettings kind={kind} />}
       </Show>
@@ -1079,8 +1089,7 @@ export default function Resources(props: {
               params: {},
               values: structuredClone(data()?.config ?? data() ?? {}),
               title: "Hermes settings",
-            })
-          }
+            })}
         >
           Edit settings
         </button>
@@ -1092,11 +1101,12 @@ export default function Resources(props: {
         <button
           type="button"
           onClick={() => {
-            if (confirm("Reset Hermes memory?"))
+            if (confirm("Reset Hermes memory?")) {
               void run(async () => {
                 await resource("resetMemory", {}, {});
                 await refresh();
               });
+            }
           }}
         >
           Reset memory
@@ -1118,8 +1128,7 @@ export default function Resources(props: {
             void run(async () => {
               await resource("pauseCurator", {}, { paused: !data()?.paused });
               await refresh();
-            })
-          }
+            })}
         >
           {data()?.paused ? "Resume" : "Pause"}
         </button>
@@ -1128,8 +1137,7 @@ export default function Resources(props: {
           onClick={() =>
             void run(async () => {
               setDetail(await resource("runCurator", {}, {}));
-            })
-          }
+            })}
         >
           Review skills now
         </button>
@@ -1139,17 +1147,15 @@ export default function Resources(props: {
           type="button"
           onClick={() =>
             void run(async () =>
-              setDetail(await resource("logs", { lines: 200 })),
-            )
-          }
+              setDetail(await resource("logs", { lines: 200 }))
+            )}
         >
           Open logs
         </button>
         <button
           type="button"
           onClick={() =>
-            void run(async () => setDetail(await resource("stats")))
-          }
+            void run(async () => setDetail(await resource("stats")))}
         >
           Host resources
         </button>
@@ -1159,9 +1165,8 @@ export default function Resources(props: {
           type="button"
           onClick={() =>
             void run(async () =>
-              setBlueprints((await resource("blueprints")).blueprints ?? []),
-            )
-          }
+              setBlueprints((await resource("blueprints")).blueprints ?? [])
+            )}
         >
           Automation blueprints
         </button>
@@ -1175,8 +1180,7 @@ export default function Resources(props: {
           type="button"
           class="primary"
           onClick={() =>
-            void run(async () => setDetail(await resource("backup", {}, {})))
-          }
+            void run(async () => setDetail(await resource("backup", {}, {})))}
         >
           Create backup
         </button>
@@ -1209,22 +1213,18 @@ export default function Resources(props: {
         </div>
       </Show>
       <Show
-        when={
-          ![
-            "graph",
-            "fallbacks",
-            "moa",
-            "computer",
-            "delegation",
-            "resources",
-          ].includes(props.name)
-        }
+        when={![
+          "graph",
+          "fallbacks",
+          "moa",
+          "computer",
+          "delegation",
+          "resources",
+        ].includes(props.name)}
       >
         <Show
-          when={
-            surface().list ||
-            ["files", "artifacts", "env", "graph"].includes(props.name)
-          }
+          when={surface().list ||
+            ["files", "artifacts", "env", "graph"].includes(props.name)}
           fallback={<Value value={data()} />}
         >
           <input
@@ -1237,25 +1237,21 @@ export default function Resources(props: {
           />
           <div class="resource-list">
             <For
-              each={
-                props.name === "files"
-                  ? dataRows(data(), ["entries", "files"]).filter((item: any) =>
-                      String(item.name ?? "")
-                        .toLowerCase()
-                        .includes(filter().toLowerCase()),
-                    )
-                  : rows()
-              }
+              each={props.name === "files"
+                ? dataRows(data(), ["entries", "files"]).filter((item: any) =>
+                  String(item.name ?? "")
+                    .toLowerCase()
+                    .includes(filter().toLowerCase())
+                )
+                : rows()}
             >
               {(item) => (
                 <article class="resource-card">
                   <div class="resource-card-heading">
                     <Show
-                      when={
-                        props.name === "profiles" &&
+                      when={props.name === "profiles" &&
                         item.has_avatar &&
-                        item.ui_meta?.["hermes-bots"]?.imageKind !== "shape"
-                      }
+                        item.ui_meta?.["hermes-bots"]?.imageKind !== "shape"}
                     >
                       <ProfileAvatar
                         name={item.name}
@@ -1263,13 +1259,11 @@ export default function Resources(props: {
                       />
                     </Show>
                     <Icon
-                      name={
-                        props.name === "files"
-                          ? item.is_dir || item.type === "directory"
-                            ? "folder"
-                            : "page"
-                          : "chat-bubble"
-                      }
+                      name={props.name === "files"
+                        ? item.is_dir || item.type === "directory"
+                          ? "folder"
+                          : "page"
+                        : "chat-bubble"}
                     />
                     <div>
                       <h3>
@@ -1301,9 +1295,8 @@ export default function Resources(props: {
                       </button>
                     </Show>
                     <Show
-                      when={
-                        props.name === "files" || props.name === "artifacts"
-                      }
+                      when={props.name === "files" ||
+                        props.name === "artifacts"}
                     >
                       <button
                         type="button"
@@ -1391,31 +1384,25 @@ export default function Resources(props: {
                         fallback={
                           <input
                             required={field.required}
-                            type={
-                              field.type === "boolean"
-                                ? "checkbox"
-                                : (field.type ?? "text")
-                            }
-                            checked={
-                              field.type === "boolean"
-                                ? Boolean(f().values[field.key])
-                                : undefined
-                            }
+                            type={field.type === "boolean"
+                              ? "checkbox"
+                              : (field.type ?? "text")}
+                            checked={field.type === "boolean"
+                              ? Boolean(f().values[field.key])
+                              : undefined}
                             value={f().values[field.key] ?? ""}
                             onInput={(e) =>
                               setForm({
                                 ...f(),
                                 values: {
                                   ...f().values,
-                                  [field.key]:
-                                    field.type === "boolean"
-                                      ? e.currentTarget.checked
-                                      : field.type === "number"
-                                        ? Number(e.currentTarget.value)
-                                        : e.currentTarget.value,
+                                  [field.key]: field.type === "boolean"
+                                    ? e.currentTarget.checked
+                                    : field.type === "number"
+                                    ? Number(e.currentTarget.value)
+                                    : e.currentTarget.value,
                                 },
-                              })
-                            }
+                              })}
                           />
                         }
                       >
@@ -1429,8 +1416,7 @@ export default function Resources(props: {
                                 ...f().values,
                                 [field.key]: e.currentTarget.value,
                               },
-                            })
-                          }
+                            })}
                         />
                       </Show>
                     </Field>
@@ -1466,8 +1452,7 @@ export default function Resources(props: {
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={(event) =>
-                  void run(() => avatarUpload(event.currentTarget.files?.[0]))
-                }
+                  void run(() => avatarUpload(event.currentTarget.files?.[0]))}
               />
             </Field>
             <Show when={profile().data}>
@@ -1481,13 +1466,13 @@ export default function Resources(props: {
                       {},
                       { name, clear: true },
                     );
-                    if (result.ok === false)
+                    if (result.ok === false) {
                       throw new Error("Could not remove the avatar");
+                    }
                     await avatarKind(name, "shape");
                     setAvatarEditor({ name });
                     await refresh();
-                  })
-                }
+                  })}
               >
                 Remove avatar
               </button>
@@ -1508,10 +1493,8 @@ export default function Resources(props: {
                   : "Waiting for authorization…")}
             </p>
             <Show
-              when={
-                flow().status === "authorization_required" &&
-                /^https?:\/\//i.test(flow().authorization_url ?? "")
-              }
+              when={flow().status === "authorization_required" &&
+                /^https?:\/\//i.test(flow().authorization_url ?? "")}
             >
               <a
                 href={flow().authorization_url}
@@ -1549,11 +1532,9 @@ export default function Resources(props: {
                   <p>{provider.is_active ? "Active" : provider.status}</p>
                   <div class="row-actions">
                     <For
-                      each={
-                        config().name === "web"
-                          ? (provider.capabilities ?? ["search", "extract"])
-                          : [undefined]
-                      }
+                      each={config().name === "web"
+                        ? (provider.capabilities ?? ["search", "extract"])
+                        : [undefined]}
                     >
                       {(capability) => (
                         <button
@@ -1575,8 +1556,7 @@ export default function Resources(props: {
                                 id: config().id,
                               });
                               inform("Provider selected");
-                            })
-                          }
+                            })}
                         >
                           Use{capability ? ` for ${capability}` : " provider"}
                         </button>
@@ -1598,11 +1578,14 @@ export default function Resources(props: {
                             ),
                             fields: provider.env_vars.map((field: any) => ({
                               key: field.key,
-                              label: `${field.prompt ?? field.key}${field.is_set ? " (saved; blank keeps current)" : ""}`,
+                              label: `${field.prompt ?? field.key}${
+                                field.is_set
+                                  ? " (saved; blank keeps current)"
+                                  : ""
+                              }`,
                               type: "password",
                             })),
-                          })
-                        }
+                          })}
                       >
                         Credentials
                       </button>
@@ -1633,8 +1616,9 @@ export default function Resources(props: {
             title={f().path.split("/").at(-1) ?? "File"}
             class="file-editor"
             close={() => {
-              if (!dirty() || confirm("Discard unsaved changes?"))
+              if (!dirty() || confirm("Discard unsaved changes?")) {
                 setFile(null);
+              }
             }}
           >
             <div class="editor-toolbar">
@@ -1709,16 +1693,16 @@ export default function Resources(props: {
                     if (
                       dirty() &&
                       !confirm("Leave this file and discard unsaved edits?")
-                    )
+                    ) {
                       return;
+                    }
                     const old = (await draft(c.key)) ?? "";
                     await draft(
                       c.key,
                       `${old}\n[${file()?.path}, lines ${selection().from}–${selection().to}]\n${selection().text}\n`,
                     );
                     props.navigate(c.key);
-                  })
-                }
+                  })}
               >
                 {c.title}
               </button>
@@ -1759,7 +1743,10 @@ export default function Resources(props: {
       </Show>
       <Show when={blueprint()}>
         {(item) => (
-          <Dialog title={item().title} close={() => setBlueprint(undefined)}>
+          <Dialog
+            title={item().title}
+            close={() => setBlueprint(undefined)}
+          >
             <p>{item().description}</p>
             <form
               onSubmit={(event) => {
@@ -1791,8 +1778,7 @@ export default function Resources(props: {
                             setBlueprintValues((value) => ({
                               ...value,
                               [field.name]: event.currentTarget.value,
-                            }))
-                          }
+                            }))}
                         />
                       }
                     >
@@ -1803,8 +1789,7 @@ export default function Resources(props: {
                           setBlueprintValues((value) => ({
                             ...value,
                             [field.name]: event.currentTarget.value,
-                          }))
-                        }
+                          }))}
                       >
                         <option value="">Choose…</option>
                         <For each={field.options}>

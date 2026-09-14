@@ -1,13 +1,13 @@
 import {
-  createSignal,
-  createMemo,
   createEffect,
-  onCleanup,
+  createMemo,
+  createSignal,
   For,
+  onCleanup,
   Show,
 } from "solid-js";
-import { resource, revision, inform } from "./client";
-import { Dialog, Field, Empty, run } from "./ui";
+import { inform, resource, revision } from "./client";
+import { Dialog, Empty, Field, run } from "./ui";
 
 type Node = {
   id: string;
@@ -50,8 +50,8 @@ export default function MemoryGraph() {
     visibleGraph().nodes.filter((node) =>
       `${node.label} ${node.category ?? ""} ${node.kind}`
         .toLowerCase()
-        .includes(query().toLowerCase()),
-    ),
+        .includes(query().toLowerCase())
+    )
   );
   const positions = createMemo(
     () =>
@@ -60,8 +60,7 @@ export default function MemoryGraph() {
           .slice(0, 200)
           .map((node, index) => {
             const angle = index * 2.399963229728653;
-            const radius =
-              220 *
+            const radius = 220 *
               Math.sqrt(
                 (index + 1) / Math.max(1, Math.min(200, nodes().length)),
               );
@@ -82,32 +81,39 @@ export default function MemoryGraph() {
         id: node.id,
         label: node.label,
         kind: node.kind,
-        content: `${node.kind} · ${node.category ?? "Uncategorized"}\n${node.useCount ?? 0} uses`,
+        content: `${node.kind} · ${node.category ?? "Uncategorized"}\n${
+          node.useCount ?? 0
+        } uses`,
       });
       setContent(
-        `${node.kind} · ${node.category ?? "Uncategorized"}\n${node.useCount ?? 0} uses`,
+        `${node.kind} · ${node.category ?? "Uncategorized"}\n${
+          node.useCount ?? 0
+        } uses`,
       );
       setEditing(false);
       return;
     }
     const document = await resource("graphNode", { id: node.id });
-    if (document.ok === false)
+    if (document.ok === false) {
       throw new Error(document.error ?? "This memory is no longer available");
+    }
     setSelected(document);
     setContent(document.content);
     setEditing(false);
   }
   const close = () => {
-    if (selected()?.content !== content() && !confirm("Discard these edits?"))
+    if (selected()?.content !== content() && !confirm("Discard these edits?")) {
       return;
+    }
     setSelected(undefined);
   };
   async function verify(document: Document) {
     const latest = await resource("graphNode", { id: document.id });
-    if (latest.ok === false || latest.content !== document.content)
+    if (latest.ok === false || latest.content !== document.content) {
       throw new Error(
         "This memory changed on the host. Close and reopen it before editing or deleting.",
       );
+    }
   }
   async function save() {
     const document = selected();
@@ -118,8 +124,9 @@ export default function MemoryGraph() {
       {},
       { id: document.id, content: content() },
     );
-    if (result.ok === false)
+    if (result.ok === false) {
       throw new Error(result.error ?? "Could not save this memory");
+    }
     setSelected(undefined);
     inform("Memory updated");
   }
@@ -128,8 +135,9 @@ export default function MemoryGraph() {
     if (!document || !confirm(`Remove ${document.label}?`)) return;
     await verify(document);
     const result = await resource("deleteGraphNode", {}, { id: document.id });
-    if (result.ok === false)
+    if (result.ok === false) {
       throw new Error(result.error ?? "Could not remove this memory");
+    }
     setSelected(undefined);
     inform(document.kind === "skill" ? "Skill archived" : "Memory removed");
   }
@@ -190,21 +198,24 @@ export default function MemoryGraph() {
               const file = event.currentTarget.files?.[0];
               if (!file) return;
               void run(async () => {
-                if (file.size > 5 * 1024 * 1024)
+                if (file.size > 5 * 1024 * 1024) {
                   throw new Error("Choose a map smaller than 5 MB.");
+                }
                 const value = JSON.parse(await file.text());
                 if (
                   value.format !== "arura-memory-map" ||
                   value.version !== 1 ||
                   !Array.isArray(value.graph?.nodes) ||
                   !Array.isArray(value.graph?.edges)
-                )
+                ) {
                   throw new Error("Choose an Arura map snapshot.");
+                }
                 if (
                   value.graph.nodes.length > 5000 ||
                   value.graph.edges.length > 20000
-                )
+                ) {
                   throw new Error("This map has too many entries.");
+                }
                 if (
                   value.graph.nodes.some(
                     (node: Node) =>
@@ -220,8 +231,9 @@ export default function MemoryGraph() {
                       typeof edge.source !== "string" ||
                       typeof edge.target !== "string",
                   )
-                )
+                ) {
                   throw new Error("This map contains invalid entries.");
+                }
                 setImported(value.graph);
                 setSelected(undefined);
               });
@@ -262,13 +274,12 @@ export default function MemoryGraph() {
                 >
                   <span>{node.label}</span>
                   <small>
-                    {node.kind} ·{" "}
-                    {node.timestamp
+                    {node.kind} · {node.timestamp
                       ? new Date(
-                          node.timestamp < 1e12
-                            ? node.timestamp * 1000
-                            : node.timestamp,
-                        ).toLocaleString()
+                        node.timestamp < 1e12
+                          ? node.timestamp * 1000
+                          : node.timestamp,
+                      ).toLocaleString()
                       : "Unknown date"}
                   </small>
                 </button>
@@ -314,9 +325,9 @@ export default function MemoryGraph() {
                     cx={node.x}
                     cy={node.y}
                     r={node.kind === "skill" ? 7 : 5}
-                    class={
-                      node.kind === "skill" ? "graph-skill" : "graph-memory"
-                    }
+                    class={node.kind === "skill"
+                      ? "graph-skill"
+                      : "graph-memory"}
                   />
                   <Show when={nodes().length < 30}>
                     <text x={node.x} y={node.y + 20} text-anchor="middle">
@@ -370,7 +381,10 @@ export default function MemoryGraph() {
                 <Show
                   when={editing()}
                   fallback={
-                    <button type="button" onClick={() => setEditing(true)}>
+                    <button
+                      type="button"
+                      onClick={() => setEditing(true)}
+                    >
                       Edit
                     </button>
                   }

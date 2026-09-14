@@ -6,15 +6,15 @@ export async function deployFunctions(
   env: Record<string, string> = {},
   signal?: AbortSignal,
 ) {
-  const target =
-    env.CONVEX_SELF_HOSTED_URL ?? Deno.env.get("CONVEX_SELF_HOSTED_URL");
-  const admin =
-    env.CONVEX_SELF_HOSTED_ADMIN_KEY ??
+  const target = env.CONVEX_SELF_HOSTED_URL ??
+    Deno.env.get("CONVEX_SELF_HOSTED_URL");
+  const admin = env.CONVEX_SELF_HOSTED_ADMIN_KEY ??
     Deno.env.get("CONVEX_SELF_HOSTED_ADMIN_KEY");
-  if (!target || !admin)
+  if (!target || !admin) {
     throw new Error(
       "Set CONVEX_SELF_HOSTED_URL and CONVEX_SELF_HOSTED_ADMIN_KEY for your own instance.",
     );
+  }
   const root = Deno.cwd();
   const scratch = await Deno.makeTempDir({
     dir: "/var/tmp",
@@ -30,10 +30,12 @@ export async function deployFunctions(
     }
   }
   try {
-    for (const name of ["convex", "shared"])
+    for (const name of ["convex", "shared"]) {
       await copy(name, join(scratch, name));
-    for (const name of ["package.json", "deno.json", "deno.lock"])
+    }
+    for (const name of ["package.json", "deno.json", "deno.lock"]) {
       await Deno.copyFile(name, join(scratch, name));
+    }
     await Deno.symlink(
       resolve(root, "node_modules"),
       join(scratch, "node_modules"),
@@ -42,13 +44,17 @@ export async function deployFunctions(
     const auth = join(scratch, "auth.env");
     await Deno.writeTextFile(
       auth,
-      `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${btoa(JSON.stringify(keys.jwks))}\n`,
+      `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${
+        btoa(JSON.stringify(keys.jwks))
+      }\n`,
       { mode: 0o600 },
     );
-    for (const args of [
-      ["env", "set", "--from-file", auth],
-      ["dev", "--once", "--typecheck", "disable", "--codegen", "disable"],
-    ]) {
+    for (
+      const args of [
+        ["env", "set", "--from-file", auth],
+        ["dev", "--once", "--typecheck", "disable", "--codegen", "disable"],
+      ]
+    ) {
       signal?.throwIfAborted();
       const child = new Deno.Command(Deno.execPath(), {
         args: ["run", "-A", "npm:convex", ...args],
@@ -70,8 +76,9 @@ export async function deployFunctions(
       };
       signal?.addEventListener("abort", abort, { once: true });
       try {
-        if (!(await child.status).success)
+        if (!(await child.status).success) {
           throw new Error("Convex function deployment failed");
+        }
       } finally {
         signal?.removeEventListener("abort", abort);
       }

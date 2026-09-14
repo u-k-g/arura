@@ -1,5 +1,5 @@
 import { inform } from "./client";
-import { onMount, onCleanup, type JSX, Show } from "solid-js";
+import { type JSX, onCleanup, onMount, Show } from "solid-js";
 const icons = import.meta.glob("./icons/*.svg", {
   query: "?raw",
   import: "default",
@@ -10,9 +10,8 @@ export function Icon(props: { name: string }) {
     <span
       class="icon"
       aria-hidden="true"
-      innerHTML={
-        icons[`./icons/${props.name}.svg`] ?? icons["./icons/chat-bubble.svg"]
-      }
+      innerHTML={icons[`./icons/${props.name}.svg`] ??
+        icons["./icons/chat-bubble.svg"]}
     />
   );
 }

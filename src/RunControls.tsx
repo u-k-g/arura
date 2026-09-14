@@ -1,4 +1,4 @@
-import { createSignal, onMount, onCleanup, For, Show } from "solid-js";
+import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { command, connected, request } from "./client";
 import { Dialog, Field, run } from "./ui";
 
@@ -66,8 +66,9 @@ export default function RunControls(props: {
       }
       if (!disposed) setError("");
     } catch (e) {
-      if (!disposed)
+      if (!disposed) {
         setError(e instanceof Error ? e.message : "Could not refresh");
+      }
     } finally {
       refreshing = false;
     }
@@ -94,16 +95,16 @@ export default function RunControls(props: {
   }
   async function create() {
     if (!prompt().trim()) return;
-    if (kind() !== "goal" && !/^\d+(?:\.\d+)?[smhd]$/.test(interval()))
+    if (kind() !== "goal" && !/^\d+(?:\.\d+)?[smhd]$/.test(interval())) {
       throw new Error("Use an interval such as 30m, 2h, or 1d");
+    }
     setBusy(true);
     try {
-      const text =
-        kind() === "goal"
-          ? `/goal ${prompt().trim()}`
-          : kind() === "loop"
-            ? `/loop ${interval()} ${prompt().trim()}`
-            : `/heartbeat every ${interval()} ${prompt().trim()}`;
+      const text = kind() === "goal"
+        ? `/goal ${prompt().trim()}`
+        : kind() === "loop"
+        ? `/loop ${interval()} ${prompt().trim()}`
+        : `/heartbeat every ${interval()} ${prompt().trim()}`;
       await command("send", props.conversation, { text });
       setPrompt("");
       await refresh();
@@ -113,13 +114,11 @@ export default function RunControls(props: {
   }
   return (
     <Dialog
-      title={
-        props.view === "automation"
-          ? "Conversation automations"
-          : props.view === "context"
-            ? "Context usage"
-            : "Delegated work"
-      }
+      title={props.view === "automation"
+        ? "Conversation automations"
+        : props.view === "context"
+        ? "Context usage"
+        : "Delegated work"}
       close={props.close}
     >
       <Show when={error()}>
@@ -139,8 +138,8 @@ export default function RunControls(props: {
                       {name === "goal"
                         ? "Goal"
                         : name === "loop"
-                          ? "Repeated prompt"
-                          : "Heartbeat"}
+                        ? "Repeated prompt"
+                        : "Heartbeat"}
                     </h3>
                     <span>{value().status}</span>
                   </div>
@@ -172,9 +171,8 @@ export default function RunControls(props: {
                           disabled={busy()}
                           onClick={() =>
                             void run(() =>
-                              action("subgoal.remove", { index: index() + 1 }),
-                            )
-                          }
+                              action("subgoal.remove", { index: index() + 1 })
+                            )}
                         >
                           Remove
                         </button>
@@ -194,8 +192,7 @@ export default function RunControls(props: {
                           type="button"
                           disabled={busy() || !connected()}
                           onClick={() =>
-                            void run(() => action(`${name}.${verb}`))
-                          }
+                            void run(() => action(`${name}.${verb}`))}
                         >
                           {verb[0].toUpperCase() + verb.slice(1)}
                         </button>
@@ -207,8 +204,9 @@ export default function RunControls(props: {
                         disabled={busy()}
                         onClick={() => {
                           const text = window.prompt("Add a goal step");
-                          if (text?.trim())
+                          if (text?.trim()) {
                             void run(() => action("subgoal.add", { text }));
+                          }
                         }}
                       >
                         Add step
@@ -306,8 +304,8 @@ export default function RunControls(props: {
               <section class="automation-card">
                 <h3>{agent.goal || "Delegated task"}</h3>
                 <p>
-                  {agent.status} · {agent.model} · {agent.tool_count ?? 0} tool
-                  calls
+                  {agent.status} · {agent.model} · {agent.tool_count ?? 0}{" "}
+                  tool calls
                 </p>
                 <Show when={agent.last_tool}>
                   <p>Latest: {agent.last_tool}</p>
@@ -333,8 +331,7 @@ export default function RunControls(props: {
                           params: { subagent_id: agent.subagent_id },
                         });
                         await refresh();
-                      })
-                    }
+                      })}
                   >
                     Stop task
                   </button>

@@ -1,10 +1,10 @@
 import { deepStrictEqual, throws } from "node:assert/strict";
 import {
-  jobPatch,
   endpointBody,
+  jobPatch,
+  mcpBody,
   pairingRows,
   platformBody,
-  mcpBody,
 } from "../shared/resource-forms.ts";
 
 Deno.test("editing a schedule title preserves scheduling lifecycle and credentials", () => {

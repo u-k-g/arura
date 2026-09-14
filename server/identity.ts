@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { readFile, mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import { generateKeyPair, exportJWK, importJWK, SignJWT } from "jose";
+import { exportJWK, generateKeyPair, importJWK, SignJWT } from "jose";
 export const stateDir = resolve(process.env.ARURA_STATE_DIR || ".state");
 export const issuer = process.env.ARURA_AUTH_ISSUER || "http://localhost:4100";
 export const hash = (value: string) =>

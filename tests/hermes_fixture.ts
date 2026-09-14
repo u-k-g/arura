@@ -75,7 +75,9 @@ export function hermesFixture(
   const create = (id: string = crypto.randomUUID()) => {
     const s = {
       id,
-      title: "Fixture conversation",
+      title: id === "fixture-chat"
+        ? "Fixture conversation"
+        : `Test conversation ${id.slice(0, 8)}`,
       started_at: Date.now() / 1000,
       last_active: Date.now() / 1000,
       messages: [] as Row[],
@@ -96,18 +98,77 @@ export function hermesFixture(
     const history = replay.get(sid) ?? [];
     history.push(frame);
     replay.set(sid, history);
-    for (const ws of sockets)
+    for (const ws of sockets) {
       if (
         ws.readyState === WebSocket.OPEN &&
         (!sid || subscriptions.get(ws)?.has(sid))
-      )
+      ) {
         ws.send(JSON.stringify(frame));
+      }
+    }
     return frame;
+  }
+  const inputs = new Map<
+    string,
+    {
+      sid: string;
+      kind: string;
+      resolve: () => void;
+      qids?: string[];
+      answers: Record<string, string>;
+    }
+  >();
+  async function interaction(
+    sid: string,
+    kind: string,
+    payload: Record<string, unknown>,
+  ) {
+    const request_id = crypto.randomUUID();
+    await new Promise<void>((resolve) => {
+      inputs.set(request_id, {
+        sid,
+        kind,
+        resolve,
+        answers: {},
+        ...(Array.isArray(payload.questions)
+          ? { qids: payload.questions.map((q: any) => q.qid) }
+          : {}),
+      });
+      event(`${kind}.request`, sid, { request_id, ...payload });
+    });
   }
   async function answer(sid: string, text: string) {
     const s = sessions.get(sid)!;
     s.messages.push({ id: rowId++, role: "user", content: text });
     event("message.start", sid, {});
+    if (text === "ARURA_TEST_INTERACTIONS") {
+      await interaction(sid, "approval", {
+        description: "Allow reading the fixture notes?",
+      });
+      await interaction(sid, "clarify", {
+        question: "Which garden color?",
+        choices: ["Blue", "Green"],
+      });
+      await interaction(sid, "clarify", {
+        questions: [
+          {
+            qid: "flowers",
+            question: "Which flowers?",
+            choices: ["Iris", "Rose", "Lily"],
+            multi_select: true,
+          },
+          {
+            qid: "location",
+            question: "Where should they grow?",
+            choices: [],
+            multi_select: false,
+          },
+        ],
+      });
+      await interaction(sid, "secret", {
+        prompt: "Enter the fixture verification code",
+      });
+    }
     event("reasoning.delta", sid, {
       text: "PRIVATE REASONING MUST NOT APPEAR",
     });
@@ -135,16 +196,19 @@ export function hermesFixture(
       const url = new URL(request.url),
         path = url.pathname;
       const json = (data: unknown) => Response.json(data);
-      if (path === "/api/auth/providers")
+      if (path === "/api/auth/providers") {
         return json({
           providers: [{ name: "local", supports_password: true }],
         });
+      }
       if (path === "/auth/password-login") {
         const body = await request.json();
-        if (body.provider !== "local")
+        if (body.provider !== "local") {
           return new Response("provider is required", { status: 422 });
-        if (body.username !== "fixture" || body.password !== "fixture-only")
+        }
+        if (body.username !== "fixture" || body.password !== "fixture-only") {
           return new Response("Unauthorized", { status: 401 });
+        }
         return Response.json(
           { ok: true },
           {
@@ -160,16 +224,19 @@ export function hermesFixture(
         !request.headers
           .get("cookie")
           ?.includes("hermes_fixture_session=authorized")
-      )
+      ) {
         return new Response("Unauthorized", { status: 401 });
-      if (path === "/api/auth/ws-ticket")
+      }
+      if (path === "/api/auth/ws-ticket") {
         return json({ ticket: "fixture-ticket" });
+      }
       if (
         path === "/api/ws" &&
         hooks.requirePassword &&
         url.searchParams.get("ticket") !== "fixture-ticket"
-      )
+      ) {
         return new Response("Ticket required", { status: 401 });
+      }
       if (path === "/api/ws") {
         const { socket, response } = Deno.upgradeWebSocket(request);
         sockets.add(socket);
@@ -229,9 +296,9 @@ export function hermesFixture(
           } else if (method === "profiles.configure") {
             if (
               params.ui_meta_expected_revisions?.["hermes-bots"] !== botRevision
-            )
+            ) {
               result = { ok: false, applied: { ui_meta: false } };
-            else {
+            } else {
               botMetadata = params.ui_meta["hermes-bots"];
               botRevision++;
               result = {
@@ -259,8 +326,63 @@ export function hermesFixture(
               ...hooks.resume?.(params.session_id),
             };
           } else if (method === "prompt.submit") {
+            if (params.truncate_before_row_id !== undefined) {
+              const session = sessions.get(params.session_id)!;
+              const index = session.messages.findIndex(
+                (row) =>
+                  String(row.id) === String(params.truncate_before_row_id),
+              );
+              if (
+                index < 0 ||
+                !params.confirm_truncate ||
+                !params.confirm_empty_truncate
+              ) {
+                socket.send(
+                  JSON.stringify({
+                    jsonrpc: "2.0",
+                    id,
+                    error: {
+                      code: 4000,
+                      message: "Invalid truncation request",
+                    },
+                  }),
+                );
+                return;
+              }
+              session.messages.splice(index);
+            }
             result = { status: "streaming" };
             void answer(params.session_id, params.text);
+          } else if (
+            ["approval.respond", "clarify.respond", "secret.respond"].includes(
+              method,
+            )
+          ) {
+            const input = inputs.get(params.request_id);
+            if (
+              input &&
+              input.sid === params.session_id &&
+              method === `${input.kind}.respond`
+            ) {
+              if (input.qids && params.question_id) {
+                if (!input.qids.includes(params.question_id)) {
+                  throw new Error("Invalid fixture question ID");
+                }
+                input.answers[params.question_id] = params.answer;
+                const remaining = input.qids.filter(
+                  (qid) => input.answers[qid] === undefined,
+                );
+                if (!remaining.length) {
+                  inputs.delete(params.request_id);
+                  input.resolve();
+                }
+                result = { status: "ok", remaining };
+              } else {
+                inputs.delete(params.request_id);
+                input.resolve();
+                result = { status: "ok", resolved: true };
+              }
+            } else result = { status: "expired", resolved: false };
           } else if (method === "session.events.since") {
             hooks.beforeReplay?.();
             result = {
@@ -332,7 +454,7 @@ export function hermesFixture(
         };
         return response;
       }
-      if (path === "/api/profiles/sessions")
+      if (path === "/api/profiles/sessions") {
         return json({
           sessions: [...sessions.values()]
             .filter((session) => !session.hidden)
@@ -340,7 +462,8 @@ export function hermesFixture(
           profile_totals: { default: sessions.size },
           errors: [],
         });
-      if (path === "/api/sessions")
+      }
+      if (path === "/api/sessions") {
         return json({
           sessions: [...sessions.values()].slice(
             Number(url.searchParams.get("offset") ?? 0),
@@ -348,6 +471,7 @@ export function hermesFixture(
           ),
           total: sessions.size,
         });
+      }
       if (path === "/api/sessions/search") {
         const query = url.searchParams.get("q")?.toLowerCase() ?? "";
         return json({
@@ -356,8 +480,8 @@ export function hermesFixture(
               session.messages.some((message: any) =>
                 String(message.content ?? "")
                   .toLowerCase()
-                  .includes(query),
-              ),
+                  .includes(query)
+              )
             )
             .map((session) => ({
               session_id: session.id,
@@ -370,12 +494,13 @@ export function hermesFixture(
       if (match) {
         const s = sessions.get(decodeURIComponent(match[1]));
         if (!s) return new Response("Not found", { status: 404 });
-        if (match[2])
+        if (match[2]) {
           return json({
             messages: s.messages,
             session_id: s.id,
             pagination: { has_more: false },
           });
+        }
         if (request.method === "PATCH") {
           Object.assign(s, await request.json());
           event("sessions.changed", "", {});
@@ -387,9 +512,10 @@ export function hermesFixture(
           return json({ ok: true });
         }
       }
-      if (path === "/api/status" || path === "/api/health")
+      if (path === "/api/status" || path === "/api/health") {
         return json({ status: "healthy" });
-      if (path === "/api/fs/list")
+      }
+      if (path === "/api/fs/list") {
         return json({
           path: "/fixture",
           entries: [...files.keys()].map((path) => ({
@@ -398,23 +524,26 @@ export function hermesFixture(
             is_dir: false,
           })),
         });
-      if (path === "/api/fs/read-text")
+      }
+      if (path === "/api/fs/read-text") {
         return json({
           truncated: url.searchParams.get("path") === "/fixture/large.txt",
           content: files.get(url.searchParams.get("path") ?? "") ?? "",
         });
+      }
       if (path === "/api/fs/write-text" && request.method === "POST") {
         const { path, content } = await request.json();
         files.set(path, content);
         return json({ ok: true });
       }
-      if (path === "/api/fs/download")
+      if (path === "/api/fs/download") {
         return new Response(
           files.get(url.searchParams.get("path") ?? "") ?? "",
           { headers: { "content-type": "text/plain" } },
         );
+      }
       if (path === "/api/cron/jobs") return json({ jobs });
-      if (path === "/api/cron/blueprints")
+      if (path === "/api/cron/blueprints") {
         return json({
           blueprints: [
             {
@@ -447,14 +576,16 @@ export function hermesFixture(
             },
           ],
         });
+      }
       if (path === "/api/cron/blueprints/instantiate") {
         const body = await request.json();
         if (
           body.blueprint !== "daily-note" ||
           !body.values?.topic ||
           !body.values?.time
-        )
+        ) {
           return new Response("Invalid blueprint fields", { status: 400 });
+        }
         const job = {
           id: crypto.randomUUID(),
           name: "Daily note",
@@ -464,16 +595,18 @@ export function hermesFixture(
         jobs.push(job);
         return json(job);
       }
-      if (path === "/api/profiles")
+      if (path === "/api/profiles") {
         return json({
           profiles: [{ name: "default", description: "Fixture profile" }],
         });
-      if (path === "/api/mcp/servers")
+      }
+      if (path === "/api/mcp/servers") {
         return json({
           servers: {
             fixture: { name: "fixture", enabled: true, auth: "oauth" },
           },
         });
+      }
       if (path === "/api/mcp/servers/fixture/auth") {
         mcpStatus = "authorization_required";
         return json({
@@ -496,14 +629,15 @@ export function hermesFixture(
         if (
           url.searchParams.get("state") !== mcpState ||
           mcpStatus !== "authorization_required"
-        )
+        ) {
           return new Response("Invalid state", { status: 404 });
+        }
         mcpStatus = "approved";
         return new Response("Authorization received", {
           headers: { "content-type": "text/html" },
         });
       }
-      if (path === "/api/learning/graph")
+      if (path === "/api/learning/graph") {
         return json({
           nodes: [
             {
@@ -518,6 +652,7 @@ export function hermesFixture(
           edges: [],
           writes: memoryWrites,
         });
+      }
       if (path === "/api/learning/node") {
         if (request.method === "PUT") {
           memoryContent = (await request.json()).content;
@@ -531,37 +666,43 @@ export function hermesFixture(
           content: memoryContent,
         });
       }
-      if (path === "/api/model/info")
+      if (path === "/api/model/info") {
         return json({ provider: "fixture", model: "fixture-model" });
+      }
       if (path === "/api/model/moa") {
-        if (request.method === "PUT")
+        if (request.method === "PUT") {
           modelConfig.moa = { ...(await request.json()), privacy_filter: "" };
+        }
         return json(modelConfig.moa);
       }
       if (path === "/api/config") {
         if (request.method === "PUT") {
           const body = await request.json();
-          if (!body.config)
+          if (!body.config) {
             return new Response("Missing config", { status: 400 });
+          }
           modelConfig = { ...modelConfig, ...body.config };
         }
         return json({ config: modelConfig });
       }
-      if (path === "/api/model/auxiliary")
+      if (path === "/api/model/auxiliary") {
         return json({
           tasks: [auxiliary],
           main: { provider: "fixture", model: "fixture-model" },
         });
+      }
       if (path === "/api/model/set") {
         const body = await request.json();
-        if (body.scope !== "auxiliary" || body.task !== "title")
+        if (body.scope !== "auxiliary" || body.task !== "title") {
           return new Response("Incorrect auxiliary scope", { status: 400 });
-        if (!body.confirm_expensive_model)
+        }
+        if (!body.confirm_expensive_model) {
           return json({
             ok: false,
             confirm_required: true,
             confirm_message: "Confirm this helper model cost?",
           });
+        }
         auxiliary = {
           task: body.task,
           provider: body.provider,
@@ -570,7 +711,7 @@ export function hermesFixture(
         };
         return json({ ok: true });
       }
-      if (path === "/api/providers/oauth")
+      if (path === "/api/providers/oauth") {
         return json({
           providers: [
             {
@@ -582,7 +723,8 @@ export function hermesFixture(
             },
           ],
         });
-      if (path === "/api/providers/oauth/fixture/start")
+      }
+      if (path === "/api/providers/oauth/fixture/start") {
         return json({
           session_id: providerFlow,
           flow: "device_code",
@@ -590,12 +732,14 @@ export function hermesFixture(
           verification_url: "https://example.com/authorize",
           poll_interval: 1,
         });
+      }
       if (path === `/api/providers/oauth/fixture/poll/${providerFlow}`) {
         providerConnected = true;
         return json({ session_id: providerFlow, status: "success" });
       }
-      if (path === `/api/providers/oauth/sessions/${providerFlow}`)
+      if (path === `/api/providers/oauth/sessions/${providerFlow}`) {
         return json({ ok: true });
+      }
       if (
         path === "/api/providers/oauth/fixture" &&
         request.method === "DELETE"
@@ -603,10 +747,11 @@ export function hermesFixture(
         providerConnected = false;
         return json({ ok: true });
       }
-      if (path === "/api/models")
+      if (path === "/api/models") {
         return json({
           models: [{ id: "fixture-model", name: "Fixture model" }],
         });
+      }
       return new Response("Fixture route not implemented", { status: 404 });
     },
   );

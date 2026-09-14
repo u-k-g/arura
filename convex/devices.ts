@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { query, mutation } from "./_generated/server";
-import { device, adapter } from "./access";
+import { mutation, query } from "./_generated/server";
+import { adapter, device } from "./access";
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -18,19 +18,22 @@ export const rename = mutation({
       .query("devices")
       .withIndex("id", (q) => q.eq("id", args.id))
       .unique();
-    if (d)
+    if (d) {
       await ctx.db.patch(d._id, {
         name: args.name.trim().slice(0, 80) || "Browser",
       });
+    }
   },
 });
 export const revoke = mutation({
   args: { id: v.optional(v.string()), others: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const self = await device(ctx);
-    for (const d of await ctx.db.query("devices").collect())
-      if (args.others ? d.id !== self.id : d.id === args.id)
+    for (const d of await ctx.db.query("devices").collect()) {
+      if (args.others ? d.id !== self.id : d.id === args.id) {
         await ctx.db.patch(d._id, { revoked: true });
+      }
+    }
   },
 });
 export const authorize = mutation({
@@ -48,14 +51,16 @@ export const authorize = mutation({
         .query("invites")
         .withIndex("hash", (q) => q.eq("hash", args.inviteHash ?? ""))
         .unique();
-      if (!invite || invite.used || invite.expiresAt < Date.now())
+      if (!invite || invite.used || invite.expiresAt < Date.now()) {
         throw new Error("Authorization code expired or invalid");
+      }
       const creator = await ctx.db
         .query("devices")
         .withIndex("id", (q) => q.eq("id", invite.createdBy))
         .unique();
-      if (!creator || creator.revoked)
+      if (!creator || creator.revoked) {
         throw new Error("Authorization code revoked");
+      }
       await ctx.db.patch(invite._id, { used: true });
     }
     await ctx.db.insert("devices", {
@@ -95,7 +100,8 @@ export const touch = mutation({
   args: {},
   handler: async (ctx) => {
     const d = await device(ctx);
-    if (Date.now() - d.lastSeen > 60_000)
+    if (Date.now() - d.lastSeen > 60_000) {
       await ctx.db.patch(d._id, { lastSeen: Date.now() });
+    }
   },
 });

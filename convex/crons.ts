@@ -1,4 +1,4 @@
-import { cronJobs, anyApi } from "convex/server";
+import { anyApi, cronJobs } from "convex/server";
 const crons = cronJobs();
 crons.interval(
   "archive inactive navigation entries",

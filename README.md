@@ -4,9 +4,11 @@ A SolidJS web client for a self-hosted Hermes agent, with a Deno adapter and
 self-hosted Convex synchronization. Desktop navigation uses Essentials, pinned
 folders, recent conversations, and an archive; mobile navigation uses sheets.
 
-The application is under active implementation. The retained feature specification
-is in [Product scope](docs/product-scope.md); that document is a requirement list,
-not a declaration that every feature is finished.
+The application is under active implementation. The retained feature
+specification is in [Product scope](docs/product-scope.md); that document is a
+requirement list, not a declaration that every feature is finished. The
+[completion audit](docs/completion-audit.md) records implementation evidence and
+the remaining acceptance work.
 
 ## Develop
 
@@ -27,11 +29,11 @@ the `ARURA_ACCESS_KEY` generated in `.env`. Use Settings → Access to authorize
 additional browsers with expiring invitations and revoke individual devices.
 
 On x86-64 Linux the development task starts the pinned Convex backend, preserves
-its database in `.state/convex`, deploys the functions, and starts the Deno adapter
-and Vite. Other platforms can supply a compatible `ARURA_CONVEX_EXECUTABLE`, or
-use `deno task dev:external` with an already configured self-hosted instance.
-Development servers bind locally. Remote devices require browser-reachable HTTPS
-origins for both Arura and Convex.
+its database in `.state/convex`, deploys the functions, and starts the Deno
+adapter and Vite. Other platforms can supply a compatible
+`ARURA_CONVEX_EXECUTABLE`, or use `deno task dev:external` with an already
+configured self-hosted instance. Development servers bind locally. Remote
+devices require browser-reachable HTTPS origins for both Arura and Convex.
 
 ## Verify and package
 
@@ -46,4 +48,5 @@ The integration runner uses disposable local services and credentials. It does
 not send prompts to the configured Hermes installation.
 
 See [Development](docs/development.md) for the toolchain and
-[Deployment](docs/deployment.md) for persistent services, credentials, and routing.
+[Deployment](docs/deployment.md) for persistent services, credentials, and
+routing.

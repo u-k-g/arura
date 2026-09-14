@@ -1,13 +1,14 @@
-import WebSocket from "ws";
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
+import WebSocket from "ws";
 import { fileReferences } from "../shared/artifacts.ts";
 import {
-  visibleText,
-  plainText,
-  normalizeMessages,
   conversationKey,
+  interactionFromEvent,
+  normalizeMessages,
+  plainText,
   type Turn,
+  visibleText,
 } from "../shared/model.ts";
 
 type Pending = {
@@ -47,15 +48,17 @@ export class Hermes extends EventEmitter {
           new URL("/api/auth/providers", this.base),
           { signal: AbortSignal.timeout(15000) },
         );
-        if (!response.ok)
+        if (!response.ok) {
           throw new Error("Could not discover Hermes authentication providers");
+        }
         const available = ((await response.json()).providers ?? []).filter(
           (item: { supports_password?: boolean }) => item.supports_password,
         );
-        if (available.length !== 1)
+        if (available.length !== 1) {
           throw new Error(
             "Configure HERMES_AUTH_PROVIDER for this Hermes installation",
           );
+        }
         provider = available[0].name;
       }
       const r = await fetch(new URL("/auth/password-login", this.base), {
@@ -70,10 +73,11 @@ export class Hermes extends EventEmitter {
       });
       if (!r.ok) throw new Error(`Hermes authorization failed (${r.status})`);
       this.captureCookies(r);
-      if (!this.cookies.size)
+      if (!this.cookies.size) {
         throw new Error(
           "Hermes accepted the login without issuing a session cookie",
         );
+      }
     })().finally(() => {
       this.authPromise = undefined;
     });
@@ -121,12 +125,10 @@ export class Hermes extends EventEmitter {
   async rest(path: string, method = "GET", body?: unknown) {
     const r = await this.request(path, {
       method,
-      ...(body === undefined
-        ? {}
-        : {
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          }),
+      ...(body === undefined ? {} : {
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
     });
     if (!r.ok) {
       const text = await r.text();
@@ -157,8 +159,9 @@ export class Hermes extends EventEmitter {
     if (process.env.HERMES_USERNAME) {
       const { ticket } = await this.rest("/api/auth/ws-ticket", "POST", {});
       url.searchParams.set("ticket", ticket);
-    } else if (process.env.HERMES_TOKEN)
+    } else if (process.env.HERMES_TOKEN) {
       url.searchParams.set("token", process.env.HERMES_TOKEN);
+    }
     const socket = new WebSocket(url, { headers: this.headers() });
     this.socket = socket;
     await new Promise<void>((resolve, reject) => {
@@ -194,11 +197,12 @@ export class Hermes extends EventEmitter {
           );
         }
         this.pending.clear();
-        if (!this.stopped)
+        if (!this.stopped) {
           setTimeout(
             () => void this.connect().catch((e) => this.emit("fault", e)),
             2000,
           );
+        }
       });
     });
   }
@@ -212,8 +216,9 @@ export class Hermes extends EventEmitter {
     params: Record<string, unknown> = {},
     timeout = 30000,
   ): Promise<any> {
-    if (!this.online || this.socket?.readyState !== WebSocket.OPEN)
+    if (!this.online || this.socket?.readyState !== WebSocket.OPEN) {
       return Promise.reject(new Error("Hermes is disconnected"));
+    }
     const id = ++this.counter;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -236,10 +241,10 @@ export class Hermes extends EventEmitter {
         this.pending.delete(frame.id);
         frame.error
           ? p.reject(
-              Object.assign(new Error(frame.error.message), {
-                code: frame.error.code,
-              }),
-            )
+            Object.assign(new Error(frame.error.message), {
+              code: frame.error.code,
+            }),
+          )
           : p.resolve(frame.result);
       }
       return;
@@ -272,8 +277,9 @@ export class Hermes extends EventEmitter {
     if (
       event.type === "session.control.update" ||
       String(event.type).startsWith("subagent.")
-    )
+    ) {
       this.emit("changed");
+    }
     const sid = event.session_id;
     if (this.replaying.has(sid)) {
       const held = this.held.get(sid) ?? [];
@@ -297,8 +303,9 @@ export class Hermes extends EventEmitter {
       this.seq.set(sid, event.seq);
     }
     const type = String(event.type);
-    if (type === "message.start" || type === "message.complete")
+    if (type === "message.start" || type === "message.complete") {
       this.stopRecovery(sid);
+    }
     if (type === "message.delta" && this.recovering.has(sid)) return;
     if (/reasoning|thinking/.test(type)) return;
     let turn = this.turns.get(key);
@@ -315,12 +322,14 @@ export class Hermes extends EventEmitter {
       this.emit("started", key);
     }
     if (!turn) return;
-    if (type.endsWith(".expire"))
+    if (type.endsWith(".expire")) {
       turn.interactions = turn.interactions.filter(
         (x) => x.id !== payload.request_id,
       );
-    if (type === "message.delta")
+    }
+    if (type === "message.delta") {
       turn.text += typeof payload.text === "string" ? payload.text : "";
+    }
     if (type === "message.interim") turn.text = visibleText(payload.text);
     if (type === "tool.start" || type === "tool.generating") {
       const id = String(
@@ -331,7 +340,7 @@ export class Hermes extends EventEmitter {
           turn.activity.length,
       );
       const entry = turn.activity.find((x) => x.id === id);
-      if (!entry)
+      if (!entry) {
         turn.activity.push({
           id,
           label: String(
@@ -339,48 +348,46 @@ export class Hermes extends EventEmitter {
           ),
           state: "running",
         });
+      }
     }
     if (type === "tool.complete") {
-      const entry =
-        turn.activity.find(
-          (x) => x.id === String(payload.tool_call_id ?? payload.id),
-        ) ?? turn.activity.findLast((x) => x.state === "running");
+      const entry = turn.activity.find(
+        (x) => x.id === String(payload.tool_call_id ?? payload.id),
+      ) ?? turn.activity.findLast((x) => x.state === "running");
       if (entry) entry.state = payload.error ? "error" : "complete";
     }
     if (
       ["approval.request", "clarify.request", "secret.request"].includes(type)
     ) {
-      const id = String(payload.request_id ?? payload.id ?? type);
-      if (!turn.interactions.some((x) => x.id === id))
-        turn.interactions.push({
-          id,
-          kind: type.split(".")[0] as "approval" | "clarify" | "secret",
-          text: visibleText(
-            payload.question ??
-              payload.description ??
-              payload.prompt ??
-              payload.command ??
-              "Hermes needs your input",
-          ),
-          ...(Array.isArray(payload.options)
-            ? { options: payload.options.map(String) }
-            : {}),
-        });
+      const next = interactionFromEvent(type, payload);
+      const index = turn.interactions.findIndex((old) => old.id === next.id);
+      if (index < 0) turn.interactions.push(next);
+      else {
+        const previous = turn.interactions[index];
+        if (next.questions) {
+          next.questions = next.questions.map((question) => {
+            const answer = question.answer ??
+              previous.questions?.find((old) => old.id === question.id)?.answer;
+            return answer === undefined ? question : { ...question, answer };
+          });
+        }
+        turn.interactions[index] = next;
+      }
     }
     if (type === "message.complete") {
       turn.recovering = false;
       turn.text = visibleText(payload.text ?? turn.text);
-      turn.state =
-        payload.status === "error"
-          ? "error"
-          : payload.status === "interrupted"
-            ? "interrupted"
-            : "complete";
+      turn.state = payload.status === "error"
+        ? "error"
+        : payload.status === "interrupted"
+        ? "interrupted"
+        : "complete";
       turn.finishedAt = Date.now();
       turn.interactions = [];
       if (payload.error) turn.error = visibleText(payload.error);
-      for (const a of turn.activity)
+      for (const a of turn.activity) {
         if (a.state === "running") a.state = "complete";
+      }
       this.emit("complete", key, turn);
     }
     if (type === "error") {
@@ -429,7 +436,7 @@ export class Hermes extends EventEmitter {
           this.emit("resync", this.reverse.get(sid));
         } else {
           events = (result.events ?? []).map((event: any) =>
-            event.method ? event : { method: "event", params: event },
+            event.method ? event : { method: "event", params: event }
           );
         }
       } catch {
@@ -497,8 +504,9 @@ export class Hermes extends EventEmitter {
       } catch (error) {
         this.emit("fault", error);
       }
-      if (this.recovering.get(sid) === recovery)
+      if (this.recovering.get(sid) === recovery) {
         recovery.timer = setTimeout(() => void poll(), 1000);
+      }
     };
     recovery.timer = setTimeout(() => void poll(), 1000);
   }
@@ -517,24 +525,24 @@ export class Hermes extends EventEmitter {
         activity: preserveActivity ? (previous?.activity ?? []) : [],
         interactions: preserveActivity ? (previous?.interactions ?? []) : [],
         recovering: this.recovering.has(result.session_id),
-        startedAt:
-          Number(
-            snapshot.started_at ?? result.turn_started_at ?? Date.now() / 1000,
-          ) * 1000,
-        state:
-          snapshot.status === "error"
-            ? "error"
-            : result.running
-              ? "running"
-              : "interrupted",
+        startedAt: Number(
+          snapshot.started_at ?? result.turn_started_at ?? Date.now() / 1000,
+        ) * 1000,
+        state: snapshot.status === "error"
+          ? "error"
+          : result.running
+          ? "running"
+          : "interrupted",
         ...(snapshot.error ? { error: visibleText(snapshot.error) } : {}),
       };
       this.turns.set(key, turn);
-      for (const [kind, payload] of [
-        ["approval", result.pending_approval],
-        ["clarify", result.pending_clarify],
-      ]) {
-        if (payload)
+      for (
+        const [kind, payload] of [
+          ["approval", result.pending_approval],
+          ["clarify", result.pending_clarify],
+        ]
+      ) {
+        if (payload) {
           this.receive({
             method: "event",
             params: {
@@ -543,6 +551,7 @@ export class Hermes extends EventEmitter {
               payload,
             },
           });
+        }
       }
       this.emit("turn", turn);
     } else if (previous?.state === "running") {
@@ -585,8 +594,9 @@ export class Hermes extends EventEmitter {
       source: "desktop",
     });
     const sourceId = String(result.stored_session_id ?? result.session_key);
-    if (!sourceId || sourceId === "undefined")
+    if (!sourceId || sourceId === "undefined") {
       throw new Error("Hermes did not return a stored conversation ID");
+    }
     const key = conversationKey(profile, sourceId);
     this.runtime.set(key, result.session_id);
     this.reverse.set(result.session_id, key);
@@ -605,8 +615,9 @@ export class Hermes extends EventEmitter {
         title: "Bot Chat",
         include_hidden: true,
       });
-      if (!Array.isArray(result.sessions))
+      if (!Array.isArray(result.sessions)) {
         throw new Error("Hermes did not return the bot conversation lookup");
+      }
       return result.sessions.find(
         (row: any) => row.title === "Bot Chat" && !row.archived,
       );
@@ -630,23 +641,25 @@ export class Hermes extends EventEmitter {
         row = winner;
       }
       if (!row) row = await lookup();
-      if (!row)
+      if (!row) {
         throw new Error(
           "The bot conversation could not be resolved after creation",
         );
+      }
     }
     const roster = await this.call("profiles.list", { include_sessions: true });
     const bot = roster.profiles?.find((item: any) => item.name === profile);
     const sourceId = String(row.resolved_id ?? row.id ?? row.session_id);
-    if (!sourceId || sourceId === "undefined")
+    if (!sourceId || sourceId === "undefined") {
       throw new Error("Hermes did not return a stored bot conversation ID");
+    }
     return {
       key: conversationKey(profile, sourceId),
       profile,
       sourceId,
       bot: true,
-      title:
-        bot?.ui_meta?.["hermes-bots"]?.title || bot?.display_name || profile,
+      title: bot?.ui_meta?.["hermes-bots"]?.title || bot?.display_name ||
+        profile,
       activityAt:
         Number(row.last_active ?? row.started_at ?? Date.now() / 1000) * 1000,
     };
@@ -655,8 +668,9 @@ export class Hermes extends EventEmitter {
     const discovery = await this.rest(
       "/api/profiles/sessions?limit=1&archived=include",
     );
-    if (discovery.errors?.length)
+    if (discovery.errors?.length) {
       throw new Error("Some Hermes profiles could not be read");
+    }
     const profiles = Object.keys(discovery.profile_totals ?? { default: 0 });
     const all = new Map<
       string,
@@ -670,7 +684,7 @@ export class Hermes extends EventEmitter {
       }
     >();
     for (const profile of profiles) {
-      for (let offset = 0; ; offset += 100) {
+      for (let offset = 0;; offset += 100) {
         const query = new URLSearchParams({
           profile,
           limit: "100",
@@ -688,21 +702,21 @@ export class Hermes extends EventEmitter {
             profile,
             sourceId,
             title: row.title || "Untitled conversation",
-            activityAt:
-              Number(
-                row.last_active ??
-                  row.last_activity ??
-                  row.updated_at ??
-                  row.started_at ??
-                  0,
-              ) * 1000,
+            activityAt: Number(
+              row.last_active ??
+                row.last_activity ??
+                row.updated_at ??
+                row.started_at ??
+                0,
+            ) * 1000,
           });
         }
         if (
           rows.length < 100 ||
           (typeof response.total === "number" && offset + 100 >= response.total)
-        )
+        ) {
           break;
+        }
       }
     }
     const roster = await this.call("profiles.list", { include_sessions: true });
@@ -716,12 +730,11 @@ export class Hermes extends EventEmitter {
         profile: profile.name,
         sourceId,
         bot: true,
-        title:
-          profile.ui_meta?.["hermes-bots"]?.title ||
+        title: profile.ui_meta?.["hermes-bots"]?.title ||
           profile.display_name ||
           profile.name,
-        activityAt:
-          Number(canonical.last_active ?? canonical.started_at ?? 0) * 1000,
+        activityAt: Number(canonical.last_active ?? canonical.started_at ?? 0) *
+          1000,
       });
     }
     return [...all.values()];
@@ -731,9 +744,11 @@ export class Hermes extends EventEmitter {
       "/api/profiles/sessions?limit=1&archived=include",
     );
     const results: { key: string; title: string; profile: string }[] = [];
-    for (const profile of Object.keys(
-      discovery.profile_totals ?? { default: 0 },
-    )) {
+    for (
+      const profile of Object.keys(
+        discovery.profile_totals ?? { default: 0 },
+      )
+    ) {
       const params = new URLSearchParams({ q: query, profile, limit: "20" });
       const data = await this.rest(`/api/sessions/search?${params}`);
       for (const row of data.results ?? []) {
@@ -796,8 +811,9 @@ export class Hermes extends EventEmitter {
         if (
           ["user", "assistant"].includes(row.role) &&
           plainText(row.content ?? row.text).trim()
-        )
+        ) {
           count++;
+        }
         if (String(row.id ?? row.row_id ?? row.message_id) === messageId) {
           found = true;
           break;
@@ -805,10 +821,11 @@ export class Hermes extends EventEmitter {
       }
       if (rows.length < 500) break;
     }
-    if (!found || count === 0)
+    if (!found || count === 0) {
       throw new Error(
         "The selected message is no longer available; refresh the conversation",
       );
+    }
     const result = await this.call("session.branch", {
       session_id: await this.attach(key),
       count,
@@ -825,10 +842,22 @@ export class Hermes extends EventEmitter {
       activityAt: Date.now(),
     };
   }
-  answered(key: string, id: string) {
+  answered(
+    key: string,
+    id: string,
+    questionId?: string,
+    answer?: string,
+    remaining?: string[],
+  ) {
     const turn = this.turns.get(key);
     if (turn) {
-      turn.interactions = turn.interactions.filter((x) => x.id !== id);
+      if (questionId && remaining?.length) {
+        const interaction = turn.interactions.find((x) => x.id === id);
+        const question = interaction?.questions?.find(
+          (q) => q.id === questionId,
+        );
+        if (question) question.answer = visibleText(answer ?? "");
+      } else turn.interactions = turn.interactions.filter((x) => x.id !== id);
       this.emit("turn", turn);
     }
   }

@@ -11,6 +11,7 @@ export async function device(ctx: QueryCtx | MutationCtx) {
 }
 export async function adapter(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
-  if (identity?.subject !== "arura:adapter")
+  if (identity?.subject !== "arura:adapter") {
     throw new Error("Host authorization required");
+  }
 }

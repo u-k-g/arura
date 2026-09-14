@@ -331,9 +331,11 @@ export function operationRequest(
     return encodeURIComponent(value);
   });
   const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(params))
-    if (!op.path.includes(`:${key}`) && value !== undefined && value !== null)
+  for (const [key, value] of Object.entries(params)) {
+    if (!op.path.includes(`:${key}`) && value !== undefined && value !== null) {
       query.set(key, String(value));
+    }
+  }
   if (query.size) path += "?" + query;
   return { ...op, path, method: op.method ?? "GET" };
 }

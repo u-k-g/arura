@@ -1,5 +1,5 @@
-import { createEffect, createSignal, onCleanup, For, Show } from "solid-js";
-import { resource, revision, inform } from "./client";
+import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import { inform, resource, revision } from "./client";
 import { Field, run } from "./ui";
 
 type Values = Record<string, string | number | boolean>;
@@ -52,12 +52,11 @@ const labels: Record<string, string> = {
   native_wayland: "Use native Wayland capture",
 };
 function section(config: any, kind: string): Values {
-  const source =
-    kind === "resources"
-      ? config.agent?.agent_cache
-      : kind === "computer"
-        ? config.computer_use
-        : config.delegation;
+  const source = kind === "resources"
+    ? config.agent?.agent_cache
+    : kind === "computer"
+    ? config.computer_use
+    : config.delegation;
   return Object.fromEntries(
     Object.entries(defaults[kind]).map(([key, fallback]) => [
       key,
@@ -91,11 +90,11 @@ export default function RuntimeSettings(props: { kind: string }) {
     void read()
       .then((next) => {
         if (cancelled) return;
-        if (dirty())
+        if (dirty()) {
           setChangedElsewhere(
             JSON.stringify(next) !== JSON.stringify(original()),
           );
-        else {
+        } else {
           setOriginal(next);
           setValues({ ...next });
         }
@@ -104,7 +103,7 @@ export default function RuntimeSettings(props: { kind: string }) {
       .catch((e) => {
         if (!cancelled) setError(e.message);
       });
-    if (props.kind === "computer")
+    if (props.kind === "computer") {
       void resource("computer")
         .then((next) => {
           if (!cancelled) setStatus(next);
@@ -112,6 +111,7 @@ export default function RuntimeSettings(props: { kind: string }) {
         .catch((e) => {
           if (!cancelled) setError(e.message);
         });
+    }
     onCleanup(() => {
       cancelled = true;
     });
@@ -133,8 +133,9 @@ export default function RuntimeSettings(props: { kind: string }) {
       if (
         typeof value === "number" &&
         (!Number.isSafeInteger(value) || value < 0)
-      )
+      ) {
         throw new Error(`${labels[key]} must be a non-negative integer.`);
+      }
       if (
         [
           "max_iterations",
@@ -142,37 +143,40 @@ export default function RuntimeSettings(props: { kind: string }) {
           "max_spawn_depth",
         ].includes(key) &&
         Number(value) < 1
-      )
+      ) {
         throw new Error(`${labels[key]} must be at least 1.`);
+      }
       if (
         key === "child_timeout_seconds" &&
         Number(value) > 0 &&
         Number(value) < 30
-      )
+      ) {
         throw new Error(
           "A subagent timeout must be at least 30 seconds, or 0 to disable it.",
         );
+      }
       if (
         key === "memory_high_mb" &&
         value !== "auto" &&
         (!/^\d+$/.test(String(value)) || Number(value) < 1)
-      )
+      ) {
         throw new Error(
           "Memory threshold must be auto or a positive number of MB.",
         );
+      }
     }
     if (
       props.kind === "computer" &&
       values().permission_mode === "bounded" &&
       !String(values().capability_manifest).trim()
-    )
+    ) {
       throw new Error("Bounded access needs a reviewed capability manifest.");
-    const config =
-      props.kind === "resources"
-        ? { agent: { agent_cache: updates } }
-        : props.kind === "computer"
-          ? { computer_use: updates }
-          : { delegation: updates };
+    }
+    const config = props.kind === "resources"
+      ? { agent: { agent_cache: updates } }
+      : props.kind === "computer"
+      ? { computer_use: updates }
+      : { delegation: updates };
     await resource("saveConfig", {}, { config });
     await reload();
     inform("Runtime settings saved");
@@ -183,8 +187,8 @@ export default function RuntimeSettings(props: { kind: string }) {
         {props.kind === "resources"
           ? "Keep recently used agents ready on your host. These limits control cached agents and transcripts; inference models stay with your provider."
           : props.kind === "computer"
-            ? "Configure Hermes’s computer-use tool on the host. Enable or disable the tool in Tools."
-            : "Defaults for delegated work. Empty model fields inherit the parent’s inference configuration."}
+          ? "Configure Hermes’s computer-use tool on the host. Enable or disable the tool in Tools."
+          : "Defaults for delegated work. Empty model fields inherit the parent’s inference configuration."}
       </p>
       <Show when={error()}>
         <p role="alert">{error()}</p>
@@ -234,13 +238,11 @@ export default function RuntimeSettings(props: { kind: string }) {
                   when={["permission_mode", "reasoning_effort"].includes(key)}
                   fallback={
                     <input
-                      type={
-                        typeof defaults[props.kind][key] === "boolean"
-                          ? "checkbox"
-                          : typeof defaults[props.kind][key] === "number"
-                            ? "number"
-                            : "text"
-                      }
+                      type={typeof defaults[props.kind][key] === "boolean"
+                        ? "checkbox"
+                        : typeof defaults[props.kind][key] === "number"
+                        ? "number"
+                        : "text"}
                       min="0"
                       step="1"
                       checked={values()[key] === true}
@@ -248,14 +250,12 @@ export default function RuntimeSettings(props: { kind: string }) {
                       onInput={(event) =>
                         setValues((old) => ({
                           ...old,
-                          [key]:
-                            typeof defaults[props.kind][key] === "boolean"
-                              ? event.currentTarget.checked
-                              : typeof defaults[props.kind][key] === "number"
-                                ? Number(event.currentTarget.value)
-                                : event.currentTarget.value,
-                        }))
-                      }
+                          [key]: typeof defaults[props.kind][key] === "boolean"
+                            ? event.currentTarget.checked
+                            : typeof defaults[props.kind][key] === "number"
+                            ? Number(event.currentTarget.value)
+                            : event.currentTarget.value,
+                        }))}
                     />
                   }
                 >
@@ -265,25 +265,22 @@ export default function RuntimeSettings(props: { kind: string }) {
                       setValues((old) => ({
                         ...old,
                         [key]: event.currentTarget.value,
-                      }))
-                    }
+                      }))}
                   >
                     <For
-                      each={
-                        key === "permission_mode"
-                          ? ["standard", "bounded"]
-                          : [
-                              "",
-                              "none",
-                              "minimal",
-                              "low",
-                              "medium",
-                              "high",
-                              "xhigh",
-                              "max",
-                              "ultra",
-                            ]
-                      }
+                      each={key === "permission_mode"
+                        ? ["standard", "bounded"]
+                        : [
+                          "",
+                          "none",
+                          "minimal",
+                          "low",
+                          "medium",
+                          "high",
+                          "xhigh",
+                          "max",
+                          "ultra",
+                        ]}
                     >
                       {(option) => (
                         <option value={option}>

@@ -39,8 +39,9 @@ export function groupMessages(messages: Message[]) {
     }
   }
   for (const group of groups) {
-    if (group.work.at(-1)?.role === "assistant")
+    if (group.work.at(-1)?.role === "assistant") {
       group.answer = group.work.pop();
+    }
   }
   return groups;
 }
@@ -55,6 +56,65 @@ export interface Interaction {
   kind: "approval" | "clarify" | "secret";
   text: string;
   options?: string[];
+  multiple?: boolean;
+  questions?: ClarificationQuestion[];
+}
+export interface ClarificationQuestion {
+  id: string;
+  text: string;
+  options: string[];
+  multiple: boolean;
+  answer?: string;
+}
+export function interactionFromEvent(
+  type: string,
+  payload: Record<string, any>,
+): Interaction {
+  const choices = (value: unknown) =>
+    Array.isArray(value)
+      ? value.map((choice) => visibleText(String(choice)))
+      : [];
+  return {
+    id: String(payload.request_id ?? payload.id ?? type),
+    kind: type.split(".")[0] as Interaction["kind"],
+    text: visibleText(
+      payload.question ??
+        payload.description ??
+        payload.prompt ??
+        payload.command ??
+        (Array.isArray(payload.questions)
+          ? "Hermes has a few questions"
+          : "Hermes needs your input"),
+    ),
+    options: choices(payload.choices ?? payload.options),
+    multiple: payload.multi_select === true,
+    ...(Array.isArray(payload.questions)
+      ? {
+        questions: payload.questions
+          .filter(
+            (q: any) =>
+              q &&
+              typeof q.qid === "string" &&
+              typeof q.question === "string",
+          )
+          .map((q: any) => ({
+            id: q.qid,
+            text: visibleText(q.question),
+            options: choices(q.choices),
+            multiple: q.multi_select === true,
+            ...(payload.answers?.[q.qid] !== undefined
+              ? {
+                answer: visibleText(
+                  Array.isArray(payload.answers[q.qid])
+                    ? JSON.stringify(payload.answers[q.qid])
+                    : String(payload.answers[q.qid]),
+                ),
+              }
+              : {}),
+          })),
+      }
+      : {}),
+  };
 }
 export interface Turn {
   recovering?: boolean;
@@ -84,11 +144,12 @@ export function shouldArchive(
 }
 export function plainText(value: unknown): string {
   if (typeof value === "string") return value;
-  if (Array.isArray(value))
+  if (Array.isArray(value)) {
     return value
       .filter((x) => x?.type === "text")
       .map((x) => x.text ?? "")
       .join("\n");
+  }
   return "";
 }
 // Reasoning is removed before projection, not merely hidden by the renderer.
@@ -99,12 +160,14 @@ export function visibleText(value: unknown): string {
     .trim();
 }
 export function withoutReasoning(value: unknown): unknown {
-  if (Array.isArray(value))
+  if (Array.isArray(value)) {
     return value.map(withoutReasoning).filter((item) => item !== null);
+  }
   if (value && typeof value === "object") {
     const event = value as Record<string, unknown>;
-    if (/reasoning|thinking/i.test(String(event.type ?? event.event ?? "")))
+    if (/reasoning|thinking/i.test(String(event.type ?? event.event ?? ""))) {
       return null;
+    }
     return Object.fromEntries(
       Object.entries(value)
         .filter(
@@ -125,12 +188,11 @@ export function subagentTranscript(text: string, details = false): string {
       );
       if (!match) return [];
       const [, time, role, body] = match;
-      const content =
-        !details && role === "tool"
-          ? body.split("(")[0]
-          : !details && role === "result"
-            ? body.split(":")[0]
-            : visibleText(body);
+      const content = !details && role === "tool"
+        ? body.split("(")[0]
+        : !details && role === "result"
+        ? body.split(":")[0]
+        : visibleText(body);
       return [`${time} ${role} | ${content}`];
     })
     .join("\n");
@@ -140,8 +202,9 @@ export function normalizeMessages(rows: Record<string, unknown>[]): Message[] {
     if (
       row.display_kind === "hidden" ||
       !["user", "assistant", "tool"].includes(String(row.role))
-    )
+    ) {
       return [];
+    }
     const text = visibleText(row.display_content ?? row.content ?? row.text);
     if (!text && row.role !== "tool") return [];
     return [

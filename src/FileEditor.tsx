@@ -65,8 +65,9 @@ export default function FileEditor(props: {
           "&.cm-focused": { outline: "none" },
         }),
         EditorView.updateListener.of((update) => {
-          if (update.docChanged && !applying)
+          if (update.docChanged && !applying) {
             props.change(update.state.doc.toString());
+          }
           if (update.selectionSet || update.docChanged) {
             const range = update.state.selection.main;
             props.select(
@@ -80,14 +81,13 @@ export default function FileEditor(props: {
     });
     void (async () => {
       const ext = props.path.split(".").at(-1)?.toLowerCase();
-      const support =
-        ext === "md"
-          ? (await import("@codemirror/lang-markdown")).markdown()
-          : ext === "json"
-            ? (await import("@codemirror/lang-json")).json()
-            : ["yaml", "yml"].includes(ext ?? "")
-              ? (await import("@codemirror/lang-yaml")).yaml()
-              : [];
+      const support = ext === "md"
+        ? (await import("@codemirror/lang-markdown")).markdown()
+        : ext === "json"
+        ? (await import("@codemirror/lang-json")).json()
+        : ["yaml", "yml"].includes(ext ?? "")
+        ? (await import("@codemirror/lang-yaml")).yaml()
+        : [];
       if (!disposed) view?.dispatch({ effects: language.reconfigure(support) });
     })();
   });

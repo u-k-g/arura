@@ -71,7 +71,7 @@ Deno.test("live deltas arriving during replay do not overtake missing deltas", a
   }
 });
 
-for (const restart of [false, true])
+for (const restart of [false, true]) {
   Deno.test(`${restart ? "a restarted gateway" : "a truncated replay"} restores snapshots without duplicating deltas`, async () => {
     let assistant = "<think>private</think>Recovered progress";
     const fixture = hermesFixture(0, {
@@ -94,8 +94,9 @@ for (const restart of [false, true])
     const until = async (check: () => boolean) => {
       const end = Date.now() + 6000;
       while (!check()) {
-        if (Date.now() > end)
+        if (Date.now() > end) {
           throw new Error("Timed out waiting for restored session");
+        }
         await new Promise((resolve) => setTimeout(resolve, 10));
       }
     };
@@ -124,3 +125,4 @@ for (const restart of [false, true])
       else Deno.env.set("HERMES_URL", before);
     }
   });
+}

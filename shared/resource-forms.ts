@@ -68,8 +68,9 @@ export function platformBody(values: RecordValue): RecordValue {
 export function mcpBody(values: RecordValue): RecordValue {
   const command = String(values.command ?? "").trim();
   const url = String(values.url ?? "").trim();
-  if (Boolean(command) === Boolean(url))
+  if (Boolean(command) === Boolean(url)) {
     throw new Error("Choose either a host command or a server URL.");
+  }
   const name = String(values.name ?? "").trim();
   if (!name) throw new Error("Name is required");
   if (command) {
@@ -79,8 +80,9 @@ export function mcpBody(values: RecordValue): RecordValue {
       Array.isArray(env) ||
       typeof env !== "object" ||
       Object.values(env).some((value) => typeof value !== "string")
-    )
+    ) {
       throw new Error("Environment must be a JSON object with string values.");
+    }
     return {
       name,
       command,
@@ -91,11 +93,13 @@ export function mcpBody(values: RecordValue): RecordValue {
     };
   }
   const auth = String(values.auth || "none");
-  if (!["none", "oauth", "header"].includes(auth))
+  if (!["none", "oauth", "header"].includes(auth)) {
     throw new Error("Authentication must be none, oauth, or header.");
+  }
   const bearer = String(values.bearer_token ?? "");
-  if (auth === "header" && !bearer)
+  if (auth === "header" && !bearer) {
     throw new Error("Header authentication requires a bearer token.");
+  }
   return {
     name,
     url,

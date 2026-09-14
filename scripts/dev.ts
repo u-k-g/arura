@@ -13,10 +13,11 @@ const url = new URL(Deno.env.get("CONVEX_URL") ?? "http://127.0.0.1:3210");
 if (
   url.protocol !== "http:" ||
   !["localhost", "127.0.0.1"].includes(url.hostname)
-)
+) {
   throw new Error(
     "Local development starts its own Convex instance. Use deno task dev:external for an existing instance.",
   );
+}
 const root = Deno.cwd();
 const state = resolve(Deno.env.get("ARURA_STATE_DIR") || ".state");
 const database = join(state, "convex");
@@ -29,8 +30,9 @@ try {
   if (!(error instanceof Deno.errors.NotFound)) throw error;
   instance = {
     name: "arura-dev",
-    secret: Array.from(crypto.getRandomValues(new Uint8Array(32)), (n) =>
-      n.toString(16).padStart(2, "0"),
+    secret: Array.from(
+      crypto.getRandomValues(new Uint8Array(32)),
+      (n) => n.toString(16).padStart(2, "0"),
     ).join(""),
   };
   await Deno.writeTextFile(instanceFile, JSON.stringify(instance), {
@@ -38,8 +40,8 @@ try {
     createNew: true,
   });
 }
-const executable =
-  Deno.env.get("ARURA_CONVEX_EXECUTABLE") ?? "convex-local-backend";
+const executable = Deno.env.get("ARURA_CONVEX_EXECUTABLE") ??
+  "convex-local-backend";
 const keygen = await new Deno.Command(executable, {
   args: [
     "keygen",
@@ -52,8 +54,9 @@ const keygen = await new Deno.Command(executable, {
   stdout: "piped",
   stderr: "piped",
 }).output();
-if (!keygen.success)
+if (!keygen.success) {
   throw new Error("Could not generate the local Convex administrator key");
+}
 const children: Deno.ChildProcess[] = [];
 let stopping = false;
 const deploymentAbort = new AbortController();
@@ -61,12 +64,13 @@ const stop = () => {
   if (stopping) return;
   stopping = true;
   deploymentAbort.abort();
-  for (const child of children)
+  for (const child of children) {
     try {
       child.kill("SIGTERM");
     } catch {
       /* Already stopped. */
     }
+  }
 };
 Deno.addSignalListener("SIGINT", stop);
 Deno.addSignalListener("SIGTERM", stop);
@@ -124,10 +128,11 @@ try {
     }
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
-  if (!ready || exited || stopping)
+  if (!ready || exited || stopping) {
     throw new Error(
       "Local Convex did not start. Check whether its ports are already in use.",
     );
+  }
   const { deployFunctions } = await import("./deploy-functions.ts");
   await deployFunctions(
     {
@@ -151,18 +156,20 @@ try {
     ]);
     start(Deno.execPath(), ["run", "-A", "npm:vite", "--host", "127.0.0.1"]);
     const result = await Promise.race(children.map((child) => child.status));
-    if (!result.success && !stopping)
+    if (!result.success && !stopping) {
       throw new Error("A development service exited unexpectedly");
+    }
   }
 } finally {
   stop();
   const timeout = setTimeout(() => {
-    for (const child of children)
+    for (const child of children) {
       try {
         child.kill("SIGKILL");
       } catch {
         /* Already stopped. */
       }
+    }
   }, 3000);
   await Promise.all(children.map((child) => child.status));
   clearTimeout(timeout);

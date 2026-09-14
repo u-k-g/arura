@@ -26,16 +26,15 @@ export async function request(
   const response = await fetch(path, {
     method,
     credentials: "same-origin",
-    ...(body === undefined
-      ? {}
-      : {
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-        }),
+    ...(body === undefined ? {} : {
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }),
   });
   const data = await response.json();
-  if (!response.ok)
+  if (!response.ok) {
     throw new Error(data.error ?? `Request failed (${response.status})`);
+  }
   return data;
 }
 async function forgetSession(generation: number) {
@@ -75,11 +74,12 @@ export async function start() {
     if (generation !== sessionGeneration) return;
     client = new ConvexClient(config.convexUrl);
     client.setAuth(async () =>
-      generation === sessionGeneration ? token(generation) : null,
+      generation === sessionGeneration ? token(generation) : null
     );
     stopConnection = client.subscribeToConnectionState((state) => {
-      if (generation === sessionGeneration)
+      if (generation === sessionGeneration) {
         setConnected(state.isWebSocketConnected && authorized());
+      }
     });
     client.onUpdate(
       anyApi.workspace.overview,
@@ -103,8 +103,9 @@ export async function start() {
   } catch (error) {
     if (generation !== sessionGeneration) return;
     setConnected(false);
-    if (!cached)
+    if (!cached) {
       inform(error instanceof Error ? error.message : "Cannot reach the host");
+    }
   }
 }
 export async function login(name: string, code: string) {
@@ -117,8 +118,9 @@ export async function logout() {
   await forgetSession(sessionGeneration);
 }
 export async function mutate(name: string, args: Record<string, unknown>) {
-  if (!client || !connected())
+  if (!client || !connected()) {
     throw new Error("Connect to your host to make changes");
+  }
   const [module, method] = name.split(".");
   return client.mutation(anyApi[module][method], args);
 }
@@ -129,8 +131,11 @@ export function subscribe(
   callback: (value: any) => void,
 ) {
   if (!client) return () => {};
-  return client.onUpdate(anyApi[module][name], args, callback, (error) =>
-    inform(error.message),
+  return client.onUpdate(
+    anyApi[module][name],
+    args,
+    callback,
+    (error) => inform(error.message),
   );
 }
 export async function command(
@@ -138,8 +143,9 @@ export async function command(
   conversation: string,
   payload: unknown,
 ): Promise<any> {
-  if (!client || !connected())
+  if (!client || !connected()) {
     throw new Error("Connect to your host to send this request");
+  }
   const id = crypto.randomUUID();
   await mutate("commands.enqueue", { id, kind, conversation, payload });
   return new Promise((resolve, reject) => {
@@ -156,9 +162,9 @@ export async function command(
       if (!result || ["queued", "dispatching"].includes(result.status)) return;
       clearTimeout(timer);
       stop();
-      if (["error", "unknown", "cancelled"].includes(result.status))
+      if (["error", "unknown", "cancelled"].includes(result.status)) {
         reject(new Error(result.error ?? result.status));
-      else resolve(result.result);
+      } else resolve(result.result);
     });
   });
 }
@@ -170,8 +176,9 @@ export async function resource(
 ) {
   const { operations } = await import("../shared/resources");
   const query = new URLSearchParams();
-  for (const [k, v] of Object.entries(params))
+  for (const [k, v] of Object.entries(params)) {
     if (v !== undefined) query.set(k, String(v));
+  }
   return request(
     `/api/resource/${operation}?${query}`,
     body,

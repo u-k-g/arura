@@ -1,10 +1,11 @@
 # Hermes integration map
 
 Read when implementing the Hermes adapter, Convex data layer, device access,
-reconnect handling, or host deployment. This is a source audit and implementation
-contract, not a claim that Arura is implemented or that live integration tests pass.
-Product inclusion/exclusion is defined once in [product scope](product-scope.md).
-The selected stack remains [ADR-0001](adr/0001-independent-solid-convex-client.md).
+reconnect handling, or host deployment. This is a source audit and
+implementation contract, not a claim that Arura is implemented or that live
+integration tests pass. Product inclusion/exclusion is defined once in
+[product scope](product-scope.md). The selected stack remains
+[ADR-0001](adr/0001-independent-solid-convex-client.md).
 
 ## Evidence baseline
 
@@ -28,9 +29,9 @@ Here, **stored session key** identifies durable conversation data; **runtime
 session ID** identifies an attached live agent. They are different. Key Arura's
 references by installation, profile, and stored key; hold runtime IDs and replay
 epochs separately. Resume may resolve a compression descendant and return a new
-runtime ID. Do not make a WebSocket runtime ID the durable Convex conversation key.
-[Session lifecycle source][sessions-rpc] and [shared wire types][events] establish
-these identities and the resume response.
+runtime ID. Do not make a WebSocket runtime ID the durable Convex conversation
+key. [Session lifecycle source][sessions-rpc] and [shared wire types][events]
+establish these identities and the resume response.
 
 | Workflow                         | Existing Hermes interface                                                                                                                                      | Arura integration requirement                                                                                                                                                                                                                                      |
 | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -51,9 +52,9 @@ these identities and the resume response.
 ### Verified limits that change implementation
 
 1. **Replay is in-memory and bounded.** The audited implementation limits a
-   session to 512 events and 4 MiB, with 64 sessions and 64 MiB process-wide limits.
-   A restart changes the epoch. Buffer eviction and external-process updates
-   require snapshot reconciliation. [Replay source][replay].
+   session to 512 events and 4 MiB, with 64 sessions and 64 MiB process-wide
+   limits. A restart changes the epoch. Buffer eviction and external-process
+   updates require snapshot reconciliation. [Replay source][replay].
 2. **External changes are not instantaneous token replication.** The watcher
    checks session database signatures on a 0.5-second interval and applies a
    two-second broadcast floor. Connected Arura-originated streams can be pushed
@@ -63,14 +64,16 @@ these identities and the resume response.
 3. **No durable prompt idempotency key was verified.** The inspected
    `prompt.submit` handler accepts and launches work without a durable client
    command-key deduplication contract. A JSON-RPC request ID is correlation, not
-   proof of exactly-once side effects. A crash between Hermes accepting a send and
-   the adapter recording the acknowledgement creates an uncertain outcome.
-   Reconcile it; if still ambiguous, mark it unknown and require explicit resend.
-   Identical text is not sufficient proof of duplication. [Prompt source][prompt].
+   proof of exactly-once side effects. A crash between Hermes accepting a send
+   and the adapter recording the acknowledgement creates an uncertain outcome.
+   Reconcile it; if still ambiguous, mark it unknown and require explicit
+   resend. Identical text is not sufficient proof of duplication.
+   [Prompt source][prompt].
 4. **Reasoning can arrive in more than one shape.** Filter `reasoning.delta`,
    `reasoning.available`, `thinking.delta`, `subagent.thinking`, and reasoning
    fields embedded in completion/history payloads before browser-facing storage
-   or delivery. Hiding an expandable component is insufficient. [Event types][events].
+   or delivery. Hiding an expandable component is insufficient.
+   [Event types][events].
 5. **A Hermes login is not a device authorization boundary.** Shared-session
    transport membership intentionally permits another authenticated login to
    attach and logs differing creator identities rather than enforcing ownership.
@@ -93,10 +96,11 @@ flowchart LR
 
 The host adapter maintains the long-lived Hermes connection, validates commands,
 projects retained data, and handles reconnect. Convex stores web state, command
-status, and the browser-facing Hermes read model; it pushes reactive query updates
-to devices. Use bounded Convex calls from the adapter. Convex actions have a
-documented ten-minute limit and do not automatically retry external side effects,
-so they are not an appropriate permanent WebSocket listener. [Action lifecycle](https://docs.convex.dev/functions/actions).
+status, and the browser-facing Hermes read model; it pushes reactive query
+updates to devices. Use bounded Convex calls from the adapter. Convex actions
+have a documented ten-minute limit and do not automatically retry external side
+effects, so they are not an appropriate permanent WebSocket listener.
+[Action lifecycle](https://docs.convex.dev/functions/actions).
 
 | Data                                                        | Owner / access pattern                                                                                                                               |
 | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -118,41 +122,47 @@ only append new messages.
 
 ### Archive policy boundary
 
-Hermes already supports source pinned/archive flags and an optional runtime sweep.
-Its helper defaults to three idle days when enabled and unspecified; source pins
-exempt compression lineages. Listing sessions can invoke the config-gated sweep.
-We have not read the user's live setting and must not claim it is enabled.
-[Sweep configuration][autoarchive] / [source flags][state-sessions].
+Hermes already supports source pinned/archive flags and an optional runtime
+sweep. Its helper defaults to three idle days when enabled and unspecified;
+source pins exempt compression lineages. Listing sessions can invoke the
+config-gated sweep. We have not read the user's live setting and must not claim
+it is enabled. [Sweep configuration][autoarchive] /
+[source flags][state-sessions].
 
-Recommended first implementation: Arura owns its navigation archive and pin/folder
-policy, reads Hermes with source archives included, and keeps source flags separate.
-This preserves the seven-day rule and unarchive reset without silently editing
-Hermes settings or letting a source sweep hide Arura's pinned folders. Preserve
-source archive metadata for inspection/reconciliation; do not interpret source
-archiving as deletion. Bidirectional mirroring of source pins/archives would need
-an explicit conflict policy and is not assumed by the first slice. This boundary
-does not stop rename/message/run changes from updating across clients.
+Recommended first implementation: Arura owns its navigation archive and
+pin/folder policy, reads Hermes with source archives included, and keeps source
+flags separate. This preserves the seven-day rule and unarchive reset without
+silently editing Hermes settings or letting a source sweep hide Arura's pinned
+folders. Preserve source archive metadata for inspection/reconciliation; do not
+interpret source archiving as deletion. Bidirectional mirroring of source
+pins/archives would need an explicit conflict policy and is not assumed by the
+first slice. This boundary does not stop rename/message/run changes from
+updating across clients.
 
 ### Device authorization and browser storage
 
-Choose a host-local login/bootstrap mechanism during scaffold implementation;
-no hosted identity provider is required. Convex supports [custom JWT providers](https://docs.convex.dev/auth/advanced/custom-jwt).
+Choose a host-local login/bootstrap mechanism during scaffold implementation; no
+hosted identity provider is required. Convex supports
+[custom JWT providers](https://docs.convex.dev/auth/advanced/custom-jwt).
 Authentication is not enough: every query/mutation must also read and validate
 the current device/session record. Action/file endpoints and adapter command
-dispatch must check authorization too. [Function auth](https://docs.convex.dev/auth/functions-auth).
+dispatch must check authorization too.
+[Function auth](https://docs.convex.dev/auth/functions-auth).
 
 Revoking a device must invalidate its query access and deny future commands,
 downloads, and token renewal even if its current token has not expired. Query
-dependencies on the session record should propagate revocation; test this against
-an already-open subscription, not only a new login. Verify transport shutdown
-behavior separately; a cooperating client closing itself is not enforcement.
-Arura identity/session credentials are distinct from host-to-Hermes credentials.
+dependencies on the session record should propagate revocation; test this
+against an already-open subscription, not only a new login. Verify transport
+shutdown behavior separately; a cooperating client closing itself is not
+enforcement. Arura identity/session credentials are distinct from host-to-Hermes
+credentials.
 
 Service-worker asset caching and persistent content/draft storage are separate
-from Convex's reactive cache. First paint should use cached, account-scoped data;
-reconnect should validate and refresh the subscribed pages. Offline reads/drafts
-are required; automatic offline agent-command replay is not assumed. Test storage
-eviction, account changes, schema upgrades, and reasoning/secret filtering.
+from Convex's reactive cache. First paint should use cached, account-scoped
+data; reconnect should validate and refresh the subscribed pages. Offline
+reads/drafts are required; automatic offline agent-command replay is not
+assumed. Test storage eviction, account changes, schema upgrades, and
+reasoning/secret filtering.
 
 ## Remaining retained surfaces: source coverage
 
@@ -179,19 +189,21 @@ or that all desktop behavior can be reproduced with a single REST call.
 
 ## Existing web port and Macro: what to reuse as reference
 
-The existing [REST bridge][old-rest] captures profile routing, proxy error handling,
-credentials, and WebSocket URL issues. Its browser-local connection registry and
-same-tab callbacks are not cross-device state or device authorization. Do not copy
-its Electron-shaped capability adapter as Arura's app model. Its [download adapter][old-download]
-is useful for filename/fallback behavior; normal browser downloads do not expose
-an arbitrary local destination path.
+The existing [REST bridge][old-rest] captures profile routing, proxy error
+handling, credentials, and WebSocket URL issues. Its browser-local connection
+registry and same-tab callbacks are not cross-device state or device
+authorization. Do not copy its Electron-shaped capability adapter as Arura's app
+model. Its [download adapter][old-download] is useful for filename/fallback
+behavior; normal browser downloads do not expose an arbitrary local destination
+path.
 
 Macro's [web dependencies][macro-package] confirm Solid Router, Solid Query, and
-Solid Virtual. Study list virtualization, focus, and component boundaries as each
-screen is built; do not adopt its complete workspace or add Solid Query as a second
-owner of Convex-managed state by default. Its [query sync provider][macro-provider]
-invalidates application queries, while its [document sync service][macro-sync]
-uses Loro/Cloudflare Durable Objects. Neither replaces the selected Convex layer.
+Solid Virtual. Study list virtualization, focus, and component boundaries as
+each screen is built; do not adopt its complete workspace or add Solid Query as
+a second owner of Convex-managed state by default. Its
+[query sync provider][macro-provider] invalidates application queries, while its
+[document sync service][macro-sync] uses Loro/Cloudflare Durable Objects.
+Neither replaces the selected Convex layer.
 
 ## Hosting seam
 
@@ -203,19 +215,22 @@ The inspected [nc module][nc-module] declares four relevant system services:
   dashboard API. Preserve its single-instance lifecycle.
 - `hermes-web`: existing Deno proxy/static UI, loopback port 9120 by default;
   narrow filesystem/network access plus Host/Origin checks.
-- `hermes-serve`: Tailscale HTTPS forwarding, port 8443 by default, with a scoped
-  listener lifecycle that avoids resetting other applications' Serve configuration.
+- `hermes-serve`: Tailscale HTTPS forwarding, port 8443 by default, with a
+  scoped listener lifecycle that avoids resetting other applications' Serve
+  configuration.
 
 The [web package][nc-package] builds the pinned reference UI and installs its
 static output/proxy. Arura needs its own package/service wiring; it is not a
 drop-in `webDist` change. Preserve origin validation and private backend access,
-provide persistent Convex state, host adapter credentials, and independent service
-lifecycles. Put the development deployment beside the existing one with separate
-state/listener configuration. No nc edits or port allocation were made in this audit.
+provide persistent Convex state, host adapter credentials, and independent
+service lifecycles. Put the development deployment beside the existing one with
+separate state/listener configuration. No nc edits or port allocation were made
+in this audit.
 
 Managed machine wiring is separate from runtime model/provider configuration in
 the module. It still enables capabilities omitted from Arura (for example wake
-word/browser/terminal tools); those are not errors to fix during this UI project.
+word/browser/terminal tools); those are not errors to fix during this UI
+project.
 
 ## Evidence required before declaring the first slice complete
 
@@ -224,8 +239,8 @@ word/browser/terminal tools); those are not errors to fix during this UI project
 - Adapter disconnect/restart, event-buffer overflow, and source restart recover
   without duplicate display or automatic duplicate prompt dispatch. Ambiguous
   external sends remain visibly unresolved until reconciled.
-- Changes from another Hermes surface appear with measured latency; no claim that
-  the watcher exposes every external token stream.
+- Changes from another Hermes surface appear with measured latency; no claim
+  that the watcher exposes every external token stream.
 - Essentials/folders remain reachable, archive paging is ten at a time, and
   unarchive resets inactivity without modifying runtime auto-archive settings.
 - Mobile cold/repeat loads are measured separately; cached history/drafts reopen
@@ -236,19 +251,21 @@ word/browser/terminal tools); those are not errors to fix during this UI project
   compression descendants are exercised against the pinned backend.
 
 The implementation now uses individually revocable browser cookies, short-lived
-RS256 Convex tokens, serialized 150 ms turn batches, IndexedDB conversation/draft
-caching, and atomic command claims. The isolated integration suite exercises
-two-device reactive updates, archive/restore, offline reopening, storage failure,
-revocation, command idempotency, replay ordering, and restarted-gateway recovery.
-Its gateway fixture follows the audited contracts but is not the real Hermes
-runtime. See [Development](development.md) for the reproducible command.
+RS256 Convex tokens, serialized 150 ms turn batches, IndexedDB
+conversation/draft caching, and atomic command claims. The isolated integration
+suite exercises two-device reactive updates, archive/restore, offline reopening,
+storage failure, revocation, command idempotency, replay ordering, and
+restarted-gateway recovery. Its gateway fixture follows the audited contracts
+but is not the real Hermes runtime. See [Development](development.md) for the
+reproducible command.
 
 Still requiring live validation: profile ownership during concurrent desktop/CLI
 use, replay-window overflow while a run is active, compressed-session lineage,
-provider-specific settings, all retained administration flows, and physical phone
-performance. Reattaching after a gateway restart restores public inflight content;
-it does not promise recovery of every historical tool event beyond Hermes's replay
-window. Deployment into the host configuration has not been performed.
+provider-specific settings, all retained administration flows, and physical
+phone performance. Reattaching after a gateway restart restores public inflight
+content; it does not promise recovery of every historical tool event beyond
+Hermes's replay window. Deployment into the host configuration has not been
+performed.
 
 [sessions-rest]: https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/sessions.py
 [profiles-rest]: https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/profiles.py
@@ -289,8 +306,10 @@ window. Deployment into the host configuration has not been performed.
 [nc-module]: https://github.com/u-k-g/nc/blob/c70f93faab21ccad5edd9e8b078893f77d2f8f9d/modules/hermes.mod.nix
 [nc-package]: https://github.com/u-k-g/nc/blob/c70f93faab21ccad5edd9e8b078893f77d2f8f9d/packages/hermes-desktop-web.mod.nix
 
-
 ## Implementation validation update
+
+The [completion audit](completion-audit.md) is the current feature-by-feature
+record of implementation and acceptance gaps.
 
 The Deno adapter has completed authenticated read-only checks against the host's
 Hermes dashboard: profiles, conversation discovery, schedules, installed skills,
@@ -301,58 +320,77 @@ agent prompt or settings mutation was used for these checks.
 The isolated two-browser suite exercises the real self-hosted Convex backend,
 conversation streaming, organization, device revocation, offline reopening,
 storage-disabled browsers, file editing and selected-line attachment, generated
-file indexing, and schedule blueprints. The Nix-built application also passed the
-suite with a fresh runtime cache. Fixture coverage does not establish every
+file indexing, and schedule blueprints. The Nix-built application also passed
+the suite with a fresh runtime cache. Fixture coverage does not establish every
 retained resource's compatibility with live Hermes.
 
 History projection now serializes page updates per conversation, invalidates
 older offset pages when the newest page changes, and rejects older pages fetched
-against a stale head. Older-page reads compare the head before and after fetching;
-a continuously changing conversation reports a retryable error after three tries.
-This handles offset movement without claiming an atomic snapshot API from Hermes.
+against a stale head. Older-page reads compare the head before and after
+fetching; a continuously changing conversation reports a retryable error after
+three tries. This handles offset movement without claiming an atomic snapshot
+API from Hermes.
 
-Outstanding validation includes live sends and settings writes,
-long-running mobile performance, and the NixOS
-rollout. Advanced retained feature surfaces still need implementation and acceptance
-coverage; the product scope is not a completion ledger.
+Outstanding validation includes live sends and settings writes, long-running
+mobile performance, and the NixOS rollout. Advanced retained feature surfaces
+still need implementation and acceptance coverage; the product scope is not a
+completion ledger.
 
 Additional isolated coverage exercises provider device authorization, auxiliary
 model cost confirmation, ordered fallback preservation and disabling, MCP OAuth
-callback state validation, memory-map editing and local visualization import/export,
-and basic bot appearance, uploaded avatars, and canonical hidden-chat selection.
-Bot identity follows the profile's canonical `Bot Chat`, rather than whichever
-conversation was most recently active. Upstream does not provide a database-level
-unique-title guarantee; Arura serializes its own bot-opening commands and adopts
-the gateway's resolved canonical session.
+callback state validation, memory-map editing and local visualization
+import/export, and basic bot appearance, uploaded avatars, and canonical
+hidden-chat selection. Bot identity follows the profile's canonical `Bot Chat`,
+rather than whichever conversation was most recently active. Upstream does not
+provide a database-level unique-title guarantee; Arura serializes its own
+bot-opening commands and adopts the gateway's resolved canonical session.
 
 File previews flagged as truncated, binary, or containing replacement characters
 cannot be saved through the editor. Conversation exports use Arura's versioned
-JSON format and contain normalized public messages only, excluding hidden reasoning.
-They are readable conversation exports, not Hermes database backups. Search results
-likewise omit upstream snippets, whose truncation could expose private reasoning.
+JSON format and contain normalized public messages only, excluding hidden
+reasoning. They are readable conversation exports, not Hermes database backups.
+Search results likewise omit upstream snippets, whose truncation could expose
+private reasoning.
 
 Dedicated Settings pages cover delegated-work limits and inference inheritance,
 cached-agent lifetime and memory thresholds, and host computer-use readiness and
 permission mode. They submit changed fields only and detect overlapping changes
-before saving. The source does not offer an atomic configuration compare-and-swap,
-so concurrent writes after that check remain an upstream limitation.
-Field names and defaults follow [Hermes configuration defaults](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/config_defaults.py)
-and [delegation validation](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/tools/delegate_tool_config.py).
+before saving. The source does not offer an atomic configuration
+compare-and-swap, so concurrent writes after that check remain an upstream
+limitation. Field names and defaults follow
+[Hermes configuration defaults](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/config_defaults.py)
+and
+[delegation validation](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/tools/delegate_tool_config.py).
 
-Hermes does not provide an atomic inflight snapshot plus replay cursor. On replay
-truncation or attaching to an already running turn, Arura switches to one-second
-whole-snapshot refreshes instead of appending deltas to a potentially overlapping
-snapshot. The UI labels recovery, and final completion replaces the partial answer.
-Intact same-epoch replay continues to deduplicate actual event sequence numbers;
-the adapter never advances its cursor directly to the separately sampled
-`latest_seq`. Isolated tests cover both gateway restart and truncated replay.
+Hermes does not provide an atomic inflight snapshot plus replay cursor. On
+replay truncation or attaching to an already running turn, Arura switches to
+one-second whole-snapshot refreshes instead of appending deltas to a potentially
+overlapping snapshot. The UI labels recovery, and final completion replaces the
+partial answer. Intact same-epoch replay continues to deduplicate actual event
+sequence numbers; the adapter never advances its cursor directly to the
+separately sampled `latest_seq`. Isolated tests cover both gateway restart and
+truncated replay.
 
 Mixture presets have explicit add/rename/delete controls, reference model rows,
-an aggregator, cadence, temperatures, and timeout settings. The audited dedicated
-MoA PUT replaces the preset map but silently clears `privacy_filter`; generic
-config PUT preserves it but recursively merges maps and cannot delete old names.
-Arura uses the dedicated endpoint only when no filter is configured. With an
-existing filter, add/edit uses the generic endpoint and rename/delete is disabled.
-This preserves host policy without modifying Hermes or replacing its complete raw
-configuration. See [MoA routes](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/models.py)
-and [configuration merging](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/config.py).
+an aggregator, cadence, temperatures, and timeout settings. The audited
+dedicated MoA PUT replaces the preset map but silently clears `privacy_filter`;
+generic config PUT preserves it but recursively merges maps and cannot delete
+old names. Arura uses the dedicated endpoint only when no filter is configured.
+With an existing filter, add/edit uses the generic endpoint and rename/delete is
+disabled. This preserves host policy without modifying Hermes or replacing its
+complete raw configuration. See
+[MoA routes](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/models.py)
+and
+[configuration merging](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/config.py).
+
+Clarification handling follows the gateway's actual `choices`, `multi_select`
+and batch `questions` fields. Batched responses carry both `request_id` and
+`question_id`; a nonempty `remaining` list keeps the overall request open. Saved
+answers are projected to all devices, while question components retain unsaved
+local input across unrelated answer updates. Multiple selections use a
+JSON-array string, as accepted by the upstream clarification tool. Expired
+responses report expiration instead of success, and a failed control request
+does not release a still-active run's queued messages. Sources:
+[gateway clarification bridge](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/tui_gateway/server.py)
+and
+[clarification answer parsing](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/tools/clarify_tool.py).

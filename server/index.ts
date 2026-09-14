@@ -1,23 +1,23 @@
 import "dotenv/config";
+import { spawn } from "node:child_process";
+import { readFile, stat } from "node:fs/promises";
+import { extname, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
-import { readFile, stat } from "node:fs/promises";
-import { resolve, extname, sep } from "node:path";
-import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
-import { identity, hash, randomSecret, equal } from "./identity.ts";
-import { Hermes } from "./hermes.ts";
-import { exportConversation } from "./export.ts";
+import {
+  subagentTranscript,
+  type Turn,
+  withoutReasoning,
+} from "../shared/model.ts";
 import {
   operationRequest,
   rpcAllowlist,
   rpcQueries,
 } from "../shared/resources.ts";
-import {
-  withoutReasoning,
-  subagentTranscript,
-  type Turn,
-} from "../shared/model.ts";
+import { exportConversation } from "./export.ts";
+import { Hermes } from "./hermes.ts";
+import { equal, hash, identity, randomSecret } from "./identity.ts";
 
 const keys = await identity();
 const publicUrl = new URL(
@@ -48,7 +48,9 @@ const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "The request failed";
 const cookieName = "arura_session";
 const cookie = (secret: string, maxAge: number) =>
-  `${cookieName}=${secret}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${publicUrl.protocol === "https:" ? "; Secure" : ""}`;
+  `${cookieName}=${secret}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${
+    publicUrl.protocol === "https:" ? "; Secure" : ""
+  }`;
 async function authenticated(request: Request) {
   const raw = request.headers
     .get("cookie")
@@ -80,8 +82,14 @@ const watched = new Set<string>();
 const lastActivity = new Map<string, number>();
 const historyJobs = new Map<string, Promise<void>>();
 function syncHistory(key: string, offset = 0): Promise<void> {
-  if (!Number.isInteger(offset) || offset < 0 || offset > 4900 || offset % 100)
+  if (
+    !Number.isInteger(offset) ||
+    offset < 0 ||
+    offset > 4900 ||
+    offset % 100
+  ) {
     return Promise.reject(new Error("Invalid history page"));
+  }
   const work = (historyJobs.get(key) ?? Promise.resolve())
     .catch(() => {})
     .then(async () => {
@@ -129,8 +137,9 @@ async function reconcile() {
       })),
     });
     for (const c of conversations) {
-      if (watched.has(c.key) && lastActivity.get(c.key) !== c.activityAt)
+      if (watched.has(c.key) && lastActivity.get(c.key) !== c.activityAt) {
         await syncHistory(c.key);
+      }
       lastActivity.set(c.key, c.activityAt);
     }
   })().finally(() => {
@@ -198,8 +207,9 @@ hermes.on("complete", (key: string, turn: Turn) => {
       notice: {
         id: `${key}:${turn.startedAt}`,
         conversation: key,
-        title:
-          turn.state === "complete" ? "Reply ready" : "Hermes needs attention",
+        title: turn.state === "complete"
+          ? "Reply ready"
+          : "Hermes needs attention",
       },
     })
     .catch(report);
@@ -237,13 +247,15 @@ async function processCommands() {
     }
     const commands = await convex.query(anyApi.commands.queue, {});
     for (const queued of commands) {
-      if (queued.kind === "send" && activeCommands.has(queued.conversation))
+      if (queued.kind === "send" && activeCommands.has(queued.conversation)) {
         continue;
+      }
       const command = await convex.mutation(anyApi.commands.claim, {
         id: queued._id,
       });
       if (!command) continue;
       const { kind, payload, conversation: key } = command;
+      const alreadyRunning = activeCommands.has(key);
       try {
         let result: any = { ok: true };
         if (kind === "create") {
@@ -265,15 +277,17 @@ async function processCommands() {
           watched.add(key);
           await syncHistory(key, Number(payload.offset ?? 0));
         } else if (kind === "send") {
-          if (typeof payload.text !== "string" || !payload.text.trim())
+          if (typeof payload.text !== "string" || !payload.text.trim()) {
             throw new Error("Write a message first");
+          }
           const session_id = await hermes.attach(key);
           for (const attachment of payload.attachments ?? []) {
-            if (attachment.image && typeof attachment.path === "string")
+            if (attachment.image && typeof attachment.path === "string") {
               await hermes.call("image.attach", {
                 session_id,
                 path: attachment.path,
               });
+            }
           }
           let prompt = payload.text;
           let shouldSubmit = true;
@@ -291,15 +305,15 @@ async function processCommands() {
                 !error.message.startsWith(
                   "not a quick/plugin/bundle/skill command:",
                 )
-              )
+              ) {
                 throw error;
+              }
               result = await hermes.call("slash.exec", {
                 session_id,
                 command: prompt,
               });
             }
-            shouldSubmit =
-              ["send", "skill"].includes(result.type) &&
+            shouldSubmit = ["send", "skill"].includes(result.type) &&
               typeof result.message === "string";
             if (shouldSubmit) prompt = result.message;
           }
@@ -312,10 +326,10 @@ async function processCommands() {
                 text: prompt,
                 ...(payload.edit
                   ? {
-                      truncate_before_row_id: payload.edit,
-                      confirm_truncate: true,
-                      confirm_empty_truncate: true,
-                    }
+                    truncate_before_row_id: payload.edit,
+                    confirm_truncate: true,
+                    confirm_empty_truncate: true,
+                  }
                   : {}),
                 profile: JSON.parse(key)[0],
               },
@@ -325,24 +339,28 @@ async function processCommands() {
         } else if (kind === "rename" || kind === "delete") {
           const [profile, id] = JSON.parse(key);
           result = await hermes.rest(
-            `/api/sessions/${encodeURIComponent(id)}${kind === "delete" ? "?" + new URLSearchParams({ profile }) : ""}`,
+            `/api/sessions/${encodeURIComponent(id)}${
+              kind === "delete" ? "?" + new URLSearchParams({ profile }) : ""
+            }`,
             kind === "delete" ? "DELETE" : "PATCH",
             kind === "rename" ? { title: payload.title, profile } : undefined,
           );
           await reconcile();
         } else if (kind === "rpc") {
-          if (!rpcAllowlist.has(payload.method))
+          if (!rpcAllowlist.has(payload.method)) {
             throw new Error("Unsupported action");
+          }
           const session_id = key ? await hermes.attach(key) : undefined;
           result = await hermes.call(payload.method, {
             ...payload.params,
             ...(session_id ? { session_id } : {}),
           });
-          if (payload.method === "subagent.tail")
+          if (payload.method === "subagent.tail") {
             result.text = subagentTranscript(
               String(result.text ?? ""),
               payload.params?.details === true,
             );
+          }
           const dispatch = result.dispatch ?? result;
           if (
             ["send", "skill"].includes(dispatch.type) &&
@@ -355,21 +373,41 @@ async function processCommands() {
               1800000,
             );
           }
-          if (payload.params?.request_id)
-            hermes.answered(key, payload.params.request_id);
+          if (
+            payload.params?.request_id &&
+            ["approval.respond", "clarify.respond"].includes(payload.method)
+          ) {
+            hermes.answered(
+              key,
+              payload.params.request_id,
+              result.status === "expired"
+                ? undefined
+                : payload.params.question_id,
+              payload.params.answer,
+              Array.isArray(result.remaining) ? result.remaining : undefined,
+            );
+            if (
+              result.status === "expired" ||
+              (payload.method === "approval.respond" &&
+                result.resolved === false)
+            ) {
+              throw new Error(
+                "This input request expired or was already answered.",
+              );
+            }
+          }
         }
         await convex.mutation(anyApi.commands.finish, {
           id: command._id,
-          status:
-            kind === "send" && activeCommands.has(key)
-              ? "accepted"
-              : "complete",
+          status: kind === "send" && activeCommands.has(key)
+            ? "accepted"
+            : "complete",
           result: withoutReasoning(result),
         });
       } catch (error) {
         const message = errorMessage(error);
         const unknown = /unknown|disconnected|timed out/i.test(message);
-        if (!unknown) activeCommands.delete(key);
+        if (!unknown && !alreadyRunning) activeCommands.delete(key);
         await convex.mutation(anyApi.commands.finish, {
           id: command._id,
           status: unknown ? "unknown" : "error",
@@ -390,8 +428,9 @@ async function handle(request: Request, ip: string): Promise<Response> {
   const url = new URL(request.url),
     path = url.pathname;
   if (request.method !== "GET" && request.method !== "HEAD") {
-    if (request.headers.get("origin") !== publicUrl.origin)
+    if (request.headers.get("origin") !== publicUrl.origin) {
       return json({ error: "Request origin denied" }, 403);
+    }
   }
   if (request.method === "GET" && path.startsWith("/api/mcp/oauth/callback/")) {
     const name = decodeURIComponent(
@@ -407,13 +446,15 @@ async function handle(request: Request, ip: string): Promise<Response> {
       name.length > 512 ||
       !state ||
       state.length > 2048
-    )
+    ) {
       return json({ error: "Invalid authorization callback" }, 400);
+    }
     const params = new URLSearchParams({ state });
     for (const key of ["code", "error"]) {
       const value = url.searchParams.get(key);
-      if (value && value.length > 16384)
+      if (value && value.length > 16384) {
         return json({ error: "Invalid authorization callback" }, 400);
+      }
       if (value) params.set(key, value);
     }
     // Hermes validates the one-time OAuth state. Cross-site redirects cannot
@@ -431,11 +472,12 @@ async function handle(request: Request, ip: string): Promise<Response> {
       },
     });
   }
-  if (path === "/api/bootstrap")
+  if (path === "/api/bootstrap") {
     return json({
       convexUrl: process.env.CONVEX_PUBLIC_URL ?? convexUrl,
       name: "Arura",
     });
+  }
   if (path === "/.well-known/jwks.json") return json(keys.jwks);
   if (path === "/auth/login" && request.method === "POST") {
     const now = Date.now();
@@ -444,19 +486,20 @@ async function handle(request: Request, ip: string): Promise<Response> {
       a = { count: 0, since: now };
       attempts.set(ip, a);
     }
-    if (++a.count > 20)
+    if (++a.count > 20) {
       return json(
         { error: "Too many attempts. Try again in ten minutes." },
         429,
       );
+    }
     const body = await request.json();
-    if (typeof body.code !== "string" || typeof body.name !== "string")
+    if (typeof body.code !== "string" || typeof body.name !== "string") {
       return json(
         { error: "Enter an authorization code and device name" },
         400,
       );
-    const bootstrap =
-      Boolean(process.env.ARURA_ACCESS_KEY) &&
+    }
+    const bootstrap = Boolean(process.env.ARURA_ACCESS_KEY) &&
       equal(body.code, process.env.ARURA_ACCESS_KEY!);
     const secret = randomSecret(),
       id = crypto.randomUUID();
@@ -491,16 +534,23 @@ async function handle(request: Request, ip: string): Promise<Response> {
       typeof requestId !== "string" ||
       typeof value !== "string" ||
       value.length > 16384
-    )
+    ) {
       return json({ error: "Invalid response" }, 400);
+    }
     const session_id = await hermes.attach(conversation);
     try {
-      await hermes.call("secret.respond", {
+      const result = await hermes.call("secret.respond", {
         session_id,
         request_id: requestId,
         value,
       });
       hermes.answered(conversation, requestId);
+      if (result.status === "expired") {
+        return json(
+          { error: "This input request expired or was already answered." },
+          409,
+        );
+      }
       return json({ ok: true });
     } catch {
       return json(
@@ -515,8 +565,9 @@ async function handle(request: Request, ip: string): Promise<Response> {
   if (path === "/api/query" && request.method === "POST") {
     await authenticated(request);
     const { method, params = {}, conversation } = await request.json();
-    if (!rpcQueries.has(method))
+    if (!rpcQueries.has(method)) {
       return json({ error: "Unsupported query" }, 400);
+    }
     const session_id =
       conversation && !["commands.catalog", "complete.slash"].includes(method)
         ? await hermes.attach(conversation)
@@ -525,11 +576,12 @@ async function handle(request: Request, ip: string): Promise<Response> {
       ...params,
       ...(session_id ? { session_id } : {}),
     });
-    if (method === "subagent.tail")
+    if (method === "subagent.tail") {
       result.text = subagentTranscript(
         String(result.text ?? ""),
         params.details === true,
       );
+    }
     return json(withoutReasoning(result));
   }
   if (path === "/auth/logout" && request.method === "POST") {
@@ -565,19 +617,23 @@ async function handle(request: Request, ip: string): Promise<Response> {
       string,
       { label: string; command: string; args?: string[] }
     > = actionsFile ? JSON.parse(await readFile(actionsFile, "utf8")) : {};
-    if (request.method === "GET")
+    if (request.method === "GET") {
       return json(
         Object.entries(actions)
           .filter(([id]) => ["restart", "update"].includes(id))
           .map(([id, a]) => ({ id, label: a.label })),
       );
-    if (request.method !== "POST")
+    }
+    if (request.method !== "POST") {
       return json({ error: "Method not allowed" }, 405);
-    if (maintenanceRunning)
+    }
+    if (maintenanceRunning) {
       return json({ error: "A maintenance action is already running" }, 409);
+    }
     const { id } = await request.json();
-    if (!["restart", "update"].includes(id) || !actions[id])
+    if (!["restart", "update"].includes(id) || !actions[id]) {
       return json({ error: "This action is not configured on the host" }, 400);
+    }
     const a = actions[id];
     maintenanceRunning = true;
     try {
@@ -623,12 +679,22 @@ async function handle(request: Request, ip: string): Promise<Response> {
       if (!id) return json({ error: "Conversation ID is required" }, 400);
       return exportConversation(id, profile, (offset) =>
         hermes.rest(
-          `/api/sessions/${encodeURIComponent(id)}/messages?${new URLSearchParams({ profile, offset: String(offset), limit: "500", order: "oldest", include_compacted: "true" })}`,
-        ),
-      );
+          `/api/sessions/${
+            encodeURIComponent(
+              id,
+            )
+          }/messages?${new URLSearchParams({
+            profile,
+            offset: String(offset),
+            limit: "500",
+            order: "oldest",
+            include_compacted: "true",
+          })}`,
+        ));
     }
-    const allowed =
-      type === "backup" ? "/api/ops/backup/download" : "/api/fs/download";
+    const allowed = type === "backup"
+      ? "/api/ops/backup/download"
+      : "/api/fs/download";
     const query = new URLSearchParams(url.searchParams);
     query.delete("type");
     query.delete("id");
@@ -669,8 +735,9 @@ async function handle(request: Request, ip: string): Promise<Response> {
   }
   if (path === "/api/upload" && request.method === "POST") {
     await authenticated(request);
-    if (Number(request.headers.get("content-length") ?? 0) > 25 * 1024 * 1024)
+    if (Number(request.headers.get("content-length") ?? 0) > 25 * 1024 * 1024) {
       return json({ error: "Files must be smaller than 25 MB" }, 413);
+    }
     const chunks: Uint8Array[] = [];
     let length = 0;
     const reader = request.body?.getReader();
@@ -692,12 +759,18 @@ async function handle(request: Request, ip: string): Promise<Response> {
     const data = await new Response(new Blob(chunks as BlobPart[]), {
       headers: { "content-type": request.headers.get("content-type") ?? "" },
     }).formData();
-    for (const value of data.values())
-      if (value instanceof File && value.size > 25 * 1024 * 1024)
+    for (const value of data.values()) {
+      if (value instanceof File && value.size > 25 * 1024 * 1024) {
         return json({ error: "Files must be smaller than 25 MB" }, 413);
+      }
+    }
     const file = data.get("file");
     if (!(file instanceof File)) return json({ error: "Choose a file" }, 400);
-    const data_url = `data:${file.type || "application/octet-stream"};base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`;
+    const data_url = `data:${file.type || "application/octet-stream"};base64,${
+      Buffer.from(
+        await file.arrayBuffer(),
+      ).toString("base64")
+    }`;
     if (file.type.startsWith("image/")) {
       const profile = url.searchParams.get("profile") ?? "default";
       return json(
@@ -708,12 +781,18 @@ async function handle(request: Request, ip: string): Promise<Response> {
         ),
       );
     }
-    const root =
-      process.env.ARURA_UPLOAD_DIR ?? (await hermes.rest("/api/files")).path;
-    if (typeof root !== "string")
+    const root = process.env.ARURA_UPLOAD_DIR ??
+      (await hermes.rest("/api/files")).path;
+    if (typeof root !== "string") {
       return json({ error: "Configure a host upload directory" }, 503);
+    }
     const name = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "attachment";
-    const target = `${root.replace(/\/$/, "")}/arura-uploads/${crypto.randomUUID()}-${name}`;
+    const target = `${
+      root.replace(
+        /\/$/,
+        "",
+      )
+    }/arura-uploads/${crypto.randomUUID()}-${name}`;
     return json(
       await hermes.rest("/api/files/upload", "POST", {
         path: target,
@@ -727,16 +806,18 @@ async function handle(request: Request, ip: string): Promise<Response> {
     const op = decodeURIComponent(path.slice("/api/resource/".length));
     const params = Object.fromEntries(url.searchParams);
     const spec = operationRequest(op, params);
-    if (request.method !== spec.method)
+    if (request.method !== spec.method) {
       return json({ error: "Method not allowed" }, 405);
+    }
     if (spec.rpc) {
       const body = request.method === "GET" ? params : await request.json();
       const conversation = url.searchParams.get("conversation");
-      if (spec.needsConversation && !conversation)
+      if (spec.needsConversation && !conversation) {
         return json(
           { error: "Choose a conversation for this connection" },
           400,
         );
+      }
       const result = await hermes.call(spec.rpc, {
         ...body,
         ...spec.rpcParams,
@@ -745,16 +826,15 @@ async function handle(request: Request, ip: string): Promise<Response> {
           : {}),
         profile: url.searchParams.get("profile") ?? "default",
       });
-      if (request.method !== "GET")
+      if (request.method !== "GET") {
         await convex.mutation(anyApi.workspace.ingest, { changed: true });
-      const visible =
-        op === "profileRoster"
-          ? JSON.parse(
-              JSON.stringify(result, (key, value) =>
-                key === "preview" ? undefined : value,
-              ),
-            )
-          : result;
+      }
+      const visible = op === "profileRoster"
+        ? JSON.parse(
+          JSON.stringify(result, (key, value) =>
+            key === "preview" ? undefined : value),
+        )
+        : result;
       return json(withoutReasoning(visible));
     }
     const result = await hermes.rest(
@@ -762,19 +842,22 @@ async function handle(request: Request, ip: string): Promise<Response> {
       spec.method,
       spec.method === "GET" ? undefined : await request.json(),
     );
-    if (spec.method !== "GET")
+    if (spec.method !== "GET") {
       await convex.mutation(anyApi.workspace.ingest, { changed: true });
+    }
     return json(result);
   }
-  if (path.startsWith("/api/") || path.startsWith("/auth/"))
+  if (path.startsWith("/api/") || path.startsWith("/auth/")) {
     return json({ error: "Not found" }, 404);
+  }
   const root = fileURLToPath(new URL("../dist/", import.meta.url)).replace(
     /\/$/,
     "",
   );
   let file = resolve(root, "." + decodeURIComponent(path));
-  if (file !== root && !file.startsWith(root + sep))
+  if (file !== root && !file.startsWith(root + sep)) {
     return new Response("Not found", { status: 404 });
+  }
   try {
     if (!(await stat(file)).isFile()) file = resolve(root, "index.html");
   } catch {
@@ -826,14 +909,17 @@ const server = Deno.serve(
 );
 void hermes.connect().catch(report);
 Deno.addSignalListener("SIGTERM", () => {
-  for (const timer of [
-    authTimer,
-    flushTimer,
-    commandTimer,
-    reconcileTimer,
-    artifactTimer,
-  ])
+  for (
+    const timer of [
+      authTimer,
+      flushTimer,
+      commandTimer,
+      reconcileTimer,
+      artifactTimer,
+    ]
+  ) {
     clearInterval(timer);
+  }
   hermes.close();
   void server.shutdown();
 });

@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { device, adapter } from "./access";
+import { adapter, device } from "./access";
 import { v } from "convex/values";
 const kinds = [
   "send",
@@ -30,20 +30,23 @@ export const enqueue = mutation({
   },
   handler: async (ctx, args) => {
     const d = await device(ctx);
-    if (!kinds.includes(args.kind as (typeof kinds)[number]))
+    if (!kinds.includes(args.kind as (typeof kinds)[number])) {
       throw new Error("Unknown action");
+    }
     if (
       args.kind === "rpc" &&
       /^(secret|sudo|vault)\./.test(args.payload?.method ?? "")
-    )
+    ) {
       throw new Error("Sensitive input must use the private response endpoint");
+    }
     const old = await ctx.db
       .query("commands")
       .withIndex("id", (q) => q.eq("id", args.id))
       .unique();
     if (old) {
-      if (old.device !== d.id)
+      if (old.device !== d.id) {
         throw new Error("Command belongs to another device");
+      }
       return old._id;
     }
     return ctx.db.insert("commands", {
@@ -107,15 +110,18 @@ export const recover = mutation({
   args: {},
   handler: async (ctx) => {
     await adapter(ctx);
-    for (const c of await ctx.db
-      .query("commands")
-      .withIndex("status", (q) => q.eq("status", "dispatching"))
-      .collect())
+    for (
+      const c of await ctx.db
+        .query("commands")
+        .withIndex("status", (q) => q.eq("status", "dispatching"))
+        .collect()
+    ) {
       await ctx.db.patch(c._id, {
         status: "unknown",
         error:
           "Connection interrupted during dispatch. Check the conversation before resending.",
       });
+    }
   },
 });
 export const edit = mutation({
@@ -128,8 +134,9 @@ export const edit = mutation({
   handler: async (ctx, args) => {
     await device(ctx);
     const c = await ctx.db.get(args.id);
-    if (!c || c.status !== "queued")
+    if (!c || c.status !== "queued") {
       throw new Error("This message has already been dispatched");
+    }
     await ctx.db.patch(c._id, {
       ...(args.cancel ? { status: "cancelled" as const } : {}),
       ...(args.text !== undefined

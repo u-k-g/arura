@@ -1,12 +1,12 @@
 import "dotenv/config";
 import {
   identity,
-  randomSecret,
   issuer,
+  randomSecret,
   stateDir,
 } from "../server/identity.ts";
 import { join } from "node:path";
-import { writeFile, readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 const keys = await identity();
 try {
   await readFile(".env");
@@ -22,7 +22,9 @@ try {
 }
 await writeFile(
   join(stateDir, "convex-auth.env"),
-  `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${Buffer.from(JSON.stringify(keys.jwks)).toString("base64")}\n`,
+  `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${
+    Buffer.from(JSON.stringify(keys.jwks)).toString("base64")
+  }\n`,
   { mode: 0o600 },
 );
 console.log(

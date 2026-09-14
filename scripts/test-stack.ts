@@ -16,10 +16,12 @@ async function copy(source: string, target: string) {
     else if (entry.isFile) await Deno.copyFile(from, to);
   }
 }
-for (const dir of ["convex", "shared"])
+for (const dir of ["convex", "shared"]) {
   await copy(join(root, dir), join(code, dir));
-for (const file of ["package.json", "deno.json", "deno.lock"])
+}
+for (const file of ["package.json", "deno.json", "deno.lock"]) {
   await Deno.copyFile(join(root, file), join(code, file));
+}
 await Deno.symlink(join(root, "node_modules"), join(code, "node_modules"));
 function port() {
   const listener = Deno.listen({ hostname: "127.0.0.1", port: 0 });
@@ -31,11 +33,12 @@ const dbPort = port(),
   sitePort = port(),
   appPort = port(),
   hermesPort = port();
-const secret = Array.from(crypto.getRandomValues(new Uint8Array(32)), (n) =>
-  n.toString(16).padStart(2, "0"),
+const secret = Array.from(
+  crypto.getRandomValues(new Uint8Array(32)),
+  (n) => n.toString(16).padStart(2, "0"),
 ).join("");
-const backend =
-  Deno.env.get("ARURA_CONVEX_EXECUTABLE") ?? "convex-local-backend";
+const backend = Deno.env.get("ARURA_CONVEX_EXECUTABLE") ??
+  "convex-local-backend";
 const keygen = await new Deno.Command(backend, {
   args: [
     "keygen",
@@ -48,8 +51,9 @@ const keygen = await new Deno.Command(backend, {
   stdout: "piped",
   stderr: "piped",
 }).output();
-if (!keygen.success)
+if (!keygen.success) {
   throw new Error("Could not generate the isolated Convex key");
+}
 const appUrl = `http://localhost:${appPort}`,
   dbUrl = `http://127.0.0.1:${dbPort}`;
 const env = {
@@ -91,10 +95,12 @@ async function start(
     stderr: "piped",
   }).spawn();
   children.push(child);
-  for (const [suffix, stream] of [
-    ["out", child.stdout],
-    ["err", child.stderr],
-  ] as const) {
+  for (
+    const [suffix, stream] of [
+      ["out", child.stdout],
+      ["err", child.stderr],
+    ] as const
+  ) {
     const file = await Deno.open(join(scratch, `${name}.${suffix}.log`), {
       write: true,
       create: true,
@@ -125,8 +131,9 @@ async function run(args: string[], cwd = root) {
     stdout: "inherit",
     stderr: "inherit",
   }).spawn().status;
-  if (!status.success)
+  if (!status.success) {
     throw new Error(`Test command failed: ${args.slice(0, 3).join(" ")}`);
+  }
 }
 try {
   await start(
@@ -153,7 +160,9 @@ try {
   const keys = await identity();
   await Deno.writeTextFile(
     join(scratch, "auth.env"),
-    `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${btoa(JSON.stringify(keys.jwks))}\n`,
+    `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${
+      btoa(JSON.stringify(keys.jwks))
+    }\n`,
     { mode: 0o600 },
   );
   await run(
@@ -180,28 +189,30 @@ try {
   ]);
   await ready(`${env.HERMES_URL}/api/health`);
   const packaged = Deno.env.get("ARURA_SERVER_EXECUTABLE");
-  if (packaged)
+  if (packaged) {
     await start("arura", packaged, [], scratch, {
       DENO_DIR: join(scratch, "runtime-deno"),
     });
-  else await start("arura", Deno.execPath(), ["task", "serve"]);
+  } else await start("arura", Deno.execPath(), ["task", "serve"]);
   await ready(`${appUrl}/api/bootstrap`);
   await run(["test", "-A", "tests/"]);
   console.log("Isolated integration tests passed.");
 } finally {
-  for (const child of children.reverse())
+  for (const child of children.reverse()) {
     try {
       child.kill("SIGTERM");
     } catch {
       /* Already exited. */
     }
+  }
   const deadline = setTimeout(() => {
-    for (const child of children)
+    for (const child of children) {
       try {
         child.kill("SIGKILL");
       } catch {
         /* Already exited. */
       }
+    }
   }, 3000);
   await Promise.all(children.map((child) => child.status));
   clearTimeout(deadline);

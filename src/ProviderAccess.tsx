@@ -1,5 +1,5 @@
-import { createSignal, createEffect, onCleanup, For, Show } from "solid-js";
-import { resource, revision, inform } from "./client";
+import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import { inform, resource, revision } from "./client";
 import { Dialog, run } from "./ui";
 
 type Provider = {
@@ -72,8 +72,9 @@ export default function ProviderAccess() {
   });
   async function close() {
     const current = flow();
-    if (current && (!current.status || current.status === "pending"))
+    if (current && (!current.status || current.status === "pending")) {
       await resource("providerCancel", { session: current.session_id }, {});
+    }
     setFlow(undefined);
   }
   return (
@@ -104,13 +105,13 @@ export default function ProviderAccess() {
                       { id: provider.id },
                       {},
                     );
-                    if (value.flow !== "device_code")
+                    if (value.flow !== "device_code") {
                       throw new Error(
                         "This provider requires setup on the Hermes host.",
                       );
+                    }
                     setFlow({ ...value, provider: provider.id });
-                  })
-                }
+                  })}
               >
                 {provider.status.logged_in ? "Sign in again" : "Sign in"}
               </button>
@@ -137,8 +138,7 @@ export default function ProviderAccess() {
                     );
                     await refresh();
                     inform("Provider disconnected");
-                  })
-                }
+                  })}
               >
                 Disconnect
               </button>
@@ -148,7 +148,10 @@ export default function ProviderAccess() {
       </For>
       <Show when={flow()}>
         {(current) => (
-          <Dialog title="Authorize provider" close={() => void run(close)}>
+          <Dialog
+            title="Authorize provider"
+            close={() => void run(close)}
+          >
             <Show
               when={!current().status || current().status === "pending"}
               fallback={

@@ -1,19 +1,21 @@
 import { strict as assert } from "node:assert";
-import { ConvexHttpClient, ConvexClient } from "convex/browser";
+import { ConvexClient, ConvexHttpClient } from "convex/browser";
 import { anyApi as api } from "convex/server";
 import { identity } from "../server/identity.ts";
 
 async function until(check: () => boolean) {
   const end = Date.now() + 10000;
   while (!check()) {
-    if (Date.now() > end)
+    if (Date.now() > end) {
       throw new Error("Subscription did not update within ten seconds");
+    }
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
 }
 
 Deno.test({
-  name: "self-hosted Convex: two-device sync, command claims, invite reuse, and live revocation",
+  name:
+    "self-hosted Convex: two-device sync, command claims, invite reuse, and live revocation",
   ignore: !Deno.env.get("CONVEX_SELF_HOSTED_URL"),
   async fn() {
     const url = Deno.env.get("CONVEX_SELF_HOSTED_URL")!;
@@ -138,7 +140,7 @@ Deno.test({
       await until(() =>
         snapshot.conversations.some(
           (c: any) => c.key === key && c.section === "essential",
-        ),
+        )
       );
       await a.mutation(api.workspace.move, { key, section: "archived" });
       assert(
@@ -150,10 +152,11 @@ Deno.test({
       await until(() =>
         snapshot.conversations.some(
           (c: any) => c.key === key && c.unarchivedAt,
-        ),
+        )
       );
-      const archiveKeys = Array.from({ length: 13 }, () =>
-        JSON.stringify(["test", crypto.randomUUID()]),
+      const archiveKeys = Array.from(
+        { length: 13 },
+        () => JSON.stringify(["test", crypto.randomUUID()]),
       );
       await adapter.mutation(api.workspace.ingest, {
         conversations: archiveKeys.map((key) => ({
@@ -164,8 +167,9 @@ Deno.test({
           activityAt: Date.now(),
         })),
       });
-      for (const key of archiveKeys)
+      for (const key of archiveKeys) {
         await a.mutation(api.workspace.move, { key, section: "archived" });
+      }
       const firstArchive = await b.query(api.workspace.archived, {
         cursor: null,
       });

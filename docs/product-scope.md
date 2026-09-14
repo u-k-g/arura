@@ -1,16 +1,20 @@
 # Product scope
 
-Read when building a screen, defining a capability, or reviewing feature coverage.
-This is the named scope for the independent client chosen in [ADR-0001](adr/0001-independent-solid-convex-client.md).
-The numbers below identify the recovered 126-item desktop checklist; they are
-traceability references, not new feature priorities. Unexcluded items remain in
-scope under the user's original parity request. Retained does not mean implemented
-or required in the first slice. Hermes itself stays unchanged.
+Read when building a screen, defining a capability, or reviewing feature
+coverage. This is the named scope for the independent client chosen in
+[ADR-0001](adr/0001-independent-solid-convex-client.md). The numbers below
+identify the recovered 126-item desktop checklist; they are traceability
+references, not new feature priorities. Unexcluded items remain in scope under
+the user's original parity request. Retained does not mean implemented or
+required in the first slice. Hermes itself stays unchanged.
 
-The original list referenced desktop [controls](https://github.com/NousResearch/hermes-agent/blob/a7254e2d4c170725a4136591e96efc5066251d2c/apps/desktop/src/i18n/en.ts),
+The original list referenced desktop
+[controls](https://github.com/NousResearch/hermes-agent/blob/a7254e2d4c170725a4136591e96efc5066251d2c/apps/desktop/src/i18n/en.ts),
 [settings](https://github.com/NousResearch/hermes-agent/blob/a7254e2d4c170725a4136591e96efc5066251d2c/apps/desktop/src/app/settings/constants.ts),
-and [bots](https://github.com/NousResearch/hermes-agent/blob/a7254e2d4c170725a4136591e96efc5066251d2c/apps/desktop/src/plugins/hermes-bots/i18n.ts).
-Use the [integration map](hermes-integration.md) for the newer audited interfaces.
+and
+[bots](https://github.com/NousResearch/hermes-agent/blob/a7254e2d4c170725a4136591e96efc5066251d2c/apps/desktop/src/plugins/hermes-bots/i18n.ts).
+Use the [integration map](hermes-integration.md) for the newer audited
+interfaces.
 
 ## Capability ledger
 
@@ -80,13 +84,15 @@ Use the [integration map](hermes-integration.md) for the newer audited interface
 | 119–126        | Sounds, tours/splash, decorative effects, pets, radio, Quick Entry, popouts/floating composer, native settings | Exclude.                                                                                                                                        |
 
 Also excluded before the numbered list: terminal UI, internal tabs, split panes,
-layout editor, HUD mode, wake word, dictation initially, and reading replies aloud.
-The image-generation exclusion covers buttons, model setup, workflows, and avatars;
-it does not prohibit attaching, opening, or downloading existing images.
+layout editor, HUD mode, wake word, dictation initially, and reading replies
+aloud. The image-generation exclusion covers buttons, model setup, workflows,
+and avatars; it does not prohibit attaching, opening, or downloading existing
+images.
 
 ## Navigation and activity contract
 
-- **Essentials:** compact, manually chosen chats/bots. No folders. Never autoarchive.
+- **Essentials:** compact, manually chosen chats/bots. No folders. Never
+  autoarchive.
 - **Pinned:** manually pinned entries and all folders. Folder contents count as
   pinned. Folders cannot live in any other section.
 - **Other entries:** below Pinned, no folders; autoarchive after seven days of
@@ -101,20 +107,21 @@ it does not prohibit attaching, opening, or downloading existing images.
   occupy the current full-screen view. No internal tabs or split panes.
 - While a turn runs, show readable activity/progress. On completion, retain its
   final answer and collapse intermediate work beneath “Worked for __m __s.” Keep
-  previous conversation turns. [T3 Code](https://github.com/pingdotgg/t3code) is the
-  presentation reference, not a dependency. Do not transmit reasoning to the UI,
-  including through replay, restored transcripts, or subagent views.
+  previous conversation turns. [T3 Code](https://github.com/pingdotgg/t3code) is
+  the presentation reference, not a dependency. Do not transmit reasoning to the
+  UI, including through replay, restored transcripts, or subagent views.
 
 Interpretation to validate in the first slice: inactivity means messages/run
-activity rather than merely opening a conversation. Active runs and pending input
-should not autoarchive. Archiving a bot entry must not delete/disable its profile,
-stop schedules, or stop Hermes work. These are proposed edge-case rules from the
-discussion, not claims about existing Hermes behavior.
+activity rather than merely opening a conversation. Active runs and pending
+input should not autoarchive. Archiving a bot entry must not delete/disable its
+profile, stop schedules, or stop Hermes work. These are proposed edge-case rules
+from the discussion, not claims about existing Hermes behavior.
 
 ## Delivery boundary
 
-The first slice covers device authorization, conversation list/history/send/stream,
-the navigation contract, cached reopening, reconnect, and revocation. Broader
-retained features follow without silently becoming exclusions. Live voice and
-multi-bot groups remain deferred. Architecture, data ownership, deployment,
-and the full acceptance workflow stay in [ADR-0001](adr/0001-independent-solid-convex-client.md).
+The first slice covers device authorization, conversation
+list/history/send/stream, the navigation contract, cached reopening, reconnect,
+and revocation. Broader retained features follow without silently becoming
+exclusions. Live voice and multi-bot groups remain deferred. Architecture, data
+ownership, deployment, and the full acceptance workflow stay in
+[ADR-0001](adr/0001-independent-solid-convex-client.md).

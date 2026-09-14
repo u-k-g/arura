@@ -1,30 +1,30 @@
 import {
-  createSignal,
   createEffect,
-  onMount,
-  onCleanup,
+  createSignal,
   For,
-  Show,
   lazy,
+  onCleanup,
+  onMount,
+  Show,
   Suspense,
 } from "solid-js";
 import {
-  workspace,
   authorized,
-  connected,
-  notice,
-  start,
-  login,
   command,
-  mutate,
-  subscribe,
+  connected,
   inform,
+  login,
+  mutate,
+  notice,
   request,
+  start,
+  subscribe,
+  workspace,
 } from "./client";
-import { Icon, IconButton, Dialog, Field, Empty, run } from "./ui";
-import { loadCache, saveCache, preferences } from "./cache";
+import { Dialog, Empty, Field, Icon, IconButton, run } from "./ui";
+import { loadCache, preferences, saveCache } from "./cache";
 import type { Conversation } from "../shared/model";
-import { shortcuts, shortcutFromEvent } from "../shared/shortcuts";
+import { shortcutFromEvent, shortcuts } from "../shared/shortcuts";
 const Chat = lazy(() => import("./Chat"));
 const Settings = lazy(() => import("./Settings"));
 const Resources = lazy(() => import("./Resources"));
@@ -54,10 +54,11 @@ export default function App() {
     setSearchError("");
     const timer = setTimeout(async () => {
       const cacheKey = `search:${query}`;
-      const cached =
-        await loadCache<{ key: string; title: string; profile: string }[]>(
-          cacheKey,
-        );
+      const cached = await loadCache<
+        { key: string; title: string; profile: string }[]
+      >(
+        cacheKey,
+      );
       if (disposed) return;
       if (cached) setMatches(cached);
       if (!online) return;
@@ -88,8 +89,9 @@ export default function App() {
         const saved: unknown = JSON.parse(
           preferences.getItem("arura.closedFolders") ?? "{}",
         );
-        if (!saved || typeof saved !== "object" || Array.isArray(saved))
+        if (!saved || typeof saved !== "object" || Array.isArray(saved)) {
           return {};
+        }
         return Object.fromEntries(
           Object.entries(saved).filter(
             ([, value]) => typeof value === "boolean",
@@ -106,8 +108,9 @@ export default function App() {
   const [archiveHasMore, setArchiveHasMore] = createSignal(false);
   const [menu, setMenu] = createSignal<any>(),
     [folderName, setFolderName] = createSignal<string | null>(null);
-  const [activeConversation, setActiveConversation] =
-    createSignal<Conversation | null>(null);
+  const [activeConversation, setActiveConversation] = createSignal<
+    Conversation | null
+  >(null);
   createEffect(() => {
     const key = view();
     setActiveConversation(null);
@@ -181,15 +184,17 @@ export default function App() {
             fresh = true;
             pages.set(index, result);
             if (result.isDone || result.continueCursor !== nextCursor) {
-              for (const [page, stop] of stops)
+              for (const [page, stop] of stops) {
                 if (page > index) {
                   stop();
                   stops.delete(page);
                   pages.delete(page);
                 }
+              }
               nextCursor = result.continueCursor;
-              if (!result.isDone && index + 1 < count)
+              if (!result.isDone && index + 1 < count) {
                 follow(index + 1, result.continueCursor);
+              }
             }
             const ordered = [...pages.entries()]
               .sort(([a], [b]) => a - b)
@@ -219,8 +224,9 @@ export default function App() {
   const navigate = (next: string) => {
     setView(next);
     preferences.setItem("arura.view", next);
-    if (next.startsWith("["))
+    if (next.startsWith("[")) {
       preferences.setItem("arura.lastConversation", next);
+    }
     setSheet(false);
     setPalette(false);
     setSearch("");
@@ -232,8 +238,8 @@ export default function App() {
     );
   const selected = () =>
     chats().find((c) => c.key === view()) ??
-    archived().find((c) => c.key === view()) ??
-    activeConversation();
+      archived().find((c) => c.key === view()) ??
+      activeConversation();
   async function newChat(profile = "default") {
     await run(async () => {
       const result = await command("create", "", { profile });
@@ -245,7 +251,8 @@ export default function App() {
       <button
         type="button"
         class="thread-select"
-        onClick={() => navigate(c.key)}
+        onClick={() =>
+          navigate(c.key)}
       >
         <Icon name={c.running ? "clock" : "chat-bubble"} />
         <span>{c.title}</span>
@@ -256,7 +263,8 @@ export default function App() {
       <IconButton
         icon="more-horiz"
         label={`Actions for ${c.title}`}
-        onClick={() => setMenu(c)}
+        onClick={() =>
+          setMenu(c)}
       />
     </div>
   );
@@ -349,10 +357,11 @@ export default function App() {
                   label={`Rename folder ${folder.name}`}
                   onClick={() => {
                     const name = prompt("Folder name", folder.name);
-                    if (name?.trim())
+                    if (name?.trim()) {
                       void run(() =>
-                        mutate("workspace.folder", { id: folder._id, name }),
+                        mutate("workspace.folder", { id: folder._id, name })
                       );
+                    }
                   }}
                 />
                 <IconButton
@@ -364,9 +373,8 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: 1,
-                      }),
-                    )
-                  }
+                      })
+                    )}
                 />
                 <IconButton
                   icon="nav-arrow-down"
@@ -378,9 +386,8 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: -1,
-                      }),
-                    )
-                  }
+                      })
+                    )}
                 />
                 <button
                   type="button"
@@ -392,13 +399,14 @@ export default function App() {
                       confirm(
                         "Remove this folder? Its conversations stay pinned.",
                       )
-                    )
+                    ) {
                       void run(() =>
                         mutate("workspace.folder", {
                           id: folder._id,
                           remove: true,
-                        }),
+                        })
                       );
+                    }
                   }}
                 >
                   ×
@@ -454,9 +462,8 @@ export default function App() {
                         mutate("workspace.move", {
                           key: c.key,
                           section: "recent",
-                        }),
-                      )
-                    }
+                        })
+                      )}
                   />
                 </div>
               )}
@@ -499,7 +506,7 @@ export default function App() {
               e.preventDefault();
               setBusy(true);
               void run(() => login(name(), code())).finally(() =>
-                setBusy(false),
+                setBusy(false)
               );
             }}
           >
@@ -550,10 +557,10 @@ export default function App() {
                 (view() === "settings"
                   ? "Settings"
                   : view().startsWith("resources:")
-                    ? view()
-                        .slice(10)
-                        .replace(/^./, (x) => x.toUpperCase())
-                    : "Your conversations")}
+                  ? view()
+                    .slice(10)
+                    .replace(/^./, (x) => x.toUpperCase())
+                  : "Your conversations")}
             </span>
             <Show when={selected()}>
               {(c) => (
@@ -574,8 +581,8 @@ export default function App() {
               {!connected()
                 ? "Offline"
                 : workspace()?.connection?.online
-                  ? "Connected"
-                  : "Connecting to Hermes"}
+                ? "Connected"
+                : "Connecting to Hermes"}
             </span>
             <IconButton
               icon="bell"
@@ -692,7 +699,10 @@ export default function App() {
               ]}
             >
               {(target) => (
-                <button type="button" onClick={() => navigate(target)}>
+                <button
+                  type="button"
+                  onClick={() => navigate(target)}
+                >
                   {target.replace("resources:", "")}
                 </button>
               )}
@@ -762,8 +772,7 @@ export default function App() {
                             direction,
                           });
                           setMenu(undefined);
-                        })
-                      }
+                        })}
                     >
                       Move {direction === -1 ? "up" : "down"}
                     </button>
@@ -788,8 +797,7 @@ export default function App() {
                           section,
                         });
                         setMenu(undefined);
-                      })
-                    }
+                      })}
                   >
                     {label}
                   </button>
@@ -807,8 +815,7 @@ export default function App() {
                           folderId: f._id,
                         });
                         setMenu(undefined);
-                      })
-                    }
+                      })}
                   >
                     Move to {f.name}
                   </button>
@@ -819,8 +826,9 @@ export default function App() {
                   type="button"
                   onClick={() => {
                     const title = prompt("Conversation name", c().title);
-                    if (title)
+                    if (title) {
                       void run(() => command("rename", c().key, { title }));
+                    }
                     setMenu(undefined);
                   }}
                 >
@@ -828,7 +836,9 @@ export default function App() {
                 </button>
               </Show>
               <a
-                href={`/api/download?type=conversation&id=${encodeURIComponent(c().sourceId)}&profile=${encodeURIComponent(c().profile)}`}
+                href={`/api/download?type=conversation&id=${
+                  encodeURIComponent(c().sourceId)
+                }&profile=${encodeURIComponent(c().profile)}`}
                 download=""
               >
                 Export conversation
@@ -837,8 +847,9 @@ export default function App() {
                 type="button"
                 class="danger"
                 onClick={() => {
-                  if (confirm("Permanently delete this conversation?"))
+                  if (confirm("Permanently delete this conversation?")) {
                     void run(() => command("delete", c().key, {}));
+                  }
                   setMenu(undefined);
                 }}
               >
