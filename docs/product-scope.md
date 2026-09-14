@@ -1,0 +1,120 @@
+# Product scope
+
+Read when building a screen, defining a capability, or reviewing feature coverage.
+This is the named scope for the independent client chosen in [ADR-0001](adr/0001-independent-solid-convex-client.md).
+The numbers below identify the recovered 126-item desktop checklist; they are
+traceability references, not new feature priorities. Unexcluded items remain in
+scope under the user's original parity request. Retained does not mean implemented
+or required in the first slice. Hermes itself stays unchanged.
+
+The original list referenced desktop [controls](https://github.com/NousResearch/hermes-agent/blob/a7254e2d4c170725a4136591e96efc5066251d2c/apps/desktop/src/i18n/en.ts),
+[settings](https://github.com/NousResearch/hermes-agent/blob/a7254e2d4c170725a4136591e96efc5066251d2c/apps/desktop/src/app/settings/constants.ts),
+and [bots](https://github.com/NousResearch/hermes-agent/blob/a7254e2d4c170725a4136591e96efc5066251d2c/apps/desktop/src/plugins/hermes-bots/i18n.ts).
+Use the [integration map](hermes-integration.md) for the newer audited interfaces.
+
+## Capability ledger
+
+| Original items | Capability                                                                                                     | Disposition                                                                                                                                     |
+| -------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1              | Conversation search and filtering                                                                              | Retain.                                                                                                                                         |
+| 2              | Rename conversations                                                                                           | Retain.                                                                                                                                         |
+| 3–5            | Pin, archive/restore, automatic archiving                                                                      | Adapt to the navigation contract below.                                                                                                         |
+| 6–7            | Delete and export conversations                                                                                | Retain. Deletion is distinct from archiving.                                                                                                    |
+| 8              | Edit and resubmit an earlier message                                                                           | Retain. Does not undo filesystem or external side effects.                                                                                      |
+| 9              | Branch from a message into a new conversation                                                                  | Retain.                                                                                                                                         |
+| 10             | Queue follow-ups; edit/delete/send-next                                                                        | Retain.                                                                                                                                         |
+| 11–12          | Steer and stop active runs                                                                                     | Retain.                                                                                                                                         |
+| 13–14          | Link conversations as context; reopen last conversation                                                        | Retain. Reopening/navigation is device-local.                                                                                                   |
+| 15             | Import Claude Code/Codex conversations                                                                         | Exclude.                                                                                                                                        |
+| 16–18          | File/image attachments, paste/drop, folder and host-file references                                            | Retain. Image input is not image generation.                                                                                                    |
+| 19             | URL attachments for agent context                                                                              | Retain. Not a website embed.                                                                                                                    |
+| 20–21          | Slash commands, skill mentions, autocomplete                                                                   | Retain.                                                                                                                                         |
+| 22             | Prompt snippets                                                                                                | Exclude.                                                                                                                                        |
+| 23             | Contextual skill, connection, and scheduling suggestions                                                       | Retain for supported workflows; no cloud upsells or excluded workflows.                                                                         |
+| 24             | Emoji reactions                                                                                                | Exclude.                                                                                                                                        |
+| 25             | Reasoning blocks / work presentation                                                                           | Replace with readable activity and final-answer presentation below. Never display or stream reasoning to the UI.                                |
+| 26             | Detailed tool inputs/outputs                                                                                   | Desktop web only; mobile retains readable activity and required interactions.                                                                   |
+| 27             | Inline website/media embeds                                                                                    | Exclude. Use ordinary links.                                                                                                                    |
+| 28             | Live voice conversations                                                                                       | Deferred.                                                                                                                                       |
+| 29             | Cross-conversation artifact library                                                                            | Retain generated-file browsing; no image-generation UI.                                                                                         |
+| 30–31          | File previews and saving/downloading                                                                           | Use browser/device handling, including normal PDF viewing in a browser tab.                                                                     |
+| 32             | Host directory browsing                                                                                        | Retain. This is the host filesystem, not arbitrary access to a phone's files.                                                                   |
+| 33–34          | Text-file viewer/editor; attach selected content/lines                                                         | Retain. Macro is the quality reference; current-view editing, no tabs/panes.                                                                    |
+| 35             | File checkpoints and rollback/rerun                                                                            | Exclude checkpoint UI. Message editing remains independent.                                                                                     |
+| 36             | Directory-based projects                                                                                       | Replace with logical conversation folders, unrelated to filesystem directories.                                                                 |
+| 37–38          | Working directories and Git discovery                                                                          | Exclude.                                                                                                                                        |
+| 39–44          | Branches/worktrees, diffs, staging/reverting, commits/pushes, PRs, coding review/shortcuts                     | Exclude.                                                                                                                                        |
+| 45–46          | Development previews and execution-environment configuration                                                   | Exclude. Does not remove runtime tools from Hermes or exclude inference API-key settings.                                                       |
+| 47–50          | Profiles, lifecycle, personality/instructions, bot roster/chats                                                | Retain a simple initial selection, creation, and configuration experience.                                                                      |
+| 51             | Bot avatars                                                                                                    | Retain basic choices/uploads; generated avatars are excluded by the global no-image-generation rule.                                            |
+| 52             | Organize/hide/pin/filter bots                                                                                  | Adapt to the same simple navigation; elaborate management is later work.                                                                        |
+| 53–55          | Multi-bot groups, group threads, participation controls                                                        | Deferred.                                                                                                                                       |
+| 56–57          | Subagent progress/transcripts and configuration                                                                | Retain, initially simple; filter reasoning from transcript display too.                                                                         |
+| 58–60          | Goals, repeated-prompt loops, heartbeats                                                                       | Retain controls, progress, cadence, conditions, and pause/resume as applicable.                                                                 |
+| 61–63          | Scheduled jobs, model/delivery/run details, automation blueprints                                              | Retain.                                                                                                                                         |
+| 64–65          | Kanban boards and Kanban orchestration                                                                         | Exclude.                                                                                                                                        |
+| 66             | Incoming webhook management                                                                                    | Retain. An intentional external trigger, not hosted sync.                                                                                       |
+| 67–70          | Memory settings/data/reset, Memory Graph, skill curator                                                        | Retain. Host-local; runtime configuration may disable these features.                                                                           |
+| 71             | Installed-skills browsing/inspection/management                                                                | Retain.                                                                                                                                         |
+| 72             | Skills Hub discovery/install catalog                                                                           | Exclude UI. Ask Hermes to manage/install skills through its own capabilities.                                                                   |
+| 73–76          | Toolsets, MCP servers, app connectors, agent plugins                                                           | Retain supported local management; outbound connections only for intentionally configured services.                                             |
+| 77             | Desktop UI plugins                                                                                             | Exclude. Agent plugins are distinct from UI extensions.                                                                                         |
+| 78             | In-app browser                                                                                                 | Exclude.                                                                                                                                        |
+| 79             | Computer-use configuration/controls                                                                            | Retain applicable host-runtime controls, not native desktop OS permission UI.                                                                   |
+| 80–82          | Browser-profile login reuse, password vault, password-manager integration                                      | Exclude.                                                                                                                                        |
+| 83             | Task-time credential/code requests                                                                             | Retain direct secret/code input as needed; no vault/unlock management UI. Never store secrets in content caches.                                |
+| 84–85          | Action approvals/policies and clarification questions                                                          | Retain, including on mobile.                                                                                                                    |
+| 86–87          | Messaging setup and messaging-user access                                                                      | Retain. Messaging-user access is separate from Arura device access.                                                                             |
+| 88–91          | Provider credentials, default/per-conversation models, reasoning effort, model-picker choices                  | Retain. Reasoning effort configuration is not permission to show reasoning text.                                                                |
+| 92–95          | Fallback/auxiliary models, Mixture of Agents, custom inference endpoints                                       | Retain. Respect the user's configured inference provider; no Hermes Cloud prerequisite.                                                         |
+| 96–101         | Local-model installs, multiple gateways, per-profile remote routing, SSH, Hermes Cloud, Nous billing           | Exclude. One configured Hermes host.                                                                                                            |
+| 102–104        | Usage, technical indicators, health/status/logs                                                                | Retain. Provider cost estimates may not equal an OpenCode Go subscription bill.                                                                 |
+| 105            | Restart/update Hermes                                                                                          | Retain separate host-configured actions suitable for Nix or conventional installs. UI invokes predefined actions, not arbitrary shell commands. |
+| 106–107        | Install/repair/uninstall and diagnostic health/security-audit actions                                          | Exclude. Status/log reading remains included.                                                                                                   |
+| 108–109        | Backups and diagnostic reports                                                                                 | Retain host creation and local download. No upstream support uploads. Include web-owned state in backup coverage.                               |
+| 110–111        | Advanced runtime settings, warm backends/idle timeouts                                                         | Retain in Settings. Preserve managed-setting boundaries.                                                                                        |
+| 112–114        | Appearance, themes, detailed visual controls                                                                   | Own UI design; not required desktop parity or a commitment to a theme marketplace.                                                              |
+| 115            | Language selection                                                                                             | Exclude initially; English only.                                                                                                                |
+| 116–117        | Command palette and customizable shortcuts                                                                     | Retain relevant actions; keyboard controls need touch equivalents. No desktop-global shortcuts.                                                 |
+| 118            | Notifications                                                                                                  | Silent in-app completion/failure/input alerts. No implicit external push service.                                                               |
+| 119–126        | Sounds, tours/splash, decorative effects, pets, radio, Quick Entry, popouts/floating composer, native settings | Exclude.                                                                                                                                        |
+
+Also excluded before the numbered list: terminal UI, internal tabs, split panes,
+layout editor, HUD mode, wake word, dictation initially, and reading replies aloud.
+The image-generation exclusion covers buttons, model setup, workflows, and avatars;
+it does not prohibit attaching, opening, or downloading existing images.
+
+## Navigation and activity contract
+
+- **Essentials:** compact, manually chosen chats/bots. No folders. Never autoarchive.
+- **Pinned:** manually pinned entries and all folders. Folder contents count as
+  pinned. Folders cannot live in any other section.
+- **Other entries:** below Pinned, no folders; autoarchive after seven days of
+  inactivity, configurable.
+- **Archived:** at the bottom; collapsed initially; newest ten archived entries,
+  “Show 10 more,” and an Unarchive action on each. Unarchive returns an entry to
+  ordinary unpinned navigation and restarts its inactivity window.
+- Organization, ordering, and archive changes sync across devices. Current view,
+  scroll, and whether Archive is expanded remain local to each browser.
+- Desktop uses a sidebar; mobile uses bottom sheets instead. Selecting an entry
+  closes the navigation sheet. Editors, documents, and substantial settings can
+  occupy the current full-screen view. No internal tabs or split panes.
+- While a turn runs, show readable activity/progress. On completion, retain its
+  final answer and collapse intermediate work beneath “Worked for __m __s.” Keep
+  previous conversation turns. [T3 Code](https://github.com/pingdotgg/t3code) is the
+  presentation reference, not a dependency. Do not transmit reasoning to the UI,
+  including through replay, restored transcripts, or subagent views.
+
+Interpretation to validate in the first slice: inactivity means messages/run
+activity rather than merely opening a conversation. Active runs and pending input
+should not autoarchive. Archiving a bot entry must not delete/disable its profile,
+stop schedules, or stop Hermes work. These are proposed edge-case rules from the
+discussion, not claims about existing Hermes behavior.
+
+## Delivery boundary
+
+The first slice covers device authorization, conversation list/history/send/stream,
+the navigation contract, cached reopening, reconnect, and revocation. Broader
+retained features follow without silently becoming exclusions. Live voice and
+multi-bot groups remain deferred. Architecture, data ownership, deployment,
+and the full acceptance workflow stay in [ADR-0001](adr/0001-independent-solid-convex-client.md).

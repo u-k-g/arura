@@ -98,56 +98,16 @@ These are version-sensitive references, not compatibility guarantees.
   Nix-managed Hermes installation and conventional installations, rather than
   hard-coding imperative installation/update commands.
 
-## Product scope that must survive the rebuild
+## Product scope
 
-### Navigation
+The recovered 126-item checklist, its dispositions, and the navigation/activity
+contract live in [Product scope](../product-scope.md). That is the single source
+for included, excluded, adapted, and deferred capabilities. The full original
+number mapping has now been recovered; no number-only decisions remain unmapped.
 
-- No internal tabs, split panes, layout editor, or multitasking workspace.
-- Desktop uses an Arc/Zen-inspired sidebar. **Essentials** contains only chats/bots,
-  never folders. **Pinned** contains explicitly pinned items and every folder.
-- Folders exist only in Pinned; their contents are considered pinned and exempt
-  from automatic archiving. They organize conversations, not filesystem directories.
-- Other items live below Pinned and autoarchive after seven days of inactivity,
-  configurable. Do not autoarchive Essentials or pinned content.
-- At the bottom, an initially collapsed Archived section shows the ten most recent
-  archived items, a “Show 10 more” action, and an unarchive action on each item.
-- Mobile uses bottom sheets for navigation and supporting panels in place of
-  sidebars. Desktop-specific inspection controls must not leak into mobile layouts.
-
-### Conversations, files, and agents
-
-- Show agent work as it happens without streaming/displaying reasoning. When the
-  agent finishes, keep its final response visible and collapse intermediate work
-  under an expandable “Worked for __m __s” summary, inspired by
-  [t3code](https://github.com/pingdotgg/t3code).
-- Raw tool inspection is desktop-web only, not mobile. Message editing remains
-  included; do not confuse it with coding workspace checkpoints or undoing agent
-  side effects.
-- Keep browsing generated files across conversations, but no image-generation UI.
-  File/text editing should aim for Macro's interaction quality. Omit working-directory
-  selection and coding project concepts from conversation organization.
-- Use browser/device handling for PDFs and similar files; opening a PDF in a normal
-  browser tab is allowed. The internal-tab exclusion is not a ban on external links.
-- Profiles, bots, and delegated work should begin simple. Multi-bot group chats and
-  threads within those groups are deferred, not prerequisites for the first version.
-- Do not bake a skills-hub/catalog/install UI into the app. Skill installation
-  should be delegated to Hermes through its own tools/skills.
-- Keep in-app notifications silent. English only initially.
-
-### Explicit exclusions and deferrals
-
-No terminal UI or SWE workspace features, layout editor, internal tabs, embedded
-browser for interacting with Hermes, HUD/native overlay mode, wake word, read-replies-
-aloud, image-generation UI, or sounds. No voice dictation initially. Native
-desktop-only facilities are not to be recreated just to claim parity. Live voice
-is deferred. Do not reintroduce excluded capabilities through a blanket “port every
-desktop feature” task.
-
-Some earlier include/exclude instructions referred only to numbers in a capability
-list whose definitions are not available in the retained conversation. This record
-captures named decisions, not an invented mapping of those numbers. It is not an
-exhaustive capability ledger; unresolved numbered items must be recovered from the
-original list before claiming the scope is fully enumerated.
+Read the [Hermes integration map](../hermes-integration.md) before implementing
+the adapter, data ownership, authentication, reconnect, or deployment. It separates
+source-verified interfaces and limits from recommendations that need live tests.
 
 ## Foundation acceptance
 
