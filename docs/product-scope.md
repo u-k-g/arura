@@ -13,8 +13,6 @@ The original list referenced desktop
 [settings](https://github.com/NousResearch/hermes-agent/blob/a7254e2d4c170725a4136591e96efc5066251d2c/apps/desktop/src/app/settings/constants.ts),
 and
 [bots](https://github.com/NousResearch/hermes-agent/blob/a7254e2d4c170725a4136591e96efc5066251d2c/apps/desktop/src/plugins/hermes-bots/i18n.ts).
-Use the [integration map](hermes-integration.md) for the newer audited
-interfaces.
 
 ## Capability ledger
 

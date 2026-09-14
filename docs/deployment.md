@@ -4,6 +4,8 @@ Arura runs three components: the Deno HTTP adapter serving the built SolidJS
 app, the self-hosted Convex backend, and your existing Hermes dashboard API.
 Hermes continues to own agent execution and its configuration. The NixOS module
 manages the first two components; it does not install or alter Hermes.
+Connect Arura to the Hermes dashboard API, not the separate messaging/cron
+gateway service. Keep that gateway's existing lifecycle under host management.
 
 ## Package and services
 
@@ -124,6 +126,19 @@ Hermes runtime also passes local configuration and lifecycle writes, real backup
 creation/download, gateway streaming, automation controls, and transcript
 filtering against a local inference stub. These checks do not change the
 production Hermes installation. A live NixOS rollout remains pending.
+
+## Upstream limitations
+
+- Hermes replay is bounded and does not provide an atomic snapshot with a replay
+  cursor. Arura recovers through snapshots; changes originating outside Arura
+  can arrive after reconciliation rather than immediately. An unacknowledged
+  prompt can have an unknown outcome, so check the conversation before resending.
+- File and configuration saves check for conflicts, but Hermes provides no
+  atomic compare-and-swap against other writers on the host.
+- In the audited Hermes revision, the Mixture of Agents preset endpoint clears
+  an existing `privacy_filter`. Arura preserves it by blocking preset rename
+  and deletion when a filter is configured. See the pinned
+  [upstream route](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/models.py).
 
 ## Handoff to nc
 

@@ -5,9 +5,7 @@ self-hosted Convex synchronization. Desktop navigation uses Essentials, pinned
 folders, recent conversations, and an archive; mobile navigation uses sheets.
 
 The retained feature specification is in [Product scope](docs/product-scope.md).
-The [completion audit](docs/completion-audit.md) records implementation evidence,
-upstream constraints, and the production checks that follow deployment. The
-packaged application and NixOS module are ready for the
+The packaged application and NixOS module are ready for the
 [nc integration step](docs/deployment.md#handoff-to-nc); production hosting and
 the existing Hermes service remain owned by that host configuration.
 

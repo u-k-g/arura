@@ -123,11 +123,6 @@ contract live in [Product scope](../product-scope.md). That is the single source
 for included, excluded, adapted, and deferred capabilities. The full original
 number mapping has now been recovered; no number-only decisions remain unmapped.
 
-Read the [Hermes integration map](../hermes-integration.md) before implementing
-the adapter, data ownership, authentication, reconnect, or deployment. It
-separates source-verified interfaces and limits from recommendations that need
-live tests.
-
 ## Foundation acceptance
 
 Before broad feature expansion, prove one complete workflow on a phone and
