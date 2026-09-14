@@ -4,11 +4,12 @@ A SolidJS web client for a self-hosted Hermes agent, with a Deno adapter and
 self-hosted Convex synchronization. Desktop navigation uses Essentials, pinned
 folders, recent conversations, and an archive; mobile navigation uses sheets.
 
-The application is under active implementation. The retained feature
-specification is in [Product scope](docs/product-scope.md); that document is a
-requirement list, not a declaration that every feature is finished. The
-[completion audit](docs/completion-audit.md) records implementation evidence and
-the remaining acceptance work.
+The retained feature specification is in [Product scope](docs/product-scope.md).
+The [completion audit](docs/completion-audit.md) records implementation evidence,
+upstream constraints, and the production checks that follow deployment. The
+packaged application and NixOS module are ready for the
+[nc integration step](docs/deployment.md#handoff-to-nc); production hosting and
+the existing Hermes service remain owned by that host configuration.
 
 ## Develop
 

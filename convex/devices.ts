@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { adapter, device } from "./access";
+import { mutation, query } from "./_generated/server.ts";
+import { adapter, device } from "./access.ts";
 export const list = query({
   args: {},
   handler: async (ctx) => {

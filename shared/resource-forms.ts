@@ -107,3 +107,40 @@ export function mcpBody(values: RecordValue): RecordValue {
     ...(auth === "header" ? { bearer_token: bearer } : {}),
   };
 }
+// Hermes deep-merges config writes. Send only changed leaves, so untouched
+// defaults, masked credentials and another device's edits are preserved.
+export function configPatch(
+  values: Record<string, any>,
+  original: Record<string, any>,
+  current: Record<string, any>,
+  prefix = "",
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(values)) {
+    if (JSON.stringify(value) === JSON.stringify(original[key])) continue;
+    const path = prefix ? `${prefix}.${key}` : key;
+    if (
+      value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      original[key] &&
+      typeof original[key] === "object" &&
+      !Array.isArray(original[key])
+    ) {
+      const nested = configPatch(
+        value,
+        original[key],
+        current[key] ?? {},
+        path,
+      );
+      if (Object.keys(nested).length) patch[key] = nested;
+    } else {
+      if (JSON.stringify(current[key]) !== JSON.stringify(original[key]))
+        throw new Error(
+          `${path} changed on the host. Reopen settings before saving; your edits have been kept.`,
+        );
+      patch[key] = value;
+    }
+  }
+  return patch;
+}

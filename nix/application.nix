@@ -119,6 +119,16 @@ stdenvNoCC.mkDerivation {
     makeWrapper ${lib.getExe deno} "$out/bin/arura" \
       --set DENO_NO_UPDATE_CHECK 1 \
       --add-flags "run --cached-only --frozen --no-check --node-modules-dir=manual --allow-env --allow-net --allow-read --allow-write --allow-run $out/share/arura/server/index.ts"
+    mkdir -p "$out/share/arura-functions/server" "$out/share/arura-functions/scripts"
+    cp -R convex shared "$out/share/arura-functions/"
+    cp package.json deno.json deno.lock "$out/share/arura-functions/"
+    cp server/identity.ts "$out/share/arura-functions/server/"
+    cp scripts/deploy-functions.ts "$out/share/arura-functions/scripts/"
+    ln -s ${buildDependencies}/node_modules "$out/share/arura-functions/node_modules"
+    makeWrapper ${lib.getExe deno} "$out/bin/arura-deploy-functions" \
+      --set DENO_NO_UPDATE_CHECK 1 \
+      --chdir "$out/share/arura-functions" \
+      --add-flags "run --cached-only --frozen --no-check --node-modules-dir=manual -A scripts/deploy-functions.ts"
   '';
   meta = {
     mainProgram = "arura";

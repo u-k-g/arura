@@ -1,6 +1,6 @@
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
-import { resource } from "./client";
-import { loadCache, saveCache } from "./cache";
+import { resource } from "./client.ts";
+import { loadCache, saveCache } from "./cache.ts";
 
 export default function ProfileAvatar(props: {
   name: string;

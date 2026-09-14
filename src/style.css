@@ -1159,7 +1159,7 @@ dialog::backdrop {
     gap: 5px;
   }
 }
-@media (max-width: 720px) {
+@media (max-width: 720px), (pointer: coarse) and (hover: none) {
   .app-shell {
     display: block;
   }
@@ -1540,4 +1540,14 @@ progress {
   display: grid;
   place-items: center;
   background: var(--accent-soft);
+}
+
+.context-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}
+.context-suggestions button {
+  font-size: 0.85rem;
 }

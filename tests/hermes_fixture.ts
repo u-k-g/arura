@@ -9,14 +9,41 @@ export function hermesFixture(
   } = {},
 ) {
   const sockets = new Set<WebSocket>();
+  const stoppedSubagents = new Set<string>();
   const subscriptions = new Map<WebSocket, Set<string>>();
   let epoch = "fixture-epoch";
+  let backup = { pid: 0, running: false, exit_code: 0, archive: "" };
+  const webhooks = new Map<
+    string,
+    {
+      name: string;
+      prompt: string;
+      enabled: boolean;
+      url: string;
+      secret_set: boolean;
+    }
+  >();
   const files = new Map([
     ["/fixture/notes.md", "# Notes\n\nOriginal host content.\n"],
     ["/fixture/large.txt", "A partial preview"],
   ]);
-  const jobs: { id: string; name: string; prompt: string; schedule: string }[] =
-    [];
+  const uploadedBytes = new Map<string, Uint8Array<ArrayBuffer>>();
+  function storeUpload(path: string, dataUrl: string) {
+    const bytes = Uint8Array.from(atob(dataUrl.split(",")[1]), (character) =>
+      character.charCodeAt(0),
+    );
+    uploadedBytes.set(path, bytes);
+    files.set(path, new TextDecoder().decode(bytes));
+  }
+  const jobs: {
+    id: string;
+    name: string;
+    prompt: string;
+    schedule: string;
+    enabled?: boolean;
+    state?: string;
+    last_run_at?: string;
+  }[] = [];
   const sessions = new Map<
     string,
     {
@@ -26,8 +53,12 @@ export function hermesFixture(
       last_active: number;
       messages: Row[];
       hidden?: boolean;
+      profile: string;
     }
   >();
+  const profiles = new Map([
+    ["default", { name: "default", description: "Fixture profile", soul: "" }],
+  ]);
   let avatarData = "";
   let botRevision = 0;
   let botMetadata: Record<string, unknown> = {};
@@ -75,13 +106,15 @@ export function hermesFixture(
   const create = (id: string = crypto.randomUUID()) => {
     const s = {
       id,
-      title: id === "fixture-chat"
-        ? "Fixture conversation"
-        : `Test conversation ${id.slice(0, 8)}`,
+      title:
+        id === "fixture-chat"
+          ? "Fixture conversation"
+          : `Test conversation ${id.slice(0, 8)}`,
       started_at: Date.now() / 1000,
       last_active: Date.now() / 1000,
       messages: [] as Row[],
       hidden: false,
+      profile: "default",
     };
     sessions.set(id, s);
     return s;
@@ -137,10 +170,29 @@ export function hermesFixture(
       event(`${kind}.request`, sid, { request_id, ...payload });
     });
   }
+  const automations = new Map<string, Record<string, any>>();
+  const controlledRuns = new Map<
+    string,
+    { finish: () => void; steering: string[] }
+  >();
   async function answer(sid: string, text: string) {
     const s = sessions.get(sid)!;
     s.messages.push({ id: rowId++, role: "user", content: text });
     event("message.start", sid, {});
+    if (text === "ARURA_TEST_CONTROLS") {
+      const steering: string[] = [];
+      await new Promise<void>((finish) => {
+        controlledRuns.set(sid, { finish, steering });
+        event("message.delta", sid, { text: "Waiting for instructions." });
+      });
+      controlledRuns.delete(sid);
+      const reply = `Stopped. Instructions received: ${steering.join("; ")}`;
+      s.messages.push({ id: rowId++, role: "assistant", content: reply });
+      s.last_active = Date.now() / 1000;
+      event("message.complete", sid, { text: reply, status: "interrupted" });
+      event("sessions.changed", "", {});
+      return;
+    }
     if (text === "ARURA_TEST_INTERACTIONS") {
       await interaction(sid, "approval", {
         description: "Allow reading the fixture notes?",
@@ -261,13 +313,16 @@ export function hermesFixture(
           if (method === "session.create") {
             const s = create();
             s.hidden = Boolean(params.hidden);
+            s.profile = params.profile ?? "default";
             subscriptions.get(socket)!.add(s.id);
             result = { session_id: s.id, stored_session_id: s.id };
           } else if (method === "session.list") {
             result = {
               sessions: [...sessions.values()]
                 .filter(
-                  (session) => !params.title || session.title === params.title,
+                  (session) =>
+                    session.profile === (params.profile ?? "default") &&
+                    (!params.title || session.title === params.title),
                 )
                 .map((session) => ({ ...session, resolved_id: session.id })),
             };
@@ -276,22 +331,27 @@ export function hermesFixture(
             if (session) session.title = params.title;
             event("sessions.changed", "", {});
           } else if (method === "profiles.list") {
-            const canonical = [...sessions.values()].find(
-              (session) => session.title === "Bot Chat",
-            );
             result = {
-              profiles: [
-                {
-                  name: "default",
+              profiles: [...profiles.values()].map((profile) => {
+                const canonical = [...sessions.values()].find(
+                  (session) =>
+                    session.profile === profile.name &&
+                    session.title === "Bot Chat",
+                );
+                return {
+                  ...profile,
                   display_name: "",
-                  ui_meta: { "hermes-bots": botMetadata },
+                  ui_meta: {
+                    "hermes-bots":
+                      profile.name === "default" ? botMetadata : {},
+                  },
                   ui_meta_revisions: { "hermes-bots": botRevision },
-                  has_avatar: Boolean(avatarData),
+                  has_avatar: profile.name === "default" && Boolean(avatarData),
                   canonical_session: canonical
                     ? { ...canonical, resolved_id: canonical.id }
                     : null,
-                },
-              ],
+                };
+              }),
             };
           } else if (method === "profiles.configure") {
             if (
@@ -325,6 +385,17 @@ export function hermesFixture(
               running: false,
               ...hooks.resume?.(params.session_id),
             };
+          } else if (method === "session.steer") {
+            const run = controlledRuns.get(params.session_id);
+            const accepted = run && params.text !== "Reject this correction";
+            if (accepted) run.steering.push(params.text);
+            result = {
+              status: accepted ? "queued" : "rejected",
+              text: params.text,
+            };
+          } else if (method === "session.interrupt") {
+            controlledRuns.get(params.session_id)?.finish();
+            result = { status: "interrupted" };
           } else if (method === "prompt.submit") {
             if (params.truncate_before_row_id !== undefined) {
               const session = sessions.get(params.session_id)!;
@@ -426,8 +497,64 @@ export function hermesFixture(
               return;
             }
             result = { ok: true };
+          } else if (
+            method === "command.dispatch" &&
+            ["goal", "loop", "heartbeat"].includes(params.name)
+          ) {
+            const state = automations.get(params.session_id) ?? {};
+            const lines = String(params.arg).split("\n");
+            if (params.name === "goal") {
+              state.goal = {
+                title: lines[0],
+                status: "active",
+                turns_used: 0,
+                max_turns: 40,
+                subgoals: [],
+                contract: Object.fromEntries(
+                  lines.slice(1).map((line) => {
+                    const index = line.indexOf(":");
+                    return [line.slice(0, index), line.slice(index + 1).trim()];
+                  }),
+                ),
+              };
+            } else {
+              const match = String(params.arg).match(
+                /^(?:every )?(\d+(?:\.\d+)?)([smhd]) (.+)$/,
+              );
+              if (!match) throw new Error("Invalid automation interval");
+              state[params.name] = {
+                prompt: match[3],
+                status: "active",
+                interval_seconds:
+                  Number(match[1]) *
+                  ({ s: 1, m: 60, h: 3600, d: 86400 }[match[2]] ?? 1),
+                ...(params.name === "loop"
+                  ? { ticks_fired: 0 }
+                  : { fire_count: 0 }),
+              };
+            }
+            automations.set(params.session_id, state);
+            event("session.control.update", params.session_id, {
+              control: state,
+            });
+            result = { type: "command", output: "Automation configured" };
+          } else if (method === "session.control") {
+            const state = automations.get(params.session_id) ?? {};
+            const [kind, action] = params.action.split(".");
+            if (kind === "subgoal" && state.goal) {
+              if (action === "add") state.goal.subgoals.push(params.args.text);
+              if (action === "remove")
+                state.goal.subgoals.splice(params.args.index - 1, 1);
+            } else if (action === "clear" || action === "stop")
+              delete state[kind];
+            else if (state[kind])
+              state[kind].status = action === "pause" ? "paused" : "active";
+            event("session.control.update", params.session_id, {
+              control: state,
+            });
+            result = { control: state };
           } else if (method === "session.control.read") {
-            result = { control: {} };
+            result = { control: automations.get(params.session_id) ?? {} };
           } else if (method === "session.context_breakdown") {
             result = {
               context_used: 2000,
@@ -437,7 +564,32 @@ export function hermesFixture(
               categories: [],
             };
           } else if (method === "subagent.list") {
-            result = { subagents: [] };
+            result = {
+              subagents: stoppedSubagents.has(params.session_id)
+                ? []
+                : [
+                    {
+                      subagent_id: "garden-research",
+                      goal: "Compare native plants",
+                      model: "fixture-model",
+                      status: "running",
+                      tool_count: 2,
+                      last_tool: "web_search",
+                    },
+                  ],
+            };
+          } else if (method === "subagent.tail") {
+            result = {
+              available: !stoppedSubagents.has(params.session_id),
+              text: "12:00:00 thinking | NEVER_EXPOSE_DELEGATED_REASONING\n12:00:01 tool | web_search(secret-query)\n12:00:02 assistant | Comparing native plant options\n12:00:03 final | Prefer drought-tolerant native plants",
+              truncated: false,
+            };
+          } else if (method === "subagent.interrupt") {
+            result = {
+              found: !stoppedSubagents.has(params.session_id),
+              subagent_id: params.subagent_id,
+            };
+            stoppedSubagents.add(params.session_id);
           } else if (method === "complete.slash") {
             result = {
               items: [
@@ -459,29 +611,51 @@ export function hermesFixture(
           sessions: [...sessions.values()]
             .filter((session) => !session.hidden)
             .slice(0, 1),
-          profile_totals: { default: sessions.size },
+          profile_totals: Object.fromEntries(
+            [...profiles.keys()].map((name) => [
+              name,
+              [...sessions.values()].filter(
+                (session) => session.profile === name,
+              ).length,
+            ]),
+          ),
           errors: [],
         });
       }
       if (path === "/api/sessions") {
         return json({
-          sessions: [...sessions.values()].slice(
-            Number(url.searchParams.get("offset") ?? 0),
-            Number(url.searchParams.get("offset") ?? 0) + 100,
-          ),
-          total: sessions.size,
+          sessions: [...sessions.values()]
+            .filter(
+              (session) =>
+                session.profile ===
+                (url.searchParams.get("profile") ?? "default"),
+            )
+            .slice(
+              Number(url.searchParams.get("offset") ?? 0),
+              Number(url.searchParams.get("offset") ?? 0) + 100,
+            ),
+          total: [...sessions.values()].filter(
+            (session) =>
+              session.profile ===
+              (url.searchParams.get("profile") ?? "default"),
+          ).length,
         });
       }
       if (path === "/api/sessions/search") {
         const query = url.searchParams.get("q")?.toLowerCase() ?? "";
         return json({
           results: [...sessions.values()]
+            .filter(
+              (session) =>
+                session.profile ===
+                (url.searchParams.get("profile") ?? "default"),
+            )
             .filter((session) =>
               session.messages.some((message: any) =>
                 String(message.content ?? "")
                   .toLowerCase()
-                  .includes(query)
-              )
+                  .includes(query),
+              ),
             )
             .map((session) => ({
               session_id: session.id,
@@ -512,8 +686,83 @@ export function hermesFixture(
           return json({ ok: true });
         }
       }
+      if (path === "/api/webhooks" && request.method === "GET")
+        return Response.json({
+          enabled: true,
+          subscriptions: [...webhooks.values()],
+        });
+      if (path === "/api/webhooks" && request.method === "POST") {
+        const body = await request.json();
+        const row = {
+          name: body.name,
+          prompt: body.prompt,
+          enabled: true,
+          url: `${url.origin}/webhooks/${body.name}`,
+          secret_set: true,
+        };
+        webhooks.set(body.name, row);
+        return Response.json({
+          ...row,
+          secret: "ONE_TIME_WEBHOOK_SECRET_DO_NOT_CACHE",
+        });
+      }
+      if (path.startsWith("/api/webhooks/") && request.method !== "GET") {
+        const name = decodeURIComponent(path.split("/")[3]);
+        if (request.method === "DELETE") webhooks.delete(name);
+        else {
+          const row = webhooks.get(name);
+          if (row) row.enabled = (await request.json()).enabled;
+        }
+        return Response.json({ ok: true });
+      }
+      if (path === "/api/ops/backup" && request.method === "POST") {
+        backup = {
+          pid: backup.pid + 1,
+          running: true,
+          exit_code: 0,
+          archive: `/fixture/backups/${crypto.randomUUID()}.zip`,
+        };
+        const current = backup;
+        setTimeout(() => {
+          current.running = false;
+        }, 1000);
+        return Response.json({
+          ok: true,
+          name: "backup",
+          pid: current.pid,
+          archive: current.archive,
+        });
+      }
+      if (path === "/api/actions/backup/status") return Response.json(backup);
+      if (path === "/api/ops/backup/download") {
+        if (
+          url.searchParams.get("archive") !== backup.archive ||
+          backup.running
+        )
+          return new Response("Missing or unfinished archive", { status: 422 });
+        return new Response("PK-fixture-archive", {
+          headers: {
+            "content-type": "application/zip",
+            "content-disposition": 'attachment; filename="hermes-backup.zip"',
+          },
+        });
+      }
       if (path === "/api/status" || path === "/api/health") {
         return json({ status: "healthy" });
+      }
+      if (path === "/api/files") return json({ path: "/fixture" });
+      if (path === "/api/files/upload" && request.method === "POST") {
+        const body = await request.json();
+        if (files.has(body.path) && !body.overwrite)
+          return new Response("Already exists", { status: 409 });
+        storeUpload(body.path, body.data_url);
+        return json({ path: body.path });
+      }
+      if (path === "/api/chat/image-upload" && request.method === "POST") {
+        const body = await request.json();
+        const path = `/fixture/${crypto.randomUUID()}-${body.filename}`;
+        storeUpload(path, body.data_url);
+        return json({ path });
       }
       if (path === "/api/fs/list") {
         return json({
@@ -534,15 +783,82 @@ export function hermesFixture(
       if (path === "/api/fs/write-text" && request.method === "POST") {
         const { path, content } = await request.json();
         files.set(path, content);
+        uploadedBytes.delete(path);
         return json({ ok: true });
       }
       if (path === "/api/fs/download") {
         return new Response(
-          files.get(url.searchParams.get("path") ?? "") ?? "",
+          uploadedBytes.get(url.searchParams.get("path") ?? "") ??
+            files.get(url.searchParams.get("path") ?? "") ??
+            "",
           { headers: { "content-type": "text/plain" } },
         );
       }
-      if (path === "/api/cron/jobs") return json({ jobs });
+      if (path === "/api/skills")
+        return json([
+          {
+            name: "gardening",
+            description: "Plan flower gardens and perennial planting",
+            enabled: true,
+          },
+        ]);
+      if (path === "/api/cron/jobs") {
+        if (request.method === "POST") {
+          const body = await request.json();
+          if (!body.prompt || !body.schedule)
+            return new Response("Instructions and schedule required", {
+              status: 422,
+            });
+          const job = {
+            ...body,
+            id: crypto.randomUUID(),
+            enabled: true,
+            state: "scheduled",
+          };
+          jobs.push(job);
+          return json(job);
+        }
+        return json(jobs);
+      }
+      const jobPath = path.match(
+        /^\/api\/cron\/jobs\/([^/]+)(?:\/(pause|resume|trigger|runs))?$/,
+      );
+      if (jobPath) {
+        const job = jobs.find((job) => job.id === jobPath[1]);
+        if (!job) return new Response("Job missing", { status: 404 });
+        if (jobPath[2] === "runs")
+          return json({
+            runs: job.last_run_at
+              ? [
+                  {
+                    id: `cron_${job.id}_1`,
+                    title: job.name,
+                    started_at: Date.now() / 1000,
+                    profile: "default",
+                  },
+                ]
+              : [],
+          });
+        if (request.method === "DELETE") {
+          jobs.splice(jobs.indexOf(job), 1);
+          return json({ ok: true });
+        }
+        if (request.method === "PUT")
+          Object.assign(job, (await request.json()).updates);
+        if (jobPath[2] === "pause") {
+          job.enabled = false;
+          job.state = "paused";
+        }
+        if (jobPath[2] === "resume") {
+          job.enabled = true;
+          job.state = "scheduled";
+        }
+        if (jobPath[2] === "trigger") {
+          job.enabled = true;
+          job.last_run_at = new Date().toISOString();
+        }
+        return json(job);
+      }
       if (path === "/api/cron/blueprints") {
         return json({
           blueprints: [
@@ -596,9 +912,55 @@ export function hermesFixture(
         return json(job);
       }
       if (path === "/api/profiles") {
-        return json({
-          profiles: [{ name: "default", description: "Fixture profile" }],
-        });
+        if (request.method === "POST") {
+          const body = await request.json();
+          if (profiles.has(body.name))
+            return new Response("Profile exists", { status: 409 });
+          const source = profiles.get(body.clone_from);
+          if (body.clone_from && !source)
+            return new Response("Source profile missing", { status: 404 });
+          profiles.set(body.name, {
+            name: body.name,
+            description: source?.description ?? "",
+            soul: source?.soul ?? "",
+          });
+          event("profiles.changed", "", {});
+          return json({ ok: true, name: body.name });
+        }
+        return json({ profiles: [...profiles.values()] });
+      }
+      const profilePath = path.match(/^\/api\/profiles\/([^/]+)(\/soul)?$/);
+      if (profilePath) {
+        const name = decodeURIComponent(profilePath[1]),
+          profile = profiles.get(name);
+        if (!profile) return new Response("Profile missing", { status: 404 });
+        if (profilePath[2]) {
+          if (request.method === "PUT")
+            profile.soul = (await request.json()).content;
+          return json({ content: profile.soul });
+        }
+        if (request.method === "PATCH") {
+          const to = (await request.json()).new_name.trim().toLowerCase();
+          if (name === "default")
+            return json({ ok: true, name: "default", display_name: to });
+          if (profiles.has(to))
+            return new Response("Profile exists", { status: 409 });
+          profiles.delete(name);
+          profiles.set(to, { ...profile, name: to });
+          for (const session of sessions.values())
+            if (session.profile === name) session.profile = to;
+          event("profiles.changed", "", {});
+          return json({ ok: true, name: to });
+        }
+        if (request.method === "DELETE") {
+          if (name === "default")
+            return new Response("Cannot delete default", { status: 400 });
+          profiles.delete(name);
+          for (const session of sessions.values())
+            if (session.profile === name) sessions.delete(session.id);
+          event("profiles.changed", "", {});
+          return json({ ok: true });
+        }
       }
       if (path === "/api/mcp/servers") {
         return json({

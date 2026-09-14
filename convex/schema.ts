@@ -2,6 +2,17 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  backups: defineTable({
+    status: v.union(
+      v.literal("starting"),
+      v.literal("running"),
+      v.literal("complete"),
+      v.literal("error"),
+    ),
+    archive: v.optional(v.string()),
+    pid: v.optional(v.number()),
+    error: v.optional(v.string()),
+  }),
   devices: defineTable({
     id: v.string(),
     secretHash: v.string(),
@@ -18,6 +29,13 @@ export default defineSchema({
     createdBy: v.string(),
     used: v.boolean(),
   }).index("hash", ["hash"]),
+  profileRenames: defineTable({ from: v.string(), to: v.string() }).index(
+    "from",
+    ["from"],
+  ),
+  conversationAliases: defineTable({ key: v.string(), target: v.string() })
+    .index("key", ["key"])
+    .index("target", ["target"]),
   conversations: defineTable({
     key: v.string(),
     profile: v.string(),
@@ -41,6 +59,8 @@ export default defineSchema({
   })
     .index("key", ["key"])
     .index("section", ["section", "rank"])
+    .index("profile", ["profile"])
+    .index("activity", ["section", "activityAt"])
     .index("archive", ["section", "archivedAt"]),
   folders: defineTable({ name: v.string(), rank: v.number() }),
   artifacts: defineTable({
@@ -99,6 +119,7 @@ export default defineSchema({
   })
     .index("id", ["id"])
     .index("status", ["status", "createdAt"])
+    .index("pending", ["conversation", "status", "createdAt"])
     .index("conversation", ["conversation", "createdAt"]),
   settings: defineTable({ key: v.string(), value: v.any() }).index("key", [
     "key",
@@ -111,6 +132,7 @@ export default defineSchema({
     read: v.boolean(),
   })
     .index("created", ["createdAt"])
+    .index("conversation", ["conversation"])
     .index("id", ["id"]),
   connection: defineTable({
     key: v.string(),

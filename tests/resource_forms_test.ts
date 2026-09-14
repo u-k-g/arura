@@ -1,11 +1,39 @@
 import { deepStrictEqual, throws } from "node:assert/strict";
 import {
   endpointBody,
+  configPatch,
   jobPatch,
   mcpBody,
   pairingRows,
   platformBody,
 } from "../shared/resource-forms.ts";
+
+Deno.test("advanced config writes preserve untouched credentials and changes from another device", () => {
+  const original = {
+    compression: { threshold: 0.5, enabled: true },
+    model: { api_key: "********" },
+    approvals: { mode: "ask" },
+  };
+  const edited = structuredClone(original);
+  edited.compression.threshold = 0.6;
+  const current = {
+    ...original,
+    model: { api_key: "updated-secret" },
+    approvals: { mode: "auto" },
+  };
+  deepStrictEqual(configPatch(edited, original, current), {
+    compression: { threshold: 0.6 },
+  });
+  throws(
+    () =>
+      configPatch(edited, original, {
+        ...current,
+        compression: { ...current.compression, threshold: 0.7 },
+      }),
+    /compression.threshold changed/,
+  );
+  deepStrictEqual(configPatch(original, original, current), {});
+});
 
 Deno.test("editing a schedule title preserves scheduling lifecycle and credentials", () => {
   const original = {

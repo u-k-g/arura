@@ -1,6 +1,13 @@
-import { createSignal, For, onCleanup, onMount, Show } from "solid-js";
-import { command, connected, request } from "./client";
-import { Dialog, Field, run } from "./ui";
+import {
+  createEffect,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
+import { command, connected, request, revision } from "./client.ts";
+import { Dialog, Field, run } from "./ui.tsx";
 
 export type ControlView = "automation" | "context" | "subagents";
 type Automation = {
@@ -10,6 +17,18 @@ type Automation = {
   turns_used?: number;
   max_turns?: number;
   fire_count?: number;
+  ticks_fired?: number;
+  next_due_at?: number;
+  times?: number;
+  until?: string;
+  paused_reason?: string;
+  contract?: Record<string, string>;
+  wait_barrier?: {
+    type: string;
+    until_at?: number;
+    target?: string | number;
+    reason?: string;
+  };
   interval_seconds?: number;
   next_fire_at?: number;
   subgoals?: Array<string | { text?: string; status?: string }>;
@@ -40,6 +59,7 @@ export default function RunControls(props: {
   const [busy, setBusy] = createSignal(false);
   const [kind, setKind] = createSignal("goal");
   const [prompt, setPrompt] = createSignal("");
+  const [verification, setVerification] = createSignal("");
   const [interval, setIntervalValue] = createSignal("30m");
   let disposed = false,
     refreshing = false;
@@ -73,8 +93,11 @@ export default function RunControls(props: {
       refreshing = false;
     }
   }
-  onMount(() => {
+  createEffect(() => {
+    revision();
     void refresh();
+  });
+  onMount(() => {
     const timer = setInterval(() => void refresh(), 2000);
     onCleanup(() => {
       disposed = true;
@@ -100,13 +123,15 @@ export default function RunControls(props: {
     }
     setBusy(true);
     try {
-      const text = kind() === "goal"
-        ? `/goal ${prompt().trim()}`
-        : kind() === "loop"
-        ? `/loop ${interval()} ${prompt().trim()}`
-        : `/heartbeat every ${interval()} ${prompt().trim()}`;
+      const text =
+        kind() === "goal"
+          ? `/goal ${prompt().trim()}${verification().trim() ? `\nverification: ${verification().trim()}` : ""}`
+          : kind() === "loop"
+            ? `/loop ${interval()} ${prompt().trim()}`
+            : `/heartbeat every ${interval()} ${prompt().trim()}`;
       await command("send", props.conversation, { text });
       setPrompt("");
+      setVerification("");
       await refresh();
     } finally {
       setBusy(false);
@@ -114,11 +139,13 @@ export default function RunControls(props: {
   }
   return (
     <Dialog
-      title={props.view === "automation"
-        ? "Conversation automations"
-        : props.view === "context"
-        ? "Context usage"
-        : "Delegated work"}
+      title={
+        props.view === "automation"
+          ? "Conversation automations"
+          : props.view === "context"
+            ? "Context usage"
+            : "Delegated work"
+      }
       close={props.close}
     >
       <Show when={error()}>
@@ -138,8 +165,8 @@ export default function RunControls(props: {
                       {name === "goal"
                         ? "Goal"
                         : name === "loop"
-                        ? "Repeated prompt"
-                        : "Heartbeat"}
+                          ? "Repeated prompt"
+                          : "Heartbeat"}
                     </h3>
                     <span>{value().status}</span>
                   </div>
@@ -157,8 +184,43 @@ export default function RunControls(props: {
                   <Show when={value().interval_seconds}>
                     <p>
                       Every {value().interval_seconds} seconds ·{" "}
-                      {value().fire_count ?? 0} runs
+                      {value().ticks_fired ?? value().fire_count ?? 0} runs
                     </p>
+                  </Show>
+                  <Show when={value().next_due_at}>
+                    <p>
+                      Next run:{" "}
+                      {new Date(value().next_due_at! * 1000).toLocaleString()}
+                    </p>
+                  </Show>
+                  <Show when={value().paused_reason}>
+                    <p>{value().paused_reason}</p>
+                  </Show>
+                  <For
+                    each={Object.entries(value().contract ?? {}).filter(
+                      ([, text]) => text,
+                    )}
+                  >
+                    {([label, text]) => (
+                      <p>
+                        <strong>{label.replaceAll("_", " ")}: </strong>
+                        {text}
+                      </p>
+                    )}
+                  </For>
+                  <Show when={value().wait_barrier}>
+                    {(wait) => (
+                      <p role="status">
+                        Waiting{" "}
+                        {wait().type === "until"
+                          ? `until ${new Date(wait().until_at! * 1000).toLocaleString()}`
+                          : `for ${wait().type} ${wait().target}`}{" "}
+                        {wait().reason}
+                      </p>
+                    )}
+                  </Show>
+                  <Show when={value().until}>
+                    <p>Stop when: {value().until}</p>
                   </Show>
                   <For each={value().subgoals ?? []}>
                     {(subgoal, index) => (
@@ -171,8 +233,9 @@ export default function RunControls(props: {
                           disabled={busy()}
                           onClick={() =>
                             void run(() =>
-                              action("subgoal.remove", { index: index() + 1 })
-                            )}
+                              action("subgoal.remove", { index: index() + 1 }),
+                            )
+                          }
                         >
                           Remove
                         </button>
@@ -192,7 +255,8 @@ export default function RunControls(props: {
                           type="button"
                           disabled={busy() || !connected()}
                           onClick={() =>
-                            void run(() => action(`${name}.${verb}`))}
+                            void run(() => action(`${name}.${verb}`))
+                          }
                         >
                           {verb[0].toUpperCase() + verb.slice(1)}
                         </button>
@@ -203,7 +267,7 @@ export default function RunControls(props: {
                         type="button"
                         disabled={busy()}
                         onClick={() => {
-                          const text = window.prompt("Add a goal step");
+                          const text = globalThis.prompt("Add a goal step");
                           if (text?.trim()) {
                             void run(() => action("subgoal.add", { text }));
                           }
@@ -234,6 +298,7 @@ export default function RunControls(props: {
           <h3>Start an automation</h3>
           <Field label="Automation">
             <select
+              aria-label="Automation"
               value={kind()}
               onChange={(e) => setKind(e.currentTarget.value)}
             >
@@ -249,6 +314,17 @@ export default function RunControls(props: {
               onInput={(e) => setPrompt(e.currentTarget.value)}
             />
           </Field>
+          <Show when={kind() === "goal"}>
+            <Field
+              label="How to verify completion"
+              hint="Optional criteria Hermes should check before finishing."
+            >
+              <textarea
+                value={verification()}
+                onInput={(event) => setVerification(event.currentTarget.value)}
+              />
+            </Field>
+          </Show>
           <Show when={kind() !== "goal"}>
             <Field label="Interval" hint="For example, 30m or 2h">
               <input
@@ -304,8 +380,8 @@ export default function RunControls(props: {
               <section class="automation-card">
                 <h3>{agent.goal || "Delegated task"}</h3>
                 <p>
-                  {agent.status} · {agent.model} · {agent.tool_count ?? 0}{" "}
-                  tool calls
+                  {agent.status} · {agent.model} · {agent.tool_count ?? 0} tool
+                  calls
                 </p>
                 <Show when={agent.last_tool}>
                   <p>Latest: {agent.last_tool}</p>
@@ -326,12 +402,21 @@ export default function RunControls(props: {
                     disabled={busy()}
                     onClick={() =>
                       void run(async () => {
-                        await command("rpc", props.conversation, {
-                          method: "subagent.interrupt",
-                          params: { subagent_id: agent.subagent_id },
-                        });
+                        const result = await command(
+                          "rpc",
+                          props.conversation,
+                          {
+                            method: "subagent.interrupt",
+                            params: { subagent_id: agent.subagent_id },
+                          },
+                        );
+                        if (!result.found)
+                          throw new Error(
+                            "This delegated task has already ended or is no longer available.",
+                          );
                         await refresh();
-                      })}
+                      })
+                    }
                   >
                     Stop task
                   </button>

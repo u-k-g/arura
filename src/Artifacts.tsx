@@ -1,7 +1,7 @@
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
-import { connected, subscribe } from "./client";
-import { loadCache, saveCache } from "./cache";
-import { Empty, Icon } from "./ui";
+import { connected, subscribe } from "./client.ts";
+import { loadCache, saveCache } from "./cache.ts";
+import { Empty, Icon } from "./ui.tsx";
 
 export default function Artifacts(props: { navigate: (view: string) => void }) {
   const [search, setSearch] = createSignal("");

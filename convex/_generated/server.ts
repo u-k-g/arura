@@ -11,7 +11,7 @@ import type {
   MutationBuilder,
   QueryBuilder,
 } from "convex/server";
-import schema from "../schema";
+import schema from "../schema.ts";
 export type DataModel = DataModelFromSchemaDefinition<typeof schema>;
 export type QueryCtx = GenericQueryCtx<DataModel>;
 export type MutationCtx = GenericMutationCtx<DataModel>;

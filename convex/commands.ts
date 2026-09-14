@@ -1,5 +1,6 @@
-import { mutation, query } from "./_generated/server";
-import { adapter, device } from "./access";
+import { mutation, query } from "./_generated/server.ts";
+import { adapter, device } from "./access.ts";
+import { resolveKey } from "./conversationKeys.ts";
 import { v } from "convex/values";
 const kinds = [
   "send",
@@ -30,6 +31,7 @@ export const enqueue = mutation({
   },
   handler: async (ctx, args) => {
     const d = await device(ctx);
+    args.conversation = await resolveKey(ctx, args.conversation);
     if (!kinds.includes(args.kind as (typeof kinds)[number])) {
       throw new Error("Unknown action");
     }
@@ -58,13 +60,28 @@ export const enqueue = mutation({
   },
 });
 export const queue = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { blocked: v.optional(v.array(v.string())) },
+  handler: async (ctx, args) => {
     await adapter(ctx);
-    return ctx.db
+    const queued = ctx.db
       .query("commands")
-      .withIndex("status", (q) => q.eq("status", "queued"))
-      .take(100);
+      .withIndex("status", (q) => q.eq("status", "queued"));
+    return (
+      args.blocked?.length
+        ? queued.filter((q) =>
+            q.or(
+              q.neq(q.field("kind"), "send"),
+              q.not(
+                q.or(
+                  ...args.blocked!.map((key) =>
+                    q.eq(q.field("conversation"), key),
+                  ),
+                ),
+              ),
+            ),
+          )
+        : queued
+    ).take(100);
   },
 });
 export const claim = mutation({
@@ -110,12 +127,10 @@ export const recover = mutation({
   args: {},
   handler: async (ctx) => {
     await adapter(ctx);
-    for (
-      const c of await ctx.db
-        .query("commands")
-        .withIndex("status", (q) => q.eq("status", "dispatching"))
-        .collect()
-    ) {
+    for (const c of await ctx.db
+      .query("commands")
+      .withIndex("status", (q) => q.eq("status", "dispatching"))
+      .collect()) {
       await ctx.db.patch(c._id, {
         status: "unknown",
         error:
@@ -137,12 +152,25 @@ export const edit = mutation({
     if (!c || c.status !== "queued") {
       throw new Error("This message has already been dispatched");
     }
+    if (c.kind !== "send")
+      throw new Error("Only queued messages can be edited");
+    if (args.text !== undefined && !args.text.trim()) {
+      throw new Error("Write a message");
+    }
+    const first = args.next
+      ? await ctx.db
+          .query("commands")
+          .withIndex("status", (q) => q.eq("status", "queued"))
+          .first()
+      : null;
     await ctx.db.patch(c._id, {
       ...(args.cancel ? { status: "cancelled" as const } : {}),
       ...(args.text !== undefined
         ? { payload: { ...c.payload, text: args.text } }
         : {}),
-      ...(args.next ? { createdAt: 0 } : {}),
+      ...(args.next
+        ? { createdAt: Math.min(0, first?.createdAt ?? 0) - 1 }
+        : {}),
     });
   },
 });

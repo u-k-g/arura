@@ -61,6 +61,11 @@ in
       type = path;
       description = "Private file containing CONVEX_INSTANCE_NAME and CONVEX_INSTANCE_SECRET.";
     };
+    deployFunctions = mkOption {
+      type = lib.types.bool;
+      default = true;
+      description = "Deploy the packaged Convex functions before starting Arura. Requires CONVEX_SELF_HOSTED_ADMIN_KEY in the private environment file.";
+    };
   };
   config = mkIf cfg.enable {
     systemd.services.arura-convex = {
@@ -94,6 +99,7 @@ in
         ARURA_STATE_DIR = "%S/arura";
         DENO_DIR = "%C/arura/deno";
         CONVEX_URL = "http://127.0.0.1:${toString cfg.convexPort}";
+        CONVEX_SELF_HOSTED_URL = "http://127.0.0.1:${toString cfg.convexPort}";
         CONVEX_PUBLIC_URL = cfg.convexPublicUrl;
         HERMES_URL = cfg.hermesUrl;
       };
@@ -102,7 +108,9 @@ in
         StateDirectory = "arura";
         CacheDirectory = "arura";
         EnvironmentFile = cfg.environmentFile;
+        ExecStartPre = lib.optional cfg.deployFunctions "${cfg.package}/bin/arura-deploy-functions";
         ExecStart = getExe cfg.package;
+        TimeoutStartSec = 180;
         Restart = "on-failure";
         UMask = "0077";
         NoNewPrivileges = true;

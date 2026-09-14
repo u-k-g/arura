@@ -12,7 +12,7 @@
     "format": "deno run -A npm:@biomejs/biome format --write .",
     "format:check": "deno run -A npm:@biomejs/biome format .",
     "lint": "deno run -A npm:@biomejs/biome lint .",
-    "convex": "deno run -A npm:convex",
+    "convex": "CI=1 VERCEL=0 deno run -A npm:convex",
     "browser": "deno run -A npm:@playwright/test",
     "test:integration": "deno task build && deno run -A scripts/test-stack.ts",
     "dev:external": {

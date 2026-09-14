@@ -21,6 +21,7 @@ Import the module and configure `services.arura`:
 | `hermesUrl`                            | Dashboard API reachable from the host adapter.                       |
 | `environmentFile`                      | Private runtime file containing Arura access and Hermes credentials. |
 | `convexEnvironmentFile`                | Private runtime file containing the Convex instance identity.        |
+| `deployFunctions`                     | Deploy the matching packaged functions at startup; defaults to true. |
 | `port`, `convexPort`, `convexSitePort` | Local listeners, defaulting to 4100, 3210, and 3211.                 |
 
 Use your host's secret management to supply the files. Their contents must
@@ -41,28 +42,34 @@ Arura's environment file needs `ARURA_ACCESS_KEY` and either
 `HERMES_AUTH_PROVIDER` is optional when Hermes advertises a single password
 provider. The adapter discovers that provider before logging in.
 
-Before the first function deployment, generate Arura's signing identity with
-`deno task setup` using the same `ARURA_STATE_DIR` and `ARURA_AUTH_ISSUER` that
-the service will use. Ensure the service can read its private signing key. The
-issuer must match the public Arura origin. This step also generates a bootstrap
-access key in a private `.env` for local setup; provision the deployment's
-access key through its environment file.
+File uploads use the directory advertised by Hermes's files API. Set
+`ARURA_UPLOAD_DIR` only to override that location on the Hermes host. Arura
+sends uploads through the dashboard API; its service does not need a mount of
+the Hermes filesystem.
 
-Generate the self-hosted administrator key using the pinned backend's
-`keygen admin-key` command with the instance name and secret. Supply that key as
-`CONVEX_SELF_HOSTED_ADMIN_KEY`, and the reachable backend URL as
-`CONVEX_SELF_HOSTED_URL`, to the following command from the checkout:
+The module deploys the package's Convex functions before starting Arura by
+default (`services.arura.deployFunctions = true`). Include
+`CONVEX_SELF_HOSTED_ADMIN_KEY` in Arura's private environment file. Generate it
+with the pinned backend's `keygen admin-key` command using the same instance
+name and secret as the Convex service. Keep this key outside the Nix store.
 
-```sh
-deno install --frozen
-deno task deploy:functions
-```
+The packaged `arura-deploy-functions` command waits for the local backend,
+creates or reuses Arura's signing identity in its persistent state directory,
+sets the issuer/public key, and deploys the matching functions and schema.
+The HTTP server starts only after deployment succeeds. Package updates therefore
+update functions on service restart without requiring a checkout or downloading
+dependencies. The private signing key remains in the service state directory.
+The packaged deployer disables the CLI's crash reporting and grants it network
+access only to the configured Convex endpoint. The backend's beacon is disabled
+by the module. The application's browser and host services do not use external
+analytics or hosted synchronization.
 
-The deployment task sets the issuer and public signing key in your Convex
-instance and deploys the functions. It requires explicit self-hosted credentials
-and never chooses a hosted Convex account. CLI-generated files are isolated in a
-private temporary directory. Repeat this deployment when Convex functions or
-schema change. Restart the application service after updating its package.
+For installations that manage function deployment separately, set
+`services.arura.deployFunctions = false`. Run `arura-deploy-functions` with
+`ARURA_STATE_DIR`, `ARURA_AUTH_ISSUER`, `CONVEX_SELF_HOSTED_URL`, and
+`CONVEX_SELF_HOSTED_ADMIN_KEY` set for the target installation, using the same
+identity and issuer as the HTTP service. The checkout equivalent remains
+`deno task deploy:functions` inside the development shell.
 
 ## Provider callbacks
 
@@ -92,12 +99,39 @@ Back up Hermes state, Convex's complete persistent database/storage, Arura's
 signing identity, and the private instance configuration using a consistent host
 backup procedure. Arura's downloadable organization backup currently contains
 folders, preferences, and conversation organization; it is not a complete
-service backup or an automatic restore workflow. Diagnostic downloads remain
-local.
+service backup or an automatic restore workflow. Hermes backup creation reports
+shared progress and exposes its archive download only after the corresponding
+host process exits successfully. A separate workspace download contains web-owned
+organization. Diagnostic downloads remain local.
+
+For a recoverable whole-service snapshot, stop `arura.service` and
+`arura-convex.service`, quiesce Hermes using the host's own service declaration,
+and capture their persistent state together with the private environment files.
+The module's systemd state directories are named `arura` and `arura-convex`;
+include their actual contents, including Convex storage and SQLite sidecars,
+and preserve file permissions. Record the Arura package revision and Hermes
+revision with the snapshot. Restart the services after capture. Restore while
+the services are stopped, using the matching package revisions and instance
+identity before attempting upgrades. Do not copy an actively changing Convex
+database as a standalone file. Device authentication depends on retaining both
+the database and Arura signing identity.
 
 Deploy beside the existing web client first, using separate origins, listeners,
 and state. Validate real sending, reconnects, and device revocation from both a
 phone and desktop before changing the main route. The package has passed
-isolated browser integration tests; live Hermes validation so far covers
-authenticated read-only APIs and the WebSocket handshake. A live NixOS rollout
-remains pending.
+isolated browser integration tests. A disposable installation of the pinned
+Hermes runtime also passes local configuration and lifecycle writes, real backup
+creation/download, gateway streaming, automation controls, and transcript
+filtering against a local inference stub. These checks do not change the
+production Hermes installation. A live NixOS rollout remains pending.
+
+## Handoff to nc
+
+The next deployment change belongs in [nc](https://github.com/u-k-g/nc): add this
+flake input, import its NixOS module, supply private instance credentials, set
+the two public origins, and point `hermesUrl` at the dashboard API for the
+existing Hermes service on Manara. Configure the host's HTTP/WebSocket routes,
+backup coverage, and optional restart/update wrappers there. Keep the current
+web client available during the first deployment. The rollout checks are real
+OpenCode Go inference, phone suspension/reconnection, measured phone load time,
+and device revocation through the production routes.

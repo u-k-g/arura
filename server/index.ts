@@ -16,7 +16,7 @@ import {
   rpcQueries,
 } from "../shared/resources.ts";
 import { exportConversation } from "./export.ts";
-import { Hermes } from "./hermes.ts";
+import { Hermes, HermesHttpError } from "./hermes.ts";
 import { equal, hash, identity, randomSecret } from "./identity.ts";
 
 const keys = await identity();
@@ -73,21 +73,18 @@ async function userClient(request: Request) {
 }
 const attempts = new Map<string, { count: number; since: number }>();
 let maintenanceRunning = false;
+const fileWrites = new Map<string, Promise<unknown>>();
 const activeCommands = new Set<string>();
 hermes.on("settled", (key: string) => activeCommands.delete(key));
 let processing = false;
 let recovered = false;
 let reconciling: Promise<void> | undefined;
+let reconcileAgain = false;
 const watched = new Set<string>();
 const lastActivity = new Map<string, number>();
 const historyJobs = new Map<string, Promise<void>>();
 function syncHistory(key: string, offset = 0): Promise<void> {
-  if (
-    !Number.isInteger(offset) ||
-    offset < 0 ||
-    offset > 4900 ||
-    offset % 100
-  ) {
+  if (!Number.isSafeInteger(offset) || offset < 0 || offset % 100) {
     return Promise.reject(new Error("Invalid history page"));
   }
   const work = (historyJobs.get(key) ?? Promise.resolve())
@@ -118,30 +115,68 @@ function syncHistory(key: string, offset = 0): Promise<void> {
   return work;
 }
 
-async function reconcile() {
-  if (reconciling) return reconciling;
-  reconciling = (async () => {
-    const conversations = await hermes.list();
-    const existing = await convex.query(anyApi.workspace.sourceKeys, {});
-    const keys = new Set(conversations.map((c) => c.key));
-    await convex.mutation(anyApi.workspace.ingest, {
-      conversations,
-      deletedKeys: existing.filter((key: string) => !keys.has(key)),
-      online: true,
-      changed: true,
+async function migrateProfile(
+  from: string,
+  to: string,
+  conversations: Awaited<ReturnType<Hermes["list"]>>,
+) {
+  const ids = conversations
+    .filter((c) => c.profile === to)
+    .map((c) => c.sourceId);
+  for (let i = 0; i < ids.length; i += 50) {
+    await convex.mutation(anyApi.profiles.renamed, {
+      from,
+      to,
+      sourceIds: ids.slice(i, i + 50),
     });
-    await convex.mutation(anyApi.artifacts.schedule, {
-      conversations: conversations.map(({ key, activityAt }) => ({
-        key,
-        activityAt,
-      })),
-    });
-    for (const c of conversations) {
-      if (watched.has(c.key) && lastActivity.get(c.key) !== c.activityAt) {
-        await syncHistory(c.key);
-      }
-      lastActivity.set(c.key, c.activityAt);
+  }
+  await convex.mutation(anyApi.profiles.finishRename, { from });
+  hermes.forgetProfile(from);
+  for (const key of watched) {
+    if (JSON.parse(key)[0] === from) {
+      watched.delete(key);
+      lastActivity.delete(key);
+      turnBuffer.delete(key);
     }
+  }
+}
+async function reconcile() {
+  if (reconciling) {
+    reconcileAgain = true;
+    return reconciling;
+  }
+  reconciling = (async () => {
+    do {
+      reconcileAgain = false;
+      const conversations = await hermes.list();
+      const pending = await convex.query(anyApi.profiles.pendingRenames, {});
+      const profiles = new Set(conversations.map((c) => c.profile));
+      for (const rename of pending) {
+        if (!profiles.has(rename.from) && profiles.has(rename.to)) {
+          await migrateProfile(rename.from, rename.to, conversations);
+        }
+      }
+      const existing = await convex.query(anyApi.workspace.sourceKeys, {});
+      const keys = new Set(conversations.map((c) => c.key));
+      await convex.mutation(anyApi.workspace.ingest, {
+        conversations,
+        deletedKeys: existing.filter((key: string) => !keys.has(key)),
+        online: true,
+        changed: true,
+      });
+      await convex.mutation(anyApi.artifacts.schedule, {
+        conversations: conversations.map(({ key, activityAt }) => ({
+          key,
+          activityAt,
+        })),
+      });
+      for (const c of conversations) {
+        if (watched.has(c.key) && lastActivity.get(c.key) !== c.activityAt) {
+          await syncHistory(c.key);
+        }
+        lastActivity.set(c.key, c.activityAt);
+      }
+    } while (reconcileAgain);
   })().finally(() => {
     reconciling = undefined;
   });
@@ -207,9 +242,8 @@ hermes.on("complete", (key: string, turn: Turn) => {
       notice: {
         id: `${key}:${turn.startedAt}`,
         conversation: key,
-        title: turn.state === "complete"
-          ? "Reply ready"
-          : "Hermes needs attention",
+        title:
+          turn.state === "complete" ? "Reply ready" : "Hermes needs attention",
       },
     })
     .catch(report);
@@ -245,7 +279,9 @@ async function processCommands() {
       await convex.mutation(anyApi.commands.recover, {});
       recovered = true;
     }
-    const commands = await convex.query(anyApi.commands.queue, {});
+    const commands = await convex.query(anyApi.commands.queue, {
+      blocked: [...activeCommands.keys()],
+    });
     for (const queued of commands) {
       if (queued.kind === "send" && activeCommands.has(queued.conversation)) {
         continue;
@@ -292,12 +328,14 @@ async function processCommands() {
           let prompt = payload.text;
           let shouldSubmit = true;
           if (prompt.startsWith("/") && !payload.edit) {
-            const [name, ...words] = prompt.trim().slice(1).split(/\s+/);
+            const [, name, arg = ""] = prompt
+              .trim()
+              .match(/^\/(\S+)(?:\s+([\s\S]*))?$/)!;
             try {
               result = await hermes.call("command.dispatch", {
                 session_id,
                 name,
-                arg: words.join(" "),
+                arg,
               });
             } catch (error) {
               if (
@@ -313,7 +351,8 @@ async function processCommands() {
                 command: prompt,
               });
             }
-            shouldSubmit = ["send", "skill"].includes(result.type) &&
+            shouldSubmit =
+              ["send", "skill"].includes(result.type) &&
               typeof result.message === "string";
             if (shouldSubmit) prompt = result.message;
           }
@@ -326,10 +365,10 @@ async function processCommands() {
                 text: prompt,
                 ...(payload.edit
                   ? {
-                    truncate_before_row_id: payload.edit,
-                    confirm_truncate: true,
-                    confirm_empty_truncate: true,
-                  }
+                      truncate_before_row_id: payload.edit,
+                      confirm_truncate: true,
+                      confirm_empty_truncate: true,
+                    }
                   : {}),
                 profile: JSON.parse(key)[0],
               },
@@ -399,9 +438,10 @@ async function processCommands() {
         }
         await convex.mutation(anyApi.commands.finish, {
           id: command._id,
-          status: kind === "send" && activeCommands.has(key)
-            ? "accepted"
-            : "complete",
+          status:
+            kind === "send" && activeCommands.has(key)
+              ? "accepted"
+              : "complete",
           result: withoutReasoning(result),
         });
       } catch (error) {
@@ -423,6 +463,45 @@ async function processCommands() {
 }
 const commandTimer = setInterval(() => void processCommands(), 500);
 const reconcileTimer = setInterval(() => void reconcile().catch(report), 30000);
+let checkingBackup = false;
+async function checkBackup() {
+  if (checkingBackup) return;
+  checkingBackup = true;
+  try {
+    const backup = await convex.query(anyApi.backups.pending, {});
+    if (!backup) return;
+    if (backup.status === "starting") {
+      if (Date.now() - backup._creationTime > 60000)
+        await convex.mutation(anyApi.backups.update, {
+          id: backup._id,
+          status: "error",
+          error:
+            "The adapter restarted or lost contact before the backup was acknowledged. Check Hermes before starting another backup.",
+        });
+      return;
+    }
+    const status = await hermes.rest("/api/actions/backup/status");
+    if (
+      status.pid !== backup.pid ||
+      (!status.running && status.exit_code !== 0)
+    ) {
+      await convex.mutation(anyApi.backups.update, {
+        id: backup._id,
+        status: "error",
+        error:
+          "Hermes could not confirm that this backup finished successfully. Check the host action logs.",
+      });
+    } else if (!status.running) {
+      await convex.mutation(anyApi.backups.update, {
+        id: backup._id,
+        status: "complete",
+      });
+    }
+  } finally {
+    checkingBackup = false;
+  }
+}
+const backupTimer = setInterval(() => void checkBackup().catch(report), 2000);
 
 async function handle(request: Request, ip: string): Promise<Response> {
   const url = new URL(request.url),
@@ -499,7 +578,8 @@ async function handle(request: Request, ip: string): Promise<Response> {
         400,
       );
     }
-    const bootstrap = Boolean(process.env.ARURA_ACCESS_KEY) &&
+    const bootstrap =
+      Boolean(process.env.ARURA_ACCESS_KEY) &&
       equal(body.code, process.env.ARURA_ACCESS_KEY!);
     const secret = randomSecret(),
       id = crypto.randomUUID();
@@ -595,6 +675,12 @@ async function handle(request: Request, ip: string): Promise<Response> {
     await client.mutation(anyApi.devices.issueInvite, { hash: hash(code) });
     return json({ code, expiresAt: Date.now() + 600000 });
   }
+  if (path === "/api/workspace-backup") {
+    const { client } = await userClient(request);
+    return json(await client.query(anyApi.workspace.backup, {}), 200, {
+      "content-disposition": 'attachment; filename="arura-workspace.json"',
+    });
+  }
   if (path === "/api/diagnostics") {
     const { client } = await userClient(request);
     const [status, health, web] = await Promise.all([
@@ -679,22 +765,20 @@ async function handle(request: Request, ip: string): Promise<Response> {
       if (!id) return json({ error: "Conversation ID is required" }, 400);
       return exportConversation(id, profile, (offset) =>
         hermes.rest(
-          `/api/sessions/${
-            encodeURIComponent(
-              id,
-            )
-          }/messages?${new URLSearchParams({
+          `/api/sessions/${encodeURIComponent(
+            id,
+          )}/messages?${new URLSearchParams({
             profile,
             offset: String(offset),
             limit: "500",
             order: "oldest",
             include_compacted: "true",
           })}`,
-        ));
+        ),
+      );
     }
-    const allowed = type === "backup"
-      ? "/api/ops/backup/download"
-      : "/api/fs/download";
+    const allowed =
+      type === "backup" ? "/api/ops/backup/download" : "/api/fs/download";
     const query = new URLSearchParams(url.searchParams);
     query.delete("type");
     query.delete("id");
@@ -766,11 +850,9 @@ async function handle(request: Request, ip: string): Promise<Response> {
     }
     const file = data.get("file");
     if (!(file instanceof File)) return json({ error: "Choose a file" }, 400);
-    const data_url = `data:${file.type || "application/octet-stream"};base64,${
-      Buffer.from(
-        await file.arrayBuffer(),
-      ).toString("base64")
-    }`;
+    const data_url = `data:${file.type || "application/octet-stream"};base64,${Buffer.from(
+      await file.arrayBuffer(),
+    ).toString("base64")}`;
     if (file.type.startsWith("image/")) {
       const profile = url.searchParams.get("profile") ?? "default";
       return json(
@@ -781,18 +863,16 @@ async function handle(request: Request, ip: string): Promise<Response> {
         ),
       );
     }
-    const root = process.env.ARURA_UPLOAD_DIR ??
-      (await hermes.rest("/api/files")).path;
+    const root =
+      process.env.ARURA_UPLOAD_DIR ?? (await hermes.rest("/api/files")).path;
     if (typeof root !== "string") {
       return json({ error: "Configure a host upload directory" }, 503);
     }
     const name = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "attachment";
-    const target = `${
-      root.replace(
-        /\/$/,
-        "",
-      )
-    }/arura-uploads/${crypto.randomUUID()}-${name}`;
+    const target = `${root.replace(
+      /\/$/,
+      "",
+    )}/arura-uploads/${crypto.randomUUID()}-${name}`;
     return json(
       await hermes.rest("/api/files/upload", "POST", {
         path: target,
@@ -808,6 +888,33 @@ async function handle(request: Request, ip: string): Promise<Response> {
     const spec = operationRequest(op, params);
     if (request.method !== spec.method) {
       return json({ error: "Method not allowed" }, 405);
+    }
+    if (op === "backup") {
+      const id = await convex.mutation(anyApi.backups.begin, {});
+      try {
+        const status = await hermes.rest("/api/actions/backup/status");
+        if (status.running)
+          throw new Error("Hermes is already creating a backup");
+        const result = await hermes.rest("/api/ops/backup", "POST", {});
+        if (!result.ok || !result.archive || !Number.isInteger(result.pid))
+          throw new Error(
+            "Hermes did not return a backup archive and process ID",
+          );
+        await convex.mutation(anyApi.backups.update, {
+          id,
+          status: "running",
+          archive: result.archive,
+          pid: result.pid,
+        });
+        return json({ id });
+      } catch (error) {
+        await convex.mutation(anyApi.backups.update, {
+          id,
+          status: "error",
+          error: errorMessage(error),
+        });
+        throw error;
+      }
     }
     if (spec.rpc) {
       const body = request.method === "GET" ? params : await request.json();
@@ -829,19 +936,106 @@ async function handle(request: Request, ip: string): Promise<Response> {
       if (request.method !== "GET") {
         await convex.mutation(anyApi.workspace.ingest, { changed: true });
       }
-      const visible = op === "profileRoster"
-        ? JSON.parse(
-          JSON.stringify(result, (key, value) =>
-            key === "preview" ? undefined : value),
-        )
-        : result;
+      const visible =
+        op === "profileRoster"
+          ? JSON.parse(
+              JSON.stringify(result, (key, value) =>
+                key === "preview" ? undefined : value,
+              ),
+            )
+          : result;
       return json(withoutReasoning(visible));
     }
-    const result = await hermes.rest(
-      spec.path,
-      spec.method,
-      spec.method === "GET" ? undefined : await request.json(),
-    );
+    if (op === "saveFile") {
+      const body = await request.json();
+      if (
+        typeof body.path !== "string" ||
+        typeof body.content !== "string" ||
+        typeof body.expectedContent !== "string"
+      ) {
+        return json({ error: "Read the complete file before saving" }, 400);
+      }
+      const previous = fileWrites.get(body.path) ?? Promise.resolve();
+      const write = previous
+        .catch(() => {})
+        .then(async () => {
+          const latest = await hermes.rest(
+            `/api/fs/read-text?${new URLSearchParams({ path: body.path })}`,
+          );
+          if (
+            latest.binary ||
+            latest.truncated ||
+            String(latest.content ?? latest.text ?? "").includes("\uFFFD")
+          ) {
+            return json(
+              { error: "Only complete UTF-8 text files can be saved" },
+              400,
+            );
+          }
+          if ((latest.content ?? latest.text ?? "") !== body.expectedContent) {
+            return json(
+              {
+                error:
+                  "This file changed before saving. Your edits are preserved; review the newer version and try again.",
+              },
+              409,
+            );
+          }
+          const result = await hermes.rest(spec.path, spec.method, {
+            path: body.path,
+            content: body.content,
+          });
+          await convex.mutation(anyApi.workspace.ingest, { changed: true });
+          return json(result);
+        });
+      fileWrites.set(body.path, write);
+      try {
+        return await write;
+      } finally {
+        if (fileWrites.get(body.path) === write) fileWrites.delete(body.path);
+      }
+    }
+    const body = spec.method === "GET" ? undefined : await request.json();
+    if (
+      ["editProfile", "deleteProfile"].includes(op) &&
+      [...activeCommands.keys()].some((key) => JSON.parse(key)[0] === params.id)
+    ) {
+      return json(
+        { error: "Stop active work before changing this profile" },
+        409,
+      );
+    }
+    if (op === "editProfile" && params.id !== "default") {
+      await convex.mutation(anyApi.profiles.prepareRename, {
+        from: params.id,
+        to: String(body.new_name).trim().toLowerCase(),
+      });
+    }
+    let result: Awaited<ReturnType<Hermes["rest"]>>;
+    try {
+      result = await hermes.rest(spec.path, spec.method, body);
+    } catch (error) {
+      if (
+        op === "editProfile" &&
+        error instanceof HermesHttpError &&
+        error.status < 500
+      ) {
+        await convex.mutation(anyApi.profiles.finishRename, {
+          from: params.id,
+        });
+      }
+      throw error;
+    }
+    if (
+      op === "editProfile" &&
+      result.ok &&
+      result.name &&
+      result.name !== params.id
+    ) {
+      await migrateProfile(params.id, result.name, await hermes.list());
+      await reconcile();
+    }
+    if (["createProfile", "deleteProfile"].includes(op)) await reconcile();
     if (spec.method !== "GET") {
       await convex.mutation(anyApi.workspace.ingest, { changed: true });
     }
@@ -909,15 +1103,14 @@ const server = Deno.serve(
 );
 void hermes.connect().catch(report);
 Deno.addSignalListener("SIGTERM", () => {
-  for (
-    const timer of [
-      authTimer,
-      flushTimer,
-      commandTimer,
-      reconcileTimer,
-      artifactTimer,
-    ]
-  ) {
+  for (const timer of [
+    authTimer,
+    flushTimer,
+    commandTimer,
+    reconcileTimer,
+    backupTimer,
+    artifactTimer,
+  ]) {
     clearInterval(timer);
   }
   hermes.close();

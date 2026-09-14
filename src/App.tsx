@@ -15,20 +15,27 @@ import {
   inform,
   login,
   mutate,
+  moreConversations,
   notice,
   request,
   start,
   subscribe,
   workspace,
-} from "./client";
-import { Dialog, Empty, Field, Icon, IconButton, run } from "./ui";
-import { loadCache, preferences, saveCache } from "./cache";
-import type { Conversation } from "../shared/model";
-import { shortcutFromEvent, shortcuts } from "../shared/shortcuts";
-const Chat = lazy(() => import("./Chat"));
-const Settings = lazy(() => import("./Settings"));
-const Resources = lazy(() => import("./Resources"));
-const Artifacts = lazy(() => import("./Artifacts"));
+} from "./client.ts";
+import { Dialog, Empty, Field, Icon, IconButton, run } from "./ui.tsx";
+import {
+  draft,
+  draftAttachments,
+  loadCache,
+  preferences,
+  saveCache,
+} from "./cache.ts";
+import type { Conversation } from "../shared/model.ts";
+import { shortcutFromEvent, shortcuts } from "../shared/shortcuts.ts";
+const Chat = lazy(() => import("./Chat.tsx"));
+const Settings = lazy(() => import("./Settings.tsx"));
+const Resources = lazy(() => import("./Resources.tsx"));
+const Artifacts = lazy(() => import("./Artifacts.tsx"));
 
 export default function App() {
   const [view, setView] = createSignal(preferences.getItem("arura.view") ?? "");
@@ -54,11 +61,10 @@ export default function App() {
     setSearchError("");
     const timer = setTimeout(async () => {
       const cacheKey = `search:${query}`;
-      const cached = await loadCache<
-        { key: string; title: string; profile: string }[]
-      >(
-        cacheKey,
-      );
+      const cached =
+        await loadCache<{ key: string; title: string; profile: string }[]>(
+          cacheKey,
+        );
       if (disposed) return;
       if (cached) setMatches(cached);
       if (!online) return;
@@ -108,19 +114,40 @@ export default function App() {
   const [archiveHasMore, setArchiveHasMore] = createSignal(false);
   const [menu, setMenu] = createSignal<any>(),
     [folderName, setFolderName] = createSignal<string | null>(null);
-  const [activeConversation, setActiveConversation] = createSignal<
-    Conversation | null
-  >(null);
+  const [activeConversation, setActiveConversation] =
+    createSignal<Conversation | null>(null);
   createEffect(() => {
     const key = view();
+    connected();
     setActiveConversation(null);
     if (!authorized() || !key.startsWith("[")) return;
-    const stop = subscribe(
-      "workspace",
-      "byKey",
-      { key },
-      setActiveConversation,
-    );
+    const stop = subscribe("workspace", "byKey", { key }, (conversation) => {
+      if (conversation && conversation.key !== key) {
+        void (async () => {
+          const oldDraft = await draft(key);
+          const newDraft = await draft(conversation.key);
+          if (oldDraft && oldDraft !== newDraft) {
+            await draft(
+              conversation.key,
+              [newDraft, oldDraft].filter(Boolean).join("\n\n"),
+            );
+            await draft(key, "");
+          }
+          const attachments = await draftAttachments(key);
+          if (attachments.length) {
+            const existing = await draftAttachments(conversation.key);
+            await draftAttachments(conversation.key, [
+              ...existing,
+              ...attachments.filter(
+                (file) => !existing.some((old) => old.path === file.path),
+              ),
+            ]);
+            await draftAttachments(key, []);
+          }
+          if (view() === key) navigate(conversation.key);
+        })().catch((error) => inform(String(error)));
+      } else setActiveConversation(conversation);
+    });
     onCleanup(stop);
   });
   const [name, setName] = createSignal(""),
@@ -153,8 +180,8 @@ export default function App() {
         void newChat();
       }
     };
-    window.addEventListener("keydown", keyboard);
-    onCleanup(() => window.removeEventListener("keydown", keyboard));
+    globalThis.addEventListener("keydown", keyboard);
+    onCleanup(() => globalThis.removeEventListener("keydown", keyboard));
   });
   createEffect(() => {
     if (authorized()) {
@@ -238,8 +265,8 @@ export default function App() {
     );
   const selected = () =>
     chats().find((c) => c.key === view()) ??
-      archived().find((c) => c.key === view()) ??
-      activeConversation();
+    archived().find((c) => c.key === view()) ??
+    activeConversation();
   async function newChat(profile = "default") {
     await run(async () => {
       const result = await command("create", "", { profile });
@@ -251,8 +278,7 @@ export default function App() {
       <button
         type="button"
         class="thread-select"
-        onClick={() =>
-          navigate(c.key)}
+        onClick={() => navigate(c.key)}
       >
         <Icon name={c.running ? "clock" : "chat-bubble"} />
         <span>{c.title}</span>
@@ -263,8 +289,7 @@ export default function App() {
       <IconButton
         icon="more-horiz"
         label={`Actions for ${c.title}`}
-        onClick={() =>
-          setMenu(c)}
+        onClick={() => setMenu(c)}
       />
     </div>
   );
@@ -289,7 +314,12 @@ export default function App() {
       <button type="button" class="nav-search" onClick={() => setPalette(true)}>
         <Icon name="search" />
         <span>Find anything</span>
-        <kbd>⌘ K</kbd>
+        <kbd>
+          {String(workspace()?.settings?.shortcuts?.palette ?? "Mod+k").replace(
+            "Mod",
+            "Ctrl/⌘",
+          )}
+        </kbd>
       </button>
       <div class="nav-scroll">
         <div class="essentials">
@@ -359,7 +389,7 @@ export default function App() {
                     const name = prompt("Folder name", folder.name);
                     if (name?.trim()) {
                       void run(() =>
-                        mutate("workspace.folder", { id: folder._id, name })
+                        mutate("workspace.folder", { id: folder._id, name }),
                       );
                     }
                   }}
@@ -373,8 +403,9 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: 1,
-                      })
-                    )}
+                      }),
+                    )
+                  }
                 />
                 <IconButton
                   icon="nav-arrow-down"
@@ -386,8 +417,9 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: -1,
-                      })
-                    )}
+                      }),
+                    )
+                  }
                 />
                 <button
                   type="button"
@@ -404,7 +436,7 @@ export default function App() {
                         mutate("workspace.folder", {
                           id: folder._id,
                           remove: true,
-                        })
+                        }),
                       );
                     }
                   }}
@@ -432,6 +464,16 @@ export default function App() {
         >
           {row}
         </For>
+        <Show when={workspace()?.recentHasMore}>
+          <button
+            type="button"
+            class="text-button"
+            disabled={!connected()}
+            onClick={moreConversations}
+          >
+            Show 100 more conversations
+          </button>
+        </Show>
         <div class="archive">
           <button
             type="button"
@@ -462,8 +504,9 @@ export default function App() {
                         mutate("workspace.move", {
                           key: c.key,
                           section: "recent",
-                        })
-                      )}
+                        }),
+                      )
+                    }
                   />
                 </div>
               )}
@@ -506,7 +549,7 @@ export default function App() {
               e.preventDefault();
               setBusy(true);
               void run(() => login(name(), code())).finally(() =>
-                setBusy(false)
+                setBusy(false),
               );
             }}
           >
@@ -557,10 +600,10 @@ export default function App() {
                 (view() === "settings"
                   ? "Settings"
                   : view().startsWith("resources:")
-                  ? view()
-                    .slice(10)
-                    .replace(/^./, (x) => x.toUpperCase())
-                  : "Your conversations")}
+                    ? view()
+                        .slice(10)
+                        .replace(/^./, (x) => x.toUpperCase())
+                    : "Your conversations")}
             </span>
             <Show when={selected()}>
               {(c) => (
@@ -581,8 +624,8 @@ export default function App() {
               {!connected()
                 ? "Offline"
                 : workspace()?.connection?.online
-                ? "Connected"
-                : "Connecting to Hermes"}
+                  ? "Connected"
+                  : "Connecting to Hermes"}
             </span>
             <IconButton
               icon="bell"
@@ -699,10 +742,7 @@ export default function App() {
               ]}
             >
               {(target) => (
-                <button
-                  type="button"
-                  onClick={() => navigate(target)}
-                >
+                <button type="button" onClick={() => navigate(target)}>
                   {target.replace("resources:", "")}
                 </button>
               )}
@@ -772,7 +812,8 @@ export default function App() {
                             direction,
                           });
                           setMenu(undefined);
-                        })}
+                        })
+                      }
                     >
                       Move {direction === -1 ? "up" : "down"}
                     </button>
@@ -797,7 +838,8 @@ export default function App() {
                           section,
                         });
                         setMenu(undefined);
-                      })}
+                      })
+                    }
                   >
                     {label}
                   </button>
@@ -815,7 +857,8 @@ export default function App() {
                           folderId: f._id,
                         });
                         setMenu(undefined);
-                      })}
+                      })
+                    }
                   >
                     Move to {f.name}
                   </button>
@@ -836,9 +879,9 @@ export default function App() {
                 </button>
               </Show>
               <a
-                href={`/api/download?type=conversation&id=${
-                  encodeURIComponent(c().sourceId)
-                }&profile=${encodeURIComponent(c().profile)}`}
+                href={`/api/download?type=conversation&id=${encodeURIComponent(
+                  c().sourceId,
+                )}&profile=${encodeURIComponent(c().profile)}`}
                 download=""
               >
                 Export conversation

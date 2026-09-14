@@ -33,12 +33,11 @@ const dbPort = port(),
   sitePort = port(),
   appPort = port(),
   hermesPort = port();
-const secret = Array.from(
-  crypto.getRandomValues(new Uint8Array(32)),
-  (n) => n.toString(16).padStart(2, "0"),
+const secret = Array.from(crypto.getRandomValues(new Uint8Array(32)), (n) =>
+  n.toString(16).padStart(2, "0"),
 ).join("");
-const backend = Deno.env.get("ARURA_CONVEX_EXECUTABLE") ??
-  "convex-local-backend";
+const backend =
+  Deno.env.get("ARURA_CONVEX_EXECUTABLE") ?? "convex-local-backend";
 const keygen = await new Deno.Command(backend, {
   args: [
     "keygen",
@@ -62,6 +61,7 @@ const env = {
   ARURA_PUBLIC_URL: appUrl,
   ARURA_PORT: String(appPort),
   ARURA_ACCESS_KEY: crypto.randomUUID(),
+  ARURA_TEST_ADAPTER_PID: "",
   CONVEX_SELF_HOSTED_URL: dbUrl,
   CONVEX_SELF_HOSTED_ADMIN_KEY: new TextDecoder().decode(keygen.stdout).trim(),
   CONVEX_URL: dbUrl,
@@ -95,12 +95,10 @@ async function start(
     stderr: "piped",
   }).spawn();
   children.push(child);
-  for (
-    const [suffix, stream] of [
-      ["out", child.stdout],
-      ["err", child.stderr],
-    ] as const
-  ) {
+  for (const [suffix, stream] of [
+    ["out", child.stdout],
+    ["err", child.stderr],
+  ] as const) {
     const file = await Deno.open(join(scratch, `${name}.${suffix}.log`), {
       write: true,
       create: true,
@@ -160,28 +158,46 @@ try {
   const keys = await identity();
   await Deno.writeTextFile(
     join(scratch, "auth.env"),
-    `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${
-      btoa(JSON.stringify(keys.jwks))
-    }\n`,
+    `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${btoa(
+      JSON.stringify(keys.jwks),
+    )}\n`,
     { mode: 0o600 },
   );
-  await run(
-    ["task", "convex", "env", "set", "--from-file", join(scratch, "auth.env")],
-    code,
-  );
-  await run(
-    [
-      "task",
-      "convex",
-      "dev",
-      "--once",
-      "--typecheck",
-      "disable",
-      "--codegen",
-      "disable",
-    ],
-    code,
-  );
+  const packagedDeploy = Deno.env.get("ARURA_DEPLOY_EXECUTABLE");
+  if (packagedDeploy) {
+    const status = await new Deno.Command(packagedDeploy, {
+      cwd: scratch,
+      env: { ...env, DENO_DIR: join(scratch, "deploy-deno") },
+      stdout: "inherit",
+      stderr: "inherit",
+    }).spawn().status;
+    if (!status.success) throw new Error("Packaged function deployment failed");
+  } else {
+    await run(
+      [
+        "task",
+        "convex",
+        "env",
+        "set",
+        "--from-file",
+        join(scratch, "auth.env"),
+      ],
+      code,
+    );
+    await run(
+      [
+        "task",
+        "convex",
+        "dev",
+        "--once",
+        "--typecheck",
+        "disable",
+        "--codegen",
+        "disable",
+      ],
+      code,
+    );
+  }
   await start("hermes", Deno.execPath(), [
     "run",
     "-A",
@@ -189,17 +205,19 @@ try {
   ]);
   await ready(`${env.HERMES_URL}/api/health`);
   const packaged = Deno.env.get("ARURA_SERVER_EXECUTABLE");
-  if (packaged) {
-    await start("arura", packaged, [], scratch, {
-      DENO_DIR: join(scratch, "runtime-deno"),
-    });
-  } else await start("arura", Deno.execPath(), ["task", "serve"]);
+  const adapterProcess = packaged
+    ? await start("arura", packaged, [], scratch, {
+        DENO_DIR: join(scratch, "runtime-deno"),
+      })
+    : await start("arura", Deno.execPath(), ["run", "-A", "server/index.ts"]);
+  env.ARURA_TEST_ADAPTER_PID = String(adapterProcess.pid);
   await ready(`${appUrl}/api/bootstrap`);
-  await run(["test", "-A", "tests/"]);
+  await run(["test", "-A", ...(Deno.args.length ? Deno.args : ["tests/"])]);
   console.log("Isolated integration tests passed.");
 } finally {
   for (const child of children.reverse()) {
     try {
+      child.kill("SIGCONT");
       child.kill("SIGTERM");
     } catch {
       /* Already exited. */

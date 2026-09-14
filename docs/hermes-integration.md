@@ -394,3 +394,31 @@ does not release a still-active run's queued messages. Sources:
 [gateway clarification bridge](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/tui_gateway/server.py)
 and
 [clarification answer parsing](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/tools/clarify_tool.py).
+
+## Disposable-runtime acceptance
+
+The opt-in [runtime test](../tests/hermes_runtime_test.ts) runs against an
+isolated installation of the same pinned Hermes revision. It verifies the
+reported default-profile home before writing. Both the runtime home and managed
+configuration directory must be isolated; setting only `HERMES_HOME` can still
+inherit machine-managed configuration.
+
+Verified operations include profile instructions/clone/rename/delete,
+scheduled-job lifecycle, installed-skill editing/toggling, MCP configuration,
+custom inference endpoints, advanced config patches, toolset toggles, memory
+reset, curator pause/resume, and webhook lifecycle. A real backup action returns
+an archive and process ID; Arura polls `/api/actions/backup/status` and only
+offers the download when that process completed successfully. The download
+requires the returned `archive` query parameter. Webhook secrets are returned
+only at creation and stay out of shared state and device caches.
+
+The test also connects the real gateway to a local inference stub, checks public
+streaming and persisted transcript filtering, and exercises goal, loop and
+heartbeat controls. Goal verification keeps its line breaks; loop progress uses
+`ticks_fired`, while heartbeat progress uses `fire_count`. No production prompt,
+external inference request or production configuration write is required for
+these tests.
+
+Source contracts: [backup and webhook routes](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/ops.py),
+[action status](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/actions.py),
+and [managed scope](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/managed_scope.py).

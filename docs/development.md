@@ -72,3 +72,19 @@ functions, and starts the adapter and Vite. The database survives restarts in
 an existing self-hosted instance. `deno task deploy:functions` updates an
 explicitly configured instance using private self-hosted administrator
 credentials.
+
+To run a selected browser acceptance case against a fresh isolated stack, build
+the frontend and pass test file arguments to `deno run -A scripts/test-stack.ts`.
+For example, `deno run -A scripts/test-stack.ts tests/browser_files_test.ts`.
+Set `ARURA_SERVER_EXECUTABLE` and `ARURA_DEPLOY_EXECUTABLE` to the packaged
+`arura` and `arura-deploy-functions` executables to test installation and startup
+with fresh caches instead of using the checkout.
+
+`tests/hermes_runtime_test.ts` is disabled in ordinary test runs. It requires
+`ARURA_ISOLATED_HERMES_HOME` under the development scratch root, the disposable
+dashboard's `HERMES_URL`, and `ARURA_ISOLATED_HERMES_TOKEN_FILE`. Start that
+dashboard with both `HERMES_HOME` and `HERMES_MANAGED_DIR` pointing into its
+disposable state; otherwise it can inherit the machine's managed configuration.
+The test verifies the reported profile home before writing, creates and removes
+test resources, and uses a local inference stub. Never aim it at the production
+Hermes service.
