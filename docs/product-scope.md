@@ -89,6 +89,9 @@ images.
 
 ## Navigation and activity contract
 
+- Use Lexical for the chat composer, with selectable skill/command and context
+  references. Keep drafts and Hermes messages as plain text. CodeMirror remains
+  the text-file editor; a visual rich-text document editor is not required.
 - **Essentials:** compact, manually chosen chats/bots. No folders. Never
   autoarchive.
 - **Pinned:** manually pinned entries and all folders. Folder contents count as

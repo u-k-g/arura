@@ -560,7 +560,7 @@ Deno.test({
         a.getByRole("listbox", { name: "Commands and skills" }),
       ).toBeVisible();
       await a.getByLabel("Message Hermes", { exact: true }).press("Tab");
-      await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveValue(
+      await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveText(
         "/research ",
       );
       await a.getByLabel("Message Hermes", { exact: true }).fill("");
@@ -625,7 +625,8 @@ Deno.test({
       const landscapeInput = b.getByLabel("Message Hermes", { exact: true });
       await landscapeInput.fill("Landscape draft");
       await landscapeInput.press("Enter");
-      await expect(landscapeInput).toHaveValue("Landscape draft\n");
+      await expect(landscapeInput).toHaveText("Landscape draft");
+      await expect(landscapeInput.locator("br")).not.toHaveCount(0);
       await b.setViewportSize({ width: 390, height: 844 });
       await b
         .getByLabel("Message Hermes", { exact: true })
@@ -633,13 +634,13 @@ Deno.test({
       await b.evaluate(() => navigator.serviceWorker.ready);
       await mobile.setOffline(true);
       await b.reload();
-      await expect(b.getByLabel("Message Hermes", { exact: true })).toHaveValue(
+      await expect(b.getByLabel("Message Hermes", { exact: true })).toHaveText(
         "An offline draft",
         { timeout: 10000 },
       );
       await mobile.setOffline(false);
       await b.reload();
-      await expect(b.getByLabel("Message Hermes", { exact: true })).toHaveValue(
+      await expect(b.getByLabel("Message Hermes", { exact: true })).toHaveText(
         "An offline draft",
       );
       await a.getByRole("button", { name: "Files", exact: true }).click();
@@ -683,7 +684,7 @@ Deno.test({
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .first()
         .click();
-      await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveValue(
+      await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveText(
         /Saved through Arura/,
       );
       await a.getByRole("button", { name: "Files", exact: true }).click();
@@ -791,7 +792,7 @@ Deno.test({
         .click();
       await expect(
         page.getByLabel("Message Hermes", { exact: true }),
-      ).toHaveValue("Keep this draft in memory");
+      ).toHaveText("Keep this draft in memory");
       expect(errors).toEqual([]);
     } finally {
       await browser.close();

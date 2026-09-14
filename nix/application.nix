@@ -91,7 +91,7 @@ let
         rm -f "$out/node_modules/.deno/.setup-cache.bin" "$out/node_modules/.deno/.deno.lock"
       '';
     };
-  buildDependencies = dependencies false "sha256-Tv9eQURM4G1htD4T9BgnHA9OJdZobZ8ytKDfXY0rmkg=";
+  buildDependencies = dependencies false "sha256-aCP6AQtDiHLz+BbvoC3tQYgQKbKeHrLqq4ZGWptrH80=";
   runtimeDependencies = dependencies true "sha256-6Vb5qkTQjXRAOA670NFN0k8prB+D6VJnjzEX9wGk+NQ=";
 in
 stdenvNoCC.mkDerivation {

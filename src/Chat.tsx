@@ -30,6 +30,7 @@ import {
   subscribe,
   workspace,
 } from "./client.ts";
+import ComposerInput, { type ComposerHandle } from "./ComposerInput.tsx";
 import type { ControlView } from "./RunControls.tsx";
 import { Dialog, Field, Icon, IconButton, run } from "./ui.tsx";
 
@@ -110,7 +111,7 @@ export default function Chat(props: {
       value,
     );
   let scroller!: HTMLDivElement;
-  let input!: HTMLTextAreaElement;
+  let input!: ComposerHandle;
   let fileInput!: HTMLInputElement;
   const messages = () =>
     data()
@@ -226,7 +227,9 @@ export default function Chat(props: {
     try {
       const result = command("send", key, {
         text: value,
-        attachments: uploads(),
+        attachments: uploads().filter((file) =>
+          value.includes(`[Attached file: ${file.path}]`),
+        ),
         ...(edit() ? { edit: edit() } : {}),
       });
       changeText("");
@@ -322,13 +325,8 @@ export default function Chat(props: {
       .slice(0, position)
       .match(/\/[\w-]*$/);
     if (!item || !match) return;
-    const prefix = text().slice(0, position - match[0].length);
-    const next = `${prefix}${item.text} `;
-    changeText(next + text().slice(position));
+    input.replaceRange(position - match[0].length, position, `${item.text} `);
     setCompletions([]);
-    input.focus();
-    input.setSelectionRange(next.length, next.length);
-    setCursor(next.length);
   }
   const groups = createMemo(() => groupMessages(messages()));
   const renderMessage = (message: Message) => (
@@ -790,13 +788,13 @@ export default function Chat(props: {
             void run(send);
           }}
         >
-          <textarea
-            ref={input}
-            aria-label="Message Hermes"
-            aria-controls={
-              completions().length ? "composer-completions" : undefined
-            }
-            aria-activedescendant={
+          <ComposerInput
+            ref={(handle) => {
+              input = handle;
+            }}
+            context={`${props.conversation}:${edit() ?? ""}`}
+            controls={completions().length ? "composer-completions" : undefined}
+            activeDescendant={
               completions().length
                 ? `completion-${completionIndex()}`
                 : undefined
@@ -805,12 +803,8 @@ export default function Chat(props: {
               connected() ? "Message Hermes…" : "Write a draft while offline…"
             }
             value={text()}
-            onInput={(e) => {
-              changeText(e.currentTarget.value);
-              setCursor(e.currentTarget.selectionStart);
-            }}
-            onClick={(e) => setCursor(e.currentTarget.selectionStart)}
-            onKeyUp={(e) => setCursor(e.currentTarget.selectionStart)}
+            onChange={changeText}
+            onCursor={setCursor}
             onKeyDown={(e) => {
               if (completions().length && !e.isComposing) {
                 if (e.key === "Escape") {
@@ -845,15 +839,10 @@ export default function Chat(props: {
                 ).matches
               ) {
                 e.preventDefault();
-                e.currentTarget.form?.requestSubmit();
+                (e.target as HTMLElement).closest("form")?.requestSubmit();
               }
             }}
-            onPaste={(e) => {
-              if (e.clipboardData?.files.length) {
-                e.preventDefault();
-                void run(() => upload(e.clipboardData!.files));
-              }
-            }}
+            onPasteFiles={(files) => void run(() => upload(files))}
           />
           <div class="composer-bottom">
             <div>

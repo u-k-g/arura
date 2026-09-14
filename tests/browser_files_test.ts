@@ -37,8 +37,8 @@ Deno.test({
         buffer: Buffer.from(content),
       });
       const input = a.getByLabel("Message Hermes", { exact: true });
-      await expect(input).toHaveValue(/Attached file:/);
-      const path = (await input.inputValue()).match(
+      await expect(input).toHaveText(/Attached file:/);
+      const path = (await input.innerText()).match(
         /\[Attached file: (.+)\]/,
       )![1];
       const downloaded = await b.request.get(
@@ -66,8 +66,8 @@ Deno.test({
           new ClipboardEvent("paste", { clipboardData, bubbles: true }),
         );
       }, png);
-      await expect(input).toHaveValue(/pasted\.png/);
-      const imagePath = (await input.inputValue()).match(
+      await expect(input).toHaveText(/pasted\.png/);
+      const imagePath = (await input.innerText()).match(
         /\[Attached file: (.+pasted\.png)\]/,
       )![1];
       const imageDownload = await b.request.get(

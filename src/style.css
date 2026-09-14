@@ -664,7 +664,7 @@ kbd {
 .composer:focus-within {
   border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
 }
-.composer textarea {
+.composer-input {
   resize: none;
   min-height: 80px;
   max-height: 220px;
@@ -676,6 +676,37 @@ kbd {
   font-size: 15px;
   outline: none;
 }
+
+.composer-input-wrap {
+  position: relative;
+}
+.composer-input {
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: inherit;
+  line-height: 1.5;
+}
+.composer-input p {
+  margin: 0;
+}
+.composer-placeholder {
+  position: absolute;
+  top: 17px;
+  left: 18px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted);
+  pointer-events: none;
+}
+.composer-reference {
+  border-radius: 5px;
+  padding: 1px 3px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--accent);
+  box-decoration-break: clone;
+}
+
 .composer-bottom {
   display: flex;
   justify-content: space-between;
@@ -1223,10 +1254,15 @@ dialog::backdrop {
   .compose-area {
     padding: 8px 10px max(8px, env(safe-area-inset-bottom));
   }
-  .composer textarea {
+  .composer-input {
     min-height: 67px;
     font-size: 16px;
     padding: 14px 14px 3px;
+  }
+  .composer-placeholder {
+    top: 14px;
+    left: 14px;
+    font-size: 16px;
   }
   .composer-bottom {
     padding: 6px 8px;

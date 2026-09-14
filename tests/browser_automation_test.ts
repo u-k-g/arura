@@ -30,7 +30,7 @@ Deno.test({
       await page
         .getByRole("button", { name: "Use gardening", exact: true })
         .click();
-      await expect(input).toHaveValue("/gardening Help me with gardening");
+      await expect(input).toHaveText("/gardening Help me with gardening");
       await input.fill("Every morning summarize the garden tasks");
       await page
         .getByRole("button", { name: "Schedule this", exact: true })

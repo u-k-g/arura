@@ -444,10 +444,10 @@ Deno.test({
           exact: true,
         }),
       ).toBeVisible();
-      await expect(input).toHaveValue("Reject this correction");
+      await expect(input).toHaveText("Reject this correction");
       await input.fill("Focus on the garden");
       await page.getByRole("button", { name: "Steer", exact: true }).click();
-      await expect(input).toHaveValue("");
+      await expect(input).toHaveText("");
       await input.fill("Continue after stopping");
       await page
         .getByRole("button", { name: "Queue message", exact: true })

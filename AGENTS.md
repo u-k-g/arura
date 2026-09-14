@@ -15,6 +15,4 @@ Read [Product scope](docs/product-scope.md) when building or reviewing features.
 - [T3 Code](https://github.com/pingdotgg/t3code): live-work and completed-turn presentation; the product scope defines the exact behavior. well made, communicative and responsive ui.
 - [Convex backend](https://github.com/get-convex/convex-backend): Arura's self-hosted sync layer; stores shared state and pushes changes to subscribed clients.
 - [Convex JavaScript SDK](https://github.com/get-convex/convex-js): connects each browser to that sync layer through subscriptions and receives updates across devices.
-- [SolidJS](https://github.com/solidjs/solid) and
-  [Solid Router](https://github.com/solidjs/solid-router): frontend reactivity
-  and navigation.
+- [SolidJS](https://github.com/solidjs/solid) + [Solid Router](https://github.com/solidjs/solid-router): frontend reactivity and navigation.

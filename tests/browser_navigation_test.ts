@@ -66,7 +66,7 @@ Deno.test({
         .getByRole("dialog", { name: "Add context", exact: true })
         .getByRole("button", { name: title, exact: true })
         .click();
-      await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveValue(
+      await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveText(
         new RegExp(title),
       );
       await a
@@ -81,7 +81,7 @@ Deno.test({
       await a
         .getByRole("button", { name: "Attach reference", exact: true })
         .click();
-      await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveValue(
+      await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveText(
         /\/fixture\/garden/,
       );
       await b

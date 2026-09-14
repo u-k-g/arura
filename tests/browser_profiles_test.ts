@@ -97,7 +97,7 @@ Deno.test({
         .getByLabel("Message Hermes", { exact: true })
         .fill("Draft stays with the renamed profile");
       // Finish the local draft write before triggering migration from the other device.
-      await expect(b.getByLabel("Message Hermes", { exact: true })).toHaveValue(
+      await expect(b.getByLabel("Message Hermes", { exact: true })).toHaveText(
         "Draft stays with the renamed profile",
       );
       await write(
@@ -113,7 +113,7 @@ Deno.test({
       await expect
         .poll(() => b.evaluate(() => localStorage.getItem("arura.view")))
         .toBe(newKey);
-      await expect(b.getByLabel("Message Hermes", { exact: true })).toHaveValue(
+      await expect(b.getByLabel("Message Hermes", { exact: true })).toHaveText(
         "Draft stays with the renamed profile",
       );
       const moved = await client.query(anyApi.workspace.byKey, { key });
