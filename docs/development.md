@@ -74,11 +74,12 @@ explicitly configured instance using private self-hosted administrator
 credentials.
 
 To run a selected browser acceptance case against a fresh isolated stack, build
-the frontend and pass test file arguments to `deno run -A scripts/test-stack.ts`.
-For example, `deno run -A scripts/test-stack.ts tests/browser_files_test.ts`.
-Set `ARURA_SERVER_EXECUTABLE` and `ARURA_DEPLOY_EXECUTABLE` to the packaged
-`arura` and `arura-deploy-functions` executables to test installation and startup
-with fresh caches instead of using the checkout.
+the frontend and pass test file arguments to
+`deno run -A scripts/test-stack.ts`. For example,
+`deno run -A scripts/test-stack.ts tests/browser_files_test.ts`. Set
+`ARURA_SERVER_EXECUTABLE` and `ARURA_DEPLOY_EXECUTABLE` to the packaged `arura`
+and `arura-deploy-functions` executables to test installation and startup with
+fresh caches instead of using the checkout.
 
 `tests/hermes_runtime_test.ts` is disabled in ordinary test runs. It requires
 `ARURA_ISOLATED_HERMES_HOME` under the development scratch root, the disposable

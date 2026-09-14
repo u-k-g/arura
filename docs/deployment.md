@@ -3,9 +3,9 @@
 Arura runs three components: the Deno HTTP adapter serving the built SolidJS
 app, the self-hosted Convex backend, and your existing Hermes dashboard API.
 Hermes continues to own agent execution and its configuration. The NixOS module
-manages the first two components; it does not install or alter Hermes.
-Connect Arura to the Hermes dashboard API, not the separate messaging/cron
-gateway service. Keep that gateway's existing lifecycle under host management.
+manages the first two components; it does not install or alter Hermes. Connect
+Arura to the Hermes dashboard API, not the separate messaging/cron gateway
+service. Keep that gateway's existing lifecycle under host management.
 
 ## Package and services
 
@@ -23,7 +23,7 @@ Import the module and configure `services.arura`:
 | `hermesUrl`                            | Dashboard API reachable from the host adapter.                       |
 | `environmentFile`                      | Private runtime file containing Arura access and Hermes credentials. |
 | `convexEnvironmentFile`                | Private runtime file containing the Convex instance identity.        |
-| `deployFunctions`                     | Deploy the matching packaged functions at startup; defaults to true. |
+| `deployFunctions`                      | Deploy the matching packaged functions at startup; defaults to true. |
 | `port`, `convexPort`, `convexSitePort` | Local listeners, defaulting to 4100, 3210, and 3211.                 |
 
 Use your host's secret management to supply the files. Their contents must
@@ -57,8 +57,8 @@ name and secret as the Convex service. Keep this key outside the Nix store.
 
 The packaged `arura-deploy-functions` command waits for the local backend,
 creates or reuses Arura's signing identity in its persistent state directory,
-sets the issuer/public key, and deploys the matching functions and schema.
-The HTTP server starts only after deployment succeeds. Package updates therefore
+sets the issuer/public key, and deploys the matching functions and schema. The
+HTTP server starts only after deployment succeeds. Package updates therefore
 update functions on service restart without requiring a checkout or downloading
 dependencies. The private signing key remains in the service state directory.
 The packaged deployer disables the CLI's crash reporting and grants it network
@@ -103,20 +103,20 @@ backup procedure. Arura's downloadable organization backup currently contains
 folders, preferences, and conversation organization; it is not a complete
 service backup or an automatic restore workflow. Hermes backup creation reports
 shared progress and exposes its archive download only after the corresponding
-host process exits successfully. A separate workspace download contains web-owned
-organization. Diagnostic downloads remain local.
+host process exits successfully. A separate workspace download contains
+web-owned organization. Diagnostic downloads remain local.
 
 For a recoverable whole-service snapshot, stop `arura.service` and
 `arura-convex.service`, quiesce Hermes using the host's own service declaration,
 and capture their persistent state together with the private environment files.
 The module's systemd state directories are named `arura` and `arura-convex`;
-include their actual contents, including Convex storage and SQLite sidecars,
-and preserve file permissions. Record the Arura package revision and Hermes
-revision with the snapshot. Restart the services after capture. Restore while
-the services are stopped, using the matching package revisions and instance
-identity before attempting upgrades. Do not copy an actively changing Convex
-database as a standalone file. Device authentication depends on retaining both
-the database and Arura signing identity.
+include their actual contents, including Convex storage and SQLite sidecars, and
+preserve file permissions. Record the Arura package revision and Hermes revision
+with the snapshot. Restart the services after capture. Restore while the
+services are stopped, using the matching package revisions and instance identity
+before attempting upgrades. Do not copy an actively changing Convex database as
+a standalone file. Device authentication depends on retaining both the database
+and Arura signing identity.
 
 Deploy beside the existing web client first, using separate origins, listeners,
 and state. Validate real sending, reconnects, and device revocation from both a
@@ -132,19 +132,20 @@ production Hermes installation. A live NixOS rollout remains pending.
 - Hermes replay is bounded and does not provide an atomic snapshot with a replay
   cursor. Arura recovers through snapshots; changes originating outside Arura
   can arrive after reconciliation rather than immediately. An unacknowledged
-  prompt can have an unknown outcome, so check the conversation before resending.
+  prompt can have an unknown outcome, so check the conversation before
+  resending.
 - File and configuration saves check for conflicts, but Hermes provides no
   atomic compare-and-swap against other writers on the host.
 - In the audited Hermes revision, the Mixture of Agents preset endpoint clears
-  an existing `privacy_filter`. Arura preserves it by blocking preset rename
-  and deletion when a filter is configured. See the pinned
+  an existing `privacy_filter`. Arura preserves it by blocking preset rename and
+  deletion when a filter is configured. See the pinned
   [upstream route](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/models.py).
 
 ## Handoff to nc
 
-The next deployment change belongs in [nc](https://github.com/u-k-g/nc): add this
-flake input, import its NixOS module, supply private instance credentials, set
-the two public origins, and point `hermesUrl` at the dashboard API for the
+The next deployment change belongs in [nc](https://github.com/u-k-g/nc): add
+this flake input, import its NixOS module, supply private instance credentials,
+set the two public origins, and point `hermesUrl` at the dashboard API for the
 existing Hermes service on Manara. Configure the host's HTTP/WebSocket routes,
 backup coverage, and optional restart/update wrappers there. Keep the current
 web client available during the first deployment. The rollout checks are real

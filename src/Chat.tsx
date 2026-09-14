@@ -107,9 +107,10 @@ export default function Chat(props: {
   const [completionIndex, setCompletionIndex] = createSignal(0),
     [cursor, setCursor] = createSignal(0);
   const excludedCommand = (value: string) =>
-    /^\/(?:image|imagine|flux|voice|wake|terminal|shell|hud|radio|pet|browser)(?:[-\s]|$)/i.test(
-      value,
-    );
+    /^\/(?:image|imagine|flux|voice|wake|terminal|shell|hud|radio|pet|browser)(?:[-\s]|$)/i
+      .test(
+        value,
+      );
   let scroller!: HTMLDivElement;
   let input!: ComposerHandle;
   let fileInput!: HTMLInputElement;
@@ -120,10 +121,9 @@ export default function Chat(props: {
       .flatMap((p: any) => p.messages) as Message[];
   const turn = () => data().turn as Turn | null;
   const turnIsInHistory = () => {
-    const last =
-        turn()?.state === "running"
-          ? messages().at(-1)
-          : messages().findLast((message) => message.role === "assistant"),
+    const last = turn()?.state === "running"
+        ? messages().at(-1)
+        : messages().findLast((message) => message.role === "assistant"),
       live = turn()?.text.replace(/\s+/g, "");
     return Boolean(
       live &&
@@ -174,8 +174,7 @@ export default function Chat(props: {
       { conversation: key, pages: count },
       (value) => {
         transcriptRevision++;
-        const nearBottom =
-          !scroller ||
+        const nearBottom = !scroller ||
           scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <
             180;
         setData(value);
@@ -193,7 +192,7 @@ export default function Chat(props: {
           ) {
             requested.add(requestId);
             void command("load", key, { offset }).catch((error) =>
-              inform(error.message),
+              inform(error.message)
             );
           }
         }
@@ -203,7 +202,7 @@ export default function Chat(props: {
             scroller?.scrollTo({
               top: scroller.scrollHeight,
               behavior: "instant",
-            }),
+            })
           );
         }
       },
@@ -211,7 +210,7 @@ export default function Chat(props: {
     onCleanup(stop);
     if (connected()) {
       void command("load", key, { offset: 0 }).catch((error) =>
-        inform(error.message),
+        inform(error.message)
       );
     }
   });
@@ -228,7 +227,7 @@ export default function Chat(props: {
       const result = command("send", key, {
         text: value,
         attachments: uploads().filter((file) =>
-          value.includes(`[Attached file: ${file.path}]`),
+          value.includes(`[Attached file: ${file.path}]`)
         ),
         ...(edit() ? { edit: edit() } : {}),
       });
@@ -280,10 +279,10 @@ export default function Chat(props: {
   const rpc = (method: string, params: Record<string, unknown> = {}) =>
     rpcQueries.has(method)
       ? request("/api/query", {
-          method,
-          params,
-          conversation: props.conversation,
-        })
+        method,
+        params,
+        conversation: props.conversation,
+      })
       : command("rpc", props.conversation, { method, params });
   createEffect(() => {
     const value = text(),
@@ -355,8 +354,9 @@ export default function Chat(props: {
             icon="page"
             label="Copy message"
             onClick={() =>
-              void run(() => navigator.clipboard.writeText(message.text))
-            }
+              void run(() =>
+                navigator.clipboard.writeText(message.text)
+              )}
           />
           <Show when={message.role === "user"}>
             <IconButton
@@ -379,8 +379,7 @@ export default function Chat(props: {
                 });
                 inform("Conversation branched");
                 props.navigate(result.key);
-              })
-            }
+              })}
           />
         </div>
       </Show>
@@ -409,15 +408,14 @@ export default function Chat(props: {
                     id,
                     provider: provider.slug,
                     name: `${id} · ${provider.name}`,
-                  })),
+                  }))
                 ) ??
                   result.models ??
                   [],
               );
               setModel("choose");
               setCustomizeModels(false);
-            })
-          }
+            })}
         >
           <Icon name="chat-bubble" />
           Model
@@ -436,8 +434,7 @@ export default function Chat(props: {
           onClick={() =>
             void run(async () => {
               setControls("context");
-            })
-          }
+            })}
         >
           Context
         </button>
@@ -447,8 +444,7 @@ export default function Chat(props: {
           onClick={() =>
             void run(async () => {
               setControls("subagents");
-            })
-          }
+            })}
         >
           Delegated work
         </button>
@@ -478,13 +474,11 @@ export default function Chat(props: {
                     <summary>
                       Worked
                       <Show
-                        when={
-                          group.prompt?.createdAt && group.answer?.createdAt
-                        }
+                        when={group.prompt?.createdAt &&
+                          group.answer?.createdAt}
                       >
                         {" "}
-                        for{" "}
-                        {elapsed(
+                        for {elapsed(
                           group.prompt?.createdAt ?? 0,
                           group.answer?.createdAt ?? 0,
                         )}
@@ -555,8 +549,8 @@ export default function Chat(props: {
                               {i().kind === "approval"
                                 ? "Approval needed"
                                 : i().kind === "secret"
-                                  ? "Input needed"
-                                  : "A question from Hermes"}
+                                ? "Input needed"
+                                : "A question from Hermes"}
                             </h3>
                             <p>{i().text}</p>
                             <Show
@@ -577,7 +571,7 @@ export default function Chat(props: {
                                             conversation: props.conversation,
                                             requestId: i().id,
                                             value,
-                                          }),
+                                          })
                                         );
                                       }}
                                     >
@@ -597,8 +591,7 @@ export default function Chat(props: {
                                   <Clarification
                                     interaction={i()}
                                     respond={(params) =>
-                                      rpc("clarify.respond", params)
-                                    }
+                                      rpc("clarify.respond", params)}
                                   />
                                 </Show>
                               }
@@ -611,9 +604,8 @@ export default function Chat(props: {
                                     rpc("approval.respond", {
                                       request_id: i().id,
                                       choice: "once",
-                                    }),
-                                  )
-                                }
+                                    })
+                                  )}
                               >
                                 Allow once
                               </button>
@@ -624,9 +616,8 @@ export default function Chat(props: {
                                     rpc("approval.respond", {
                                       request_id: i().id,
                                       choice: "deny",
-                                    }),
-                                  )
-                                }
+                                    })
+                                  )}
                               >
                                 Deny
                               </button>
@@ -657,7 +648,7 @@ export default function Chat(props: {
           </For>
           <For
             each={data().commands.filter((c: any) =>
-              ["unknown", "error"].includes(c.status),
+              ["unknown", "error"].includes(c.status)
             )}
           >
             {(c: any) => (
@@ -717,7 +708,7 @@ export default function Chat(props: {
                       const text = prompt("Queued message", c.payload.text);
                       if (text !== null) {
                         void run(() =>
-                          mutate("commands.edit", { id: c._id, text }),
+                          mutate("commands.edit", { id: c._id, text })
                         );
                       }
                     }}
@@ -726,9 +717,8 @@ export default function Chat(props: {
                     type="button"
                     onClick={() =>
                       void run(() =>
-                        mutate("commands.edit", { id: c._id, next: true }),
-                      )
-                    }
+                        mutate("commands.edit", { id: c._id, next: true })
+                      )}
                   >
                     Send next
                   </button>
@@ -737,9 +727,8 @@ export default function Chat(props: {
                     label="Remove queued message"
                     onClick={() =>
                       void run(() =>
-                        mutate("commands.edit", { id: c._id, cancel: true }),
-                      )
-                    }
+                        mutate("commands.edit", { id: c._id, cancel: true })
+                      )}
                   />
                 </div>
               )}
@@ -794,14 +783,12 @@ export default function Chat(props: {
             }}
             context={`${props.conversation}:${edit() ?? ""}`}
             controls={completions().length ? "composer-completions" : undefined}
-            activeDescendant={
-              completions().length
-                ? `completion-${completionIndex()}`
-                : undefined
-            }
-            placeholder={
-              connected() ? "Message Hermes…" : "Write a draft while offline…"
-            }
+            activeDescendant={completions().length
+              ? `completion-${completionIndex()}`
+              : undefined}
+            placeholder={connected()
+              ? "Message Hermes…"
+              : "Write a draft while offline…"}
             value={text()}
             onChange={changeText}
             onCursor={setCursor}
@@ -870,13 +857,13 @@ export default function Chat(props: {
                         }))
                         .filter(
                           (item: { command: string }) =>
-                            !/^\/(?:image|voice|wake|terminal|shell|hud|radio|pet|browser)(?:\s|$)/i.test(
-                              item.command,
-                            ),
+                            !/^\/(?:image|voice|wake|terminal|shell|hud|radio|pet|browser)(?:\s|$)/i
+                              .test(
+                                item.command,
+                              ),
                         ),
                     );
-                  })
-                }
+                  })}
               >
                 / Commands
               </button>
@@ -900,8 +887,7 @@ export default function Chat(props: {
                       }
                       changeText("");
                       inform("Instructions sent to the active run");
-                    })
-                  }
+                    })}
                 >
                   Steer
                 </button>
@@ -917,9 +903,9 @@ export default function Chat(props: {
               <button
                 class="send"
                 type="submit"
-                aria-label={
-                  turn()?.state === "running" ? "Queue message" : "Send message"
-                }
+                aria-label={turn()?.state === "running"
+                  ? "Queue message"
+                  : "Send message"}
                 disabled={!text().trim() || !connected() || sending()}
               >
                 <Icon name="send" />
@@ -931,8 +917,8 @@ export default function Chat(props: {
           {!connected()
             ? "Draft saved on this device. Connect to send."
             : turn()?.state === "running"
-              ? "Messages sent now join the queue."
-              : "Hermes runs on your host."}
+            ? "Messages sent now join the queue."
+            : "Hermes runs on your host."}
         </p>
         <input
           ref={fileInput}
@@ -1003,9 +989,8 @@ export default function Chat(props: {
                         mutate("workspace.modelVisibility", {
                           model: modelKey(entry),
                           hidden: !event.currentTarget.checked,
-                        }),
-                      )
-                    }
+                        })
+                      )}
                   />
                 </Field>
               )}
@@ -1048,8 +1033,7 @@ export default function Chat(props: {
                         });
                       }
                       setModel("");
-                    })
-                  }
+                    })}
                 >
                   {modelLabel(m)}
                 </button>
@@ -1065,9 +1049,8 @@ export default function Chat(props: {
                     key: "reasoning",
                     value: e.currentTarget.value,
                     scope: "session",
-                  }),
-                )
-              }
+                  })
+                )}
             >
               <option value="">Choose effort</option>
               <For each={["none", "minimal", "low", "medium", "high", "xhigh"]}>

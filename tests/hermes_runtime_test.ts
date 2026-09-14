@@ -5,7 +5,8 @@ import { operationRequest } from "../shared/resources.ts";
 import { configPatch } from "../shared/resource-forms.ts";
 
 Deno.test({
-  name: "isolated upstream Hermes: profile, schedule, skill, memory, MCP, endpoint and webhook contracts",
+  name:
+    "isolated upstream Hermes: profile, schedule, skill, memory, MCP, endpoint and webhook contracts",
   ignore: !Deno.env.get("ARURA_ISOLATED_HERMES_HOME"),
   async fn(t) {
     const home = Deno.env.get("ARURA_ISOLATED_HERMES_HOME")!;
@@ -77,7 +78,9 @@ Deno.test({
         assert.equal(status.running, false);
         assert.equal(status.exit_code, 0);
         const response = await hermes.request(
-          `/api/ops/backup/download?${new URLSearchParams({ archive: backup.archive })}`,
+          `/api/ops/backup/download?${new URLSearchParams({
+            archive: backup.archive,
+          })}`,
         );
         assert.equal(response.status, 200);
         const bytes = new Uint8Array(await response.arrayBuffer());
@@ -111,8 +114,9 @@ Deno.test({
           );
           assert.equal(result.name, renamed);
         } finally {
-          for (const id of [name, renamed, clone])
+          for (const id of [name, renamed, clone]) {
             await op("deleteProfile", { id }, {}).catch(() => {});
+          }
         }
       },
     );
@@ -159,7 +163,8 @@ Deno.test({
       const name = `arura-test-${suffix}`;
       const directory = join(home, "skills", name);
       await Deno.mkdir(directory, { recursive: true });
-      const content = `---\nname: ${name}\ndescription: Disposable acceptance skill\n---\nOnly test data.\n`;
+      const content =
+        `---\nname: ${name}\ndescription: Disposable acceptance skill\n---\nOnly test data.\n`;
       await Deno.writeTextFile(join(directory, "SKILL.md"), content);
       try {
         assert(
@@ -299,11 +304,12 @@ Deno.test({
             if (
               request.method !== "POST" ||
               new URL(request.url).pathname.endsWith("/models")
-            )
+            ) {
               return Response.json({
                 object: "list",
                 data: [{ id: "arura-acceptance", object: "model" }],
               });
+            }
             const body = await request.json();
             calls++;
             const base = {
@@ -405,7 +411,7 @@ Deno.test({
           const history = await hermes.history(created.key);
           assert(
             history.messages.some((message) =>
-              message.text.includes("Runtime acceptance answer."),
+              message.text.includes("Runtime acceptance answer.")
             ),
           );
           assert(
@@ -414,11 +420,13 @@ Deno.test({
             ),
           );
           const session_id = await hermes.attach(created.key);
-          for (const [name, arg] of [
-            ["goal", "Plan a garden\nverification: Five native plants"],
-            ["loop", "2h Check the garden"],
-            ["heartbeat", "every 2h Check the garden"],
-          ]) {
+          for (
+            const [name, arg] of [
+              ["goal", "Plan a garden\nverification: Five native plants"],
+              ["loop", "2h Check the garden"],
+              ["heartbeat", "every 2h Check the garden"],
+            ]
+          ) {
             try {
               await hermes.call("command.dispatch", { session_id, name, arg });
             } catch (error) {
@@ -427,8 +435,9 @@ Deno.test({
                 !error.message.startsWith(
                   "not a quick/plugin/bundle/skill command:",
                 )
-              )
+              ) {
                 throw error;
+              }
               await hermes.call("slash.exec", {
                 session_id,
                 command: `/${name} ${arg}`,
@@ -438,12 +447,12 @@ Deno.test({
               await hermes.call("session.control.read", { session_id })
             ).control;
             assert(state[name], `${name} was not configured`);
-            if (name === "goal")
+            if (name === "goal") {
               assert.equal(
                 state.goal.contract.verification,
                 "Five native plants",
               );
-            else assert.equal(state[name].interval_seconds, 7200);
+            } else assert.equal(state[name].interval_seconds, 7200);
             await hermes.call("session.control", {
               session_id,
               action: `${name}.pause`,
@@ -468,8 +477,9 @@ Deno.test({
         } finally {
           clearTimeout(timer);
           hermes.close();
-          if (endpointId)
+          if (endpointId) {
             await op("deleteEndpoint", { id: endpointId }, {}).catch(() => {});
+          }
           await inference.shutdown();
         }
       },

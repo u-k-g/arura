@@ -69,17 +69,17 @@ export const queue = query({
     return (
       args.blocked?.length
         ? queued.filter((q) =>
-            q.or(
-              q.neq(q.field("kind"), "send"),
-              q.not(
-                q.or(
-                  ...args.blocked!.map((key) =>
-                    q.eq(q.field("conversation"), key),
-                  ),
+          q.or(
+            q.neq(q.field("kind"), "send"),
+            q.not(
+              q.or(
+                ...args.blocked!.map((key) =>
+                  q.eq(q.field("conversation"), key)
                 ),
               ),
             ),
           )
+        )
         : queued
     ).take(100);
   },
@@ -127,10 +127,12 @@ export const recover = mutation({
   args: {},
   handler: async (ctx) => {
     await adapter(ctx);
-    for (const c of await ctx.db
-      .query("commands")
-      .withIndex("status", (q) => q.eq("status", "dispatching"))
-      .collect()) {
+    for (
+      const c of await ctx.db
+        .query("commands")
+        .withIndex("status", (q) => q.eq("status", "dispatching"))
+        .collect()
+    ) {
       await ctx.db.patch(c._id, {
         status: "unknown",
         error:
@@ -152,16 +154,17 @@ export const edit = mutation({
     if (!c || c.status !== "queued") {
       throw new Error("This message has already been dispatched");
     }
-    if (c.kind !== "send")
+    if (c.kind !== "send") {
       throw new Error("Only queued messages can be edited");
+    }
     if (args.text !== undefined && !args.text.trim()) {
       throw new Error("Write a message");
     }
     const first = args.next
       ? await ctx.db
-          .query("commands")
-          .withIndex("status", (q) => q.eq("status", "queued"))
-          .first()
+        .query("commands")
+        .withIndex("status", (q) => q.eq("status", "queued"))
+        .first()
       : null;
     await ctx.db.patch(c._id, {
       ...(args.cancel ? { status: "cancelled" as const } : {}),

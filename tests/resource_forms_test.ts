@@ -1,7 +1,7 @@
 import { deepStrictEqual, throws } from "node:assert/strict";
 import {
-  endpointBody,
   configPatch,
+  endpointBody,
   jobPatch,
   mcpBody,
   pairingRows,

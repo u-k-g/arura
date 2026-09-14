@@ -111,8 +111,7 @@ export default function ProviderAccess() {
                       );
                     }
                     setFlow({ ...value, provider: provider.id });
-                  })
-                }
+                  })}
               >
                 {provider.status.logged_in ? "Sign in again" : "Sign in"}
               </button>
@@ -139,8 +138,7 @@ export default function ProviderAccess() {
                     );
                     await refresh();
                     inform("Provider disconnected");
-                  })
-                }
+                  })}
               >
                 Disconnect
               </button>
@@ -150,7 +148,10 @@ export default function ProviderAccess() {
       </For>
       <Show when={flow()}>
         {(current) => (
-          <Dialog title="Authorize provider" close={() => void run(close)}>
+          <Dialog
+            title="Authorize provider"
+            close={() => void run(close)}
+          >
             <Show
               when={!current().status || current().status === "pending"}
               fallback={

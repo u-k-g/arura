@@ -133,12 +133,10 @@ export class Hermes extends EventEmitter {
   async rest(path: string, method = "GET", body?: unknown) {
     const r = await this.request(path, {
       method,
-      ...(body === undefined
-        ? {}
-        : {
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          }),
+      ...(body === undefined ? {} : {
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }),
     });
     if (!r.ok) {
       const text = await r.text();
@@ -252,10 +250,10 @@ export class Hermes extends EventEmitter {
         this.pending.delete(frame.id);
         frame.error
           ? p.reject(
-              Object.assign(new Error(frame.error.message), {
-                code: frame.error.code,
-              }),
-            )
+            Object.assign(new Error(frame.error.message), {
+              code: frame.error.code,
+            }),
+          )
           : p.resolve(frame.result);
       }
       return;
@@ -362,10 +360,9 @@ export class Hermes extends EventEmitter {
       }
     }
     if (type === "tool.complete") {
-      const entry =
-        turn.activity.find(
-          (x) => x.id === String(payload.tool_call_id ?? payload.id),
-        ) ?? turn.activity.findLast((x) => x.state === "running");
+      const entry = turn.activity.find(
+        (x) => x.id === String(payload.tool_call_id ?? payload.id),
+      ) ?? turn.activity.findLast((x) => x.state === "running");
       if (entry) entry.state = payload.error ? "error" : "complete";
     }
     if (
@@ -378,8 +375,7 @@ export class Hermes extends EventEmitter {
         const previous = turn.interactions[index];
         if (next.questions) {
           next.questions = next.questions.map((question) => {
-            const answer =
-              question.answer ??
+            const answer = question.answer ??
               previous.questions?.find((old) => old.id === question.id)?.answer;
             return answer === undefined ? question : { ...question, answer };
           });
@@ -390,12 +386,11 @@ export class Hermes extends EventEmitter {
     if (type === "message.complete") {
       turn.recovering = false;
       turn.text = visibleText(payload.text ?? turn.text);
-      turn.state =
-        payload.status === "error"
-          ? "error"
-          : payload.status === "interrupted"
-            ? "interrupted"
-            : "complete";
+      turn.state = payload.status === "error"
+        ? "error"
+        : payload.status === "interrupted"
+        ? "interrupted"
+        : "complete";
       turn.finishedAt = Date.now();
       turn.interactions = [];
       if (payload.error) turn.error = visibleText(payload.error);
@@ -450,7 +445,7 @@ export class Hermes extends EventEmitter {
           this.emit("resync", this.reverse.get(sid));
         } else {
           events = (result.events ?? []).map((event: any) =>
-            event.method ? event : { method: "event", params: event },
+            event.method ? event : { method: "event", params: event }
           );
         }
       } catch {
@@ -539,23 +534,23 @@ export class Hermes extends EventEmitter {
         activity: preserveActivity ? (previous?.activity ?? []) : [],
         interactions: preserveActivity ? (previous?.interactions ?? []) : [],
         recovering: this.recovering.has(result.session_id),
-        startedAt:
-          Number(
-            snapshot.started_at ?? result.turn_started_at ?? Date.now() / 1000,
-          ) * 1000,
-        state:
-          snapshot.status === "error"
-            ? "error"
-            : result.running
-              ? "running"
-              : "interrupted",
+        startedAt: Number(
+          snapshot.started_at ?? result.turn_started_at ?? Date.now() / 1000,
+        ) * 1000,
+        state: snapshot.status === "error"
+          ? "error"
+          : result.running
+          ? "running"
+          : "interrupted",
         ...(snapshot.error ? { error: visibleText(snapshot.error) } : {}),
       };
       this.turns.set(key, turn);
-      for (const [kind, payload] of [
-        ["approval", result.pending_approval],
-        ["clarify", result.pending_clarify],
-      ]) {
+      for (
+        const [kind, payload] of [
+          ["approval", result.pending_approval],
+          ["clarify", result.pending_clarify],
+        ]
+      ) {
         if (payload) {
           this.receive({
             method: "event",
@@ -672,8 +667,8 @@ export class Hermes extends EventEmitter {
       profile,
       sourceId,
       bot: true,
-      title:
-        bot?.ui_meta?.["hermes-bots"]?.title || bot?.display_name || profile,
+      title: bot?.ui_meta?.["hermes-bots"]?.title || bot?.display_name ||
+        profile,
       activityAt:
         Number(row.last_active ?? row.started_at ?? Date.now() / 1000) * 1000,
     };
@@ -708,7 +703,7 @@ export class Hermes extends EventEmitter {
       }
     >();
     for (const profile of profiles) {
-      for (let offset = 0; ; offset += 100) {
+      for (let offset = 0;; offset += 100) {
         const query = new URLSearchParams({
           profile,
           limit: "100",
@@ -726,14 +721,13 @@ export class Hermes extends EventEmitter {
             profile,
             sourceId,
             title: row.title || "Untitled conversation",
-            activityAt:
-              Number(
-                row.last_active ??
-                  row.last_activity ??
-                  row.updated_at ??
-                  row.started_at ??
-                  0,
-              ) * 1000,
+            activityAt: Number(
+              row.last_active ??
+                row.last_activity ??
+                row.updated_at ??
+                row.started_at ??
+                0,
+            ) * 1000,
           });
         }
         if (
@@ -755,12 +749,11 @@ export class Hermes extends EventEmitter {
         profile: profile.name,
         sourceId,
         bot: true,
-        title:
-          profile.ui_meta?.["hermes-bots"]?.title ||
+        title: profile.ui_meta?.["hermes-bots"]?.title ||
           profile.display_name ||
           profile.name,
-        activityAt:
-          Number(canonical.last_active ?? canonical.started_at ?? 0) * 1000,
+        activityAt: Number(canonical.last_active ?? canonical.started_at ?? 0) *
+          1000,
       });
     }
     return [...all.values()];
@@ -770,9 +763,11 @@ export class Hermes extends EventEmitter {
       "/api/profiles/sessions?limit=1&archived=include",
     );
     const results: { key: string; title: string; profile: string }[] = [];
-    for (const profile of Object.keys(
-      discovery.profile_totals ?? { default: 0 },
-    )) {
+    for (
+      const profile of Object.keys(
+        discovery.profile_totals ?? { default: 0 },
+      )
+    ) {
       const params = new URLSearchParams({ q: query, profile, limit: "20" });
       const data = await this.rest(`/api/sessions/search?${params}`);
       for (const row of data.results ?? []) {

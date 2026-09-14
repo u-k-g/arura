@@ -14,7 +14,8 @@ async function until(check: () => boolean) {
 }
 
 Deno.test({
-  name: "self-hosted Convex: two-device sync, command claims, invite reuse, and live revocation",
+  name:
+    "self-hosted Convex: two-device sync, command claims, invite reuse, and live revocation",
   ignore: !Deno.env.get("CONVEX_SELF_HOSTED_URL"),
   async fn() {
     const url = Deno.env.get("CONVEX_SELF_HOSTED_URL")!;
@@ -80,7 +81,7 @@ Deno.test({
       const folderName = `Folder ${crypto.randomUUID()}`;
       await a.mutation(api.workspace.folder, { name: folderName });
       await until(() =>
-        snapshot.folders.some((f: any) => f.name === folderName),
+        snapshot.folders.some((f: any) => f.name === folderName)
       );
       const folder = snapshot.folders.find((f: any) => f.name === folderName);
       await a.mutation(api.workspace.move, {
@@ -91,7 +92,7 @@ Deno.test({
       await until(() =>
         snapshot.conversations.some(
           (c: any) => c.key === key && c.folderId === folder._id,
-        ),
+        )
       );
       await b.mutation(api.workspace.folder, {
         id: folder._id,
@@ -199,7 +200,7 @@ Deno.test({
       await until(() =>
         snapshot.conversations.some(
           (c: any) => c.key === key && c.section === "essential",
-        ),
+        )
       );
       await a.mutation(api.workspace.move, { key, section: "archived" });
       assert(
@@ -211,10 +212,11 @@ Deno.test({
       await until(() =>
         snapshot.conversations.some(
           (c: any) => c.key === key && c.unarchivedAt,
-        ),
+        )
       );
-      const archiveKeys = Array.from({ length: 13 }, () =>
-        JSON.stringify(["test", crypto.randomUUID()]),
+      const archiveKeys = Array.from(
+        { length: 13 },
+        () => JSON.stringify(["test", crypto.randomUUID()]),
       );
       await adapter.mutation(api.workspace.ingest, {
         conversations: archiveKeys.map((key) => ({
@@ -299,8 +301,9 @@ Deno.test({
         while (
           (await a.query(api.workspace.byKey, { key })).section !== "archived"
         ) {
-          if (Date.now() > deadline)
+          if (Date.now() > deadline) {
             throw new Error("Archive sweep did not reach later pages");
+          }
           await new Promise((resolve) => setTimeout(resolve, 50));
         }
       }

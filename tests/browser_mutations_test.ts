@@ -3,7 +3,8 @@ import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
 
 Deno.test({
-  name: "editing an earlier message replaces its continuation; branching preserves the original",
+  name:
+    "editing an earlier message replaces its continuation; branching preserves the original",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -41,7 +42,7 @@ Deno.test({
         page.getByRole("button", { name: "Send message", exact: true }),
       ).toBeVisible();
       const originalKey = await page.evaluate(() =>
-        localStorage.getItem("arura.view"),
+        localStorage.getItem("arura.view")
       );
       await page
         .getByRole("button", { name: "Edit and resubmit", exact: true })
@@ -95,9 +96,11 @@ Deno.test({
       ).toBeVisible();
       const [profile, id] = JSON.parse(originalKey!);
       const original = await page.request.get(
-        `${url}/api/download?type=conversation&profile=${encodeURIComponent(
-          profile,
-        )}&id=${encodeURIComponent(id)}`,
+        `${url}/api/download?type=conversation&profile=${
+          encodeURIComponent(
+            profile,
+          )
+        }&id=${encodeURIComponent(id)}`,
       );
       expect(original.ok()).toBe(true);
       const exported = await original.json();
@@ -121,7 +124,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "mobile approvals, clarification and secrets resolve across devices without caching the secret",
+  name:
+    "mobile approvals, clarification and secrets resolve across devices without caching the secret",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -268,8 +272,9 @@ Deno.test({
           (command: any) => command.payload?.text === "Queued after questions",
         )?.status,
       ).toBe("queued");
-      for (const id of backlog)
+      for (const id of backlog) {
         await client.mutation(anyApi.commands.edit, { id, cancel: true });
+      }
       await a.getByLabel("Your answer", { exact: true }).fill("Blue");
       await a
         .locator(".interaction")
@@ -353,7 +358,7 @@ Deno.test({
         answers.findIndex((text) => text.includes("Received: Edited priority")),
       ).toBeLessThan(
         answers.findIndex((text) =>
-          text.includes("Received: Queued after questions"),
+          text.includes("Received: Queued after questions")
         ),
       );
       expect(answers.join("\n")).not.toContain("Received: First priority");
@@ -406,7 +411,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "steering preserves a rejected draft and stopping settles the run before queued work starts",
+  name:
+    "steering preserves a rejected draft and stopping settles the run before queued work starts",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({

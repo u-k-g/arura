@@ -31,12 +31,10 @@ export async function request(
   const response = await fetch(path, {
     method,
     credentials: "same-origin",
-    ...(body === undefined
-      ? {}
-      : {
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-        }),
+    ...(body === undefined ? {} : {
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }),
   });
   const data = await response.json();
   if (!response.ok) {
@@ -81,7 +79,7 @@ export async function start() {
     if (generation !== sessionGeneration) return;
     client = new ConvexClient(config.convexUrl);
     client.setAuth(async () =>
-      generation === sessionGeneration ? token(generation) : null,
+      generation === sessionGeneration ? token(generation) : null
     );
     stopConnection = client.subscribeToConnectionState((state) => {
       if (generation === sessionGeneration) {
@@ -115,12 +113,13 @@ export async function start() {
       void saveCache("workspace", value);
     };
     function truncate(after: number) {
-      for (const [index, stop] of stops)
+      for (const [index, stop] of stops) {
         if (index > after) {
           stop();
           stops.delete(index);
           pages.delete(index);
         }
+      }
     }
     function follow(index: number, cursor: string) {
       let previousCursor: string | undefined;
@@ -135,8 +134,9 @@ export async function start() {
             if (result.isDone || previousCursor !== result.continueCursor) {
               truncate(index);
               previousCursor = result.continueCursor;
-              if (!result.isDone && index + 1 < requestedPages)
+              if (!result.isDone && index + 1 < requestedPages) {
                 follow(index + 1, result.continueCursor);
+              }
             }
             publish();
           },
@@ -150,8 +150,11 @@ export async function start() {
       const cursor = requestedPages
         ? previous?.continueCursor
         : base.recentCursor;
-      if (!cursor || (requestedPages ? previous?.isDone : !base.recentHasMore))
+      if (
+        !cursor || (requestedPages ? previous?.isDone : !base.recentHasMore)
+      ) {
         return;
+      }
       follow(requestedPages++, cursor);
     };
     client.onUpdate(
@@ -165,8 +168,9 @@ export async function start() {
           !value.recentHasMore
         ) {
           truncate(-1);
-          if (requestedPages && value.recentHasMore)
+          if (requestedPages && value.recentHasMore) {
             follow(0, value.recentCursor);
+          }
         }
         base = value;
         publish();
@@ -213,8 +217,11 @@ export function subscribe(
   callback: (value: any) => void,
 ) {
   if (!client) return () => {};
-  return client.onUpdate(anyApi[module][name], args, callback, (error) =>
-    inform(error.message),
+  return client.onUpdate(
+    anyApi[module][name],
+    args,
+    callback,
+    (error) => inform(error.message),
   );
 }
 export async function command(

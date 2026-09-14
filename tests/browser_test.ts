@@ -218,7 +218,8 @@ Deno.test({
         .getByRole("button", { name: "Export map snapshot", exact: true })
         .click();
       const download = await downloaded;
-      const snapshotPath = `/var/tmp/arura-memory-map-${crypto.randomUUID()}.json`;
+      const snapshotPath =
+        `/var/tmp/arura-memory-map-${crypto.randomUUID()}.json`;
       await download.saveAs(snapshotPath);
       const snapshot = JSON.parse(await Deno.readTextFile(snapshotPath));
       expect(snapshot.graph.memory).toBeUndefined();
@@ -269,18 +270,22 @@ Deno.test({
         expect(
           (
             await anonymous.request.get(
-              `${url}/api/mcp/oauth/callback/fixture?state=${encodeURIComponent(
-                state,
-              )}&code=fixture-code`,
+              `${url}/api/mcp/oauth/callback/fixture?state=${
+                encodeURIComponent(
+                  state,
+                )
+              }&code=fixture-code`,
             )
           ).status(),
         ).toBe(200);
         expect(
           (
             await anonymous.request.get(
-              `${url}/api/mcp/oauth/callback/fixture?state=${encodeURIComponent(
-                state,
-              )}&code=fixture-code`,
+              `${url}/api/mcp/oauth/callback/fixture?state=${
+                encodeURIComponent(
+                  state,
+                )
+              }&code=fixture-code`,
             )
           ).status(),
         ).toBe(404);
@@ -385,7 +390,7 @@ Deno.test({
         page.getByLabel("Message Hermes", { exact: true }),
       ).toBeVisible();
       const canonical = await page.evaluate(() =>
-        localStorage.getItem("arura.view"),
+        localStorage.getItem("arura.view")
       );
       const roster = await (
         await page.request.get(`${url}/api/resource/profileRoster`)
@@ -416,7 +421,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "desktop and mobile browsers: stream, archive, offline reopen, and revoke",
+  name:
+    "desktop and mobile browsers: stream, archive, offline reopen, and revoke",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -439,10 +445,12 @@ Deno.test({
     const url = Deno.env.get("ARURA_TEST_URL")!;
     const suffix = crypto.randomUUID().slice(0, 8);
     try {
-      for (const [page, name] of [
-        [a, "Desktop"],
-        [b, "Phone"],
-      ] as const) {
+      for (
+        const [page, name] of [
+          [a, "Desktop"],
+          [b, "Phone"],
+        ] as const
+      ) {
         await page.goto(url);
         await page
           .getByLabel("Device name", { exact: true })

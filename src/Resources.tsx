@@ -11,16 +11,16 @@ import {
   inform,
   resource,
   revision,
-  workspace,
   scheduleDraft,
   setScheduleDraft,
+  workspace,
 } from "./client.ts";
 import { draft, preferences } from "./cache.ts";
 import { type Field as FormField, operations } from "../shared/resources.ts";
 import { Dialog, Empty, Field, Icon, IconButton, run } from "./ui.tsx";
 import {
-  editableJob,
   configPatch,
+  editableJob,
   endpointBody,
   jobPatch,
   mcpBody,
@@ -229,7 +229,7 @@ const dataRows = (data: any, keys: string[] = []) => {
     return Object.entries(data).map(([name, value]) =>
       typeof value === "object" && value !== null
         ? { name, ...value }
-        : { name, value },
+        : { name, value }
     );
   }
   return [];
@@ -265,11 +265,10 @@ function Value(props: { value: any }) {
         <For each={Object.entries(props.value ?? {})}>
           {([key, value]) => (
             <Show
-              when={
-                !/^(?:token|access_token|refresh_token|secret|password|api_key|reasoning(?:_text|_content|_delta)?|thinking)$/i.test(
+              when={!/^(?:token|access_token|refresh_token|secret|password|api_key|reasoning(?:_text|_content|_delta)?|thinking)$/i
+                .test(
                   key,
-                )
-              }
+                )}
             >
               <div>
                 <dt>{human(key)}</dt>
@@ -333,11 +332,9 @@ function Editor(props: {
           return (
             <Show when={!hidden}>
               <Show
-                when={
-                  value() !== null &&
+                when={value() !== null &&
                   typeof value() === "object" &&
-                  !Array.isArray(value())
-                }
+                  !Array.isArray(value())}
                 fallback={
                   <Field label={human(key)}>
                     <Show
@@ -347,21 +344,18 @@ function Editor(props: {
                           when={typeof value() === "boolean"}
                           fallback={
                             <input
-                              type={
-                                /key|secret|password|token/i.test(key)
-                                  ? "password"
-                                  : typeof value() === "number"
-                                    ? "number"
-                                    : "text"
-                              }
+                              type={/key|secret|password|token/i.test(key)
+                                ? "password"
+                                : typeof value() === "number"
+                                ? "number"
+                                : "text"}
                               value={String(value() ?? "")}
                               onInput={(e) =>
                                 update(
                                   typeof value() === "number"
                                     ? Number(e.currentTarget.value)
                                     : e.currentTarget.value,
-                                )
-                              }
+                                )}
                             />
                           }
                         >
@@ -378,7 +372,7 @@ function Editor(props: {
                           .map((item) =>
                             typeof item === "object"
                               ? JSON.stringify(item)
-                              : String(item),
+                              : String(item)
                           )
                           .join("\n")}
                         onChange={(e) => {
@@ -459,11 +453,13 @@ export default function Resources(props: {
     preferences.getItem("arura.lastConversation") ?? "",
   );
   const [path, setPath] = createSignal(""),
-    [file, setFile] = createSignal<{
-      path: string;
-      content: string;
-      readOnly?: boolean;
-    } | null>(null),
+    [file, setFile] = createSignal<
+      {
+        path: string;
+        content: string;
+        readOnly?: boolean;
+      } | null
+    >(null),
     [dirty, setDirty] = createSignal(false);
   const [original, setOriginal] = createSignal("");
   const [webhookSecret, setWebhookSecret] = createSignal<{
@@ -604,14 +600,16 @@ export default function Resources(props: {
   }
   const [selection, setSelection] = createSignal({ text: "", from: 1, to: 1 });
   const [attachSelection, setAttachSelection] = createSignal(false);
-  const [form, setForm] = createSignal<{
-      operation: string;
-      params: Record<string, unknown>;
-      values: any;
-      original?: Record<string, unknown>;
-      fields?: FormField[];
-      title: string;
-    } | null>(null),
+  const [form, setForm] = createSignal<
+      {
+        operation: string;
+        params: Record<string, unknown>;
+        values: any;
+        original?: Record<string, unknown>;
+        fields?: FormField[];
+        title: string;
+      } | null
+    >(null),
     [detail, setDetail] = createSignal<any>();
   let refreshVersion = 0;
   onCleanup(() => {
@@ -640,8 +638,8 @@ export default function Resources(props: {
         props.name === "files"
           ? { path: path() }
           : props.name === "connectors"
-            ? { conversation: connectionConversation() }
-            : {},
+          ? { conversation: connectionConversation() }
+          : {},
       );
       if (version === refreshVersion) setData(value);
     } catch (e) {
@@ -681,8 +679,7 @@ export default function Resources(props: {
   const rows = () =>
     (props.name === "pairing"
       ? pairingRows(data())
-      : dataRows(data(), surface().list)
-    )
+      : dataRows(data(), surface().list))
       .filter(
         (r: any) =>
           !(
@@ -695,7 +692,7 @@ export default function Resources(props: {
       .filter((r: any) =>
         String(r.name ?? r.title ?? r.id ?? "")
           .toLowerCase()
-          .includes(filter().toLowerCase()),
+          .includes(filter().toLowerCase())
       );
   async function action(operation: string, item: any = {}) {
     const id = String(
@@ -758,10 +755,9 @@ export default function Resources(props: {
         fields: [
           {
             key: "content",
-            label:
-              operation === "soul"
-                ? "Personality & instructions"
-                : "Skill content",
+            label: operation === "soul"
+              ? "Personality & instructions"
+              : "Skill content",
             type: "textarea",
           },
         ],
@@ -777,8 +773,8 @@ export default function Resources(props: {
         operation === "deleteEnv"
           ? { key: item.name }
           : operation === "revokePairing"
-            ? { platform: item.platform, user_id: item.user_id }
-            : { ...item },
+          ? { platform: item.platform, user_id: item.user_id }
+          : { ...item },
       );
       await refresh();
       return;
@@ -848,14 +844,13 @@ export default function Resources(props: {
               ? " (saved; blank keeps current)"
               : ""
           }`,
-          type:
-            field.kind === "secret"
-              ? "password"
-              : field.kind === "boolean"
-                ? "boolean"
-                : ["integer", "number"].includes(field.kind)
-                  ? "number"
-                  : "text",
+          type: field.kind === "secret"
+            ? "password"
+            : field.kind === "boolean"
+            ? "boolean"
+            : ["integer", "number"].includes(field.kind)
+            ? "number"
+            : "text",
           required: field.required && !field.is_set,
         })),
       });
@@ -904,53 +899,53 @@ export default function Resources(props: {
   async function save() {
     const f = form();
     if (!f) return;
-    const currentConfig =
-      f.operation === "saveConfig" ? await resource("config") : undefined;
-    const body =
-      f.operation === "profileAppearance"
-        ? {
-            name: f.params.name,
-            ui_meta: {
-              "hermes-bots": {
-                ...((f.original?.metadata as Record<string, unknown>) ?? {}),
-                ...f.values,
-              },
-            },
-            ui_meta_expected_revisions: {
-              "hermes-bots": f.original?.revision ?? 0,
-            },
-          }
-        : f.operation === "saveConfig"
-          ? {
-              config: configPatch(
-                f.values,
-                f.original ?? {},
-                currentConfig?.config ?? currentConfig ?? {},
-              ),
-            }
-          : f.operation === "saveJob"
-            ? { updates: jobPatch(f.values, f.original ?? {}) }
-            : f.operation === "saveEndpoint"
-              ? endpointBody(f.values)
-              : f.operation === "savePlatform"
-                ? platformBody(f.values)
-                : f.operation === "addMcp"
-                  ? mcpBody(f.values)
-                  : f.operation === "saveMemoryConfig"
-                    ? { values: f.values }
-                    : f.operation === "toolsetEnv"
-                      ? {
-                          env: Object.fromEntries(
-                            Object.entries(f.values).filter(
-                              ([, value]) => value !== "",
-                            ),
-                          ),
-                        }
-                      : f.operation === "setAuxModel"
-                        ? { scope: "auxiliary", ...f.values }
-                        : f.operation === "setModel"
-                          ? { scope: "main", ...f.values }
-                          : f.values;
+    const currentConfig = f.operation === "saveConfig"
+      ? await resource("config")
+      : undefined;
+    const body = f.operation === "profileAppearance"
+      ? {
+        name: f.params.name,
+        ui_meta: {
+          "hermes-bots": {
+            ...((f.original?.metadata as Record<string, unknown>) ?? {}),
+            ...f.values,
+          },
+        },
+        ui_meta_expected_revisions: {
+          "hermes-bots": f.original?.revision ?? 0,
+        },
+      }
+      : f.operation === "saveConfig"
+      ? {
+        config: configPatch(
+          f.values,
+          f.original ?? {},
+          currentConfig?.config ?? currentConfig ?? {},
+        ),
+      }
+      : f.operation === "saveJob"
+      ? { updates: jobPatch(f.values, f.original ?? {}) }
+      : f.operation === "saveEndpoint"
+      ? endpointBody(f.values)
+      : f.operation === "savePlatform"
+      ? platformBody(f.values)
+      : f.operation === "addMcp"
+      ? mcpBody(f.values)
+      : f.operation === "saveMemoryConfig"
+      ? { values: f.values }
+      : f.operation === "toolsetEnv"
+      ? {
+        env: Object.fromEntries(
+          Object.entries(f.values).filter(
+            ([, value]) => value !== "",
+          ),
+        ),
+      }
+      : f.operation === "setAuxModel"
+      ? { scope: "auxiliary", ...f.values }
+      : f.operation === "setModel"
+      ? { scope: "main", ...f.values }
+      : f.values;
     let result = await resource(f.operation, f.params, body);
     if (result?.confirm_required) {
       if (!confirm(result.confirm_message ?? "Confirm this model selection?")) {
@@ -972,8 +967,9 @@ export default function Resources(props: {
       );
     }
     setForm(null);
-    if (f.operation === "createWebhook" && result.secret)
+    if (f.operation === "createWebhook" && result.secret) {
       setWebhookSecret(result);
+    }
     inform("Saved");
     await refresh();
   }
@@ -1051,8 +1047,7 @@ export default function Resources(props: {
             void run(async () => {
               await resource("enableWebhooks", {}, {});
               await refresh();
-            })
-          }
+            })}
         >
           Enable incoming webhooks
         </button>
@@ -1137,10 +1132,8 @@ export default function Resources(props: {
       </Show>
       <Show
         keyed
-        when={
-          ["computer", "delegation", "resources"].includes(props.name) &&
-          props.name
-        }
+        when={["computer", "delegation", "resources"].includes(props.name) &&
+          props.name}
       >
         {(kind) => <RuntimeSettings kind={kind} />}
       </Show>
@@ -1161,8 +1154,7 @@ export default function Resources(props: {
               values: structuredClone(data()?.config ?? data() ?? {}),
               original: structuredClone(data()?.config ?? data() ?? {}),
               title: "Hermes settings",
-            })
-          }
+            })}
         >
           Edit settings
         </button>
@@ -1201,8 +1193,7 @@ export default function Resources(props: {
             void run(async () => {
               await resource("pauseCurator", {}, { paused: !data()?.paused });
               await refresh();
-            })
-          }
+            })}
         >
           {data()?.paused ? "Resume" : "Pause"}
         </button>
@@ -1211,8 +1202,7 @@ export default function Resources(props: {
           onClick={() =>
             void run(async () => {
               setDetail(await resource("runCurator", {}, {}));
-            })
-          }
+            })}
         >
           Review skills now
         </button>
@@ -1222,17 +1212,15 @@ export default function Resources(props: {
           type="button"
           onClick={() =>
             void run(async () =>
-              setDetail(await resource("logs", { lines: 200 })),
-            )
-          }
+              setDetail(await resource("logs", { lines: 200 }))
+            )}
         >
           Open logs
         </button>
         <button
           type="button"
           onClick={() =>
-            void run(async () => setDetail(await resource("stats")))
-          }
+            void run(async () => setDetail(await resource("stats")))}
         >
           Host resources
         </button>
@@ -1242,9 +1230,8 @@ export default function Resources(props: {
           type="button"
           onClick={() =>
             void run(async () =>
-              setBlueprints((await resource("blueprints")).blueprints ?? []),
-            )
-          }
+              setBlueprints((await resource("blueprints")).blueprints ?? [])
+            )}
         >
           Automation blueprints
         </button>
@@ -1277,22 +1264,18 @@ export default function Resources(props: {
         </div>
       </Show>
       <Show
-        when={
-          ![
-            "graph",
-            "fallbacks",
-            "moa",
-            "computer",
-            "delegation",
-            "resources",
-          ].includes(props.name)
-        }
+        when={![
+          "graph",
+          "fallbacks",
+          "moa",
+          "computer",
+          "delegation",
+          "resources",
+        ].includes(props.name)}
       >
         <Show
-          when={
-            surface().list ||
-            ["files", "artifacts", "env", "graph"].includes(props.name)
-          }
+          when={surface().list ||
+            ["files", "artifacts", "env", "graph"].includes(props.name)}
           fallback={<Value value={data()} />}
         >
           <input
@@ -1305,25 +1288,21 @@ export default function Resources(props: {
           />
           <div class="resource-list">
             <For
-              each={
-                props.name === "files"
-                  ? dataRows(data(), ["entries", "files"]).filter((item: any) =>
-                      String(item.name ?? "")
-                        .toLowerCase()
-                        .includes(filter().toLowerCase()),
-                    )
-                  : rows()
-              }
+              each={props.name === "files"
+                ? dataRows(data(), ["entries", "files"]).filter((item: any) =>
+                  String(item.name ?? "")
+                    .toLowerCase()
+                    .includes(filter().toLowerCase())
+                )
+                : rows()}
             >
               {(item) => (
                 <article class="resource-card">
                   <div class="resource-card-heading">
                     <Show
-                      when={
-                        props.name === "profiles" &&
+                      when={props.name === "profiles" &&
                         item.has_avatar &&
-                        item.ui_meta?.["hermes-bots"]?.imageKind !== "shape"
-                      }
+                        item.ui_meta?.["hermes-bots"]?.imageKind !== "shape"}
                     >
                       <ProfileAvatar
                         name={item.name}
@@ -1331,13 +1310,11 @@ export default function Resources(props: {
                       />
                     </Show>
                     <Icon
-                      name={
-                        props.name === "files"
-                          ? item.is_dir || item.type === "directory"
-                            ? "folder"
-                            : "page"
-                          : "chat-bubble"
-                      }
+                      name={props.name === "files"
+                        ? item.is_dir || item.type === "directory"
+                          ? "folder"
+                          : "page"
+                        : "chat-bubble"}
                     />
                     <div>
                       <h3>
@@ -1369,9 +1346,8 @@ export default function Resources(props: {
                       </button>
                     </Show>
                     <Show
-                      when={
-                        props.name === "files" || props.name === "artifacts"
-                      }
+                      when={props.name === "files" ||
+                        props.name === "artifacts"}
                     >
                       <button
                         type="button"
@@ -1459,31 +1435,25 @@ export default function Resources(props: {
                         fallback={
                           <input
                             required={field.required}
-                            type={
-                              field.type === "boolean"
-                                ? "checkbox"
-                                : (field.type ?? "text")
-                            }
-                            checked={
-                              field.type === "boolean"
-                                ? Boolean(f().values[field.key])
-                                : undefined
-                            }
+                            type={field.type === "boolean"
+                              ? "checkbox"
+                              : (field.type ?? "text")}
+                            checked={field.type === "boolean"
+                              ? Boolean(f().values[field.key])
+                              : undefined}
                             value={f().values[field.key] ?? ""}
                             onInput={(e) =>
                               setForm({
                                 ...f(),
                                 values: {
                                   ...f().values,
-                                  [field.key]:
-                                    field.type === "boolean"
-                                      ? e.currentTarget.checked
-                                      : field.type === "number"
-                                        ? Number(e.currentTarget.value)
-                                        : e.currentTarget.value,
+                                  [field.key]: field.type === "boolean"
+                                    ? e.currentTarget.checked
+                                    : field.type === "number"
+                                    ? Number(e.currentTarget.value)
+                                    : e.currentTarget.value,
                                 },
-                              })
-                            }
+                              })}
                           />
                         }
                       >
@@ -1497,8 +1467,7 @@ export default function Resources(props: {
                                 ...f().values,
                                 [field.key]: e.currentTarget.value,
                               },
-                            })
-                          }
+                            })}
                         />
                       </Show>
                     </Field>
@@ -1534,8 +1503,7 @@ export default function Resources(props: {
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={(event) =>
-                  void run(() => avatarUpload(event.currentTarget.files?.[0]))
-                }
+                  void run(() => avatarUpload(event.currentTarget.files?.[0]))}
               />
             </Field>
             <Show when={profile().data}>
@@ -1555,8 +1523,7 @@ export default function Resources(props: {
                     await avatarKind(name, "shape");
                     setAvatarEditor({ name });
                     await refresh();
-                  })
-                }
+                  })}
               >
                 Remove avatar
               </button>
@@ -1577,10 +1544,8 @@ export default function Resources(props: {
                   : "Waiting for authorization…")}
             </p>
             <Show
-              when={
-                flow().status === "authorization_required" &&
-                /^https?:\/\//i.test(flow().authorization_url ?? "")
-              }
+              when={flow().status === "authorization_required" &&
+                /^https?:\/\//i.test(flow().authorization_url ?? "")}
             >
               <a
                 href={flow().authorization_url}
@@ -1618,11 +1583,9 @@ export default function Resources(props: {
                   <p>{provider.is_active ? "Active" : provider.status}</p>
                   <div class="row-actions">
                     <For
-                      each={
-                        config().name === "web"
-                          ? (provider.capabilities ?? ["search", "extract"])
-                          : [undefined]
-                      }
+                      each={config().name === "web"
+                        ? (provider.capabilities ?? ["search", "extract"])
+                        : [undefined]}
                     >
                       {(capability) => (
                         <button
@@ -1644,8 +1607,7 @@ export default function Resources(props: {
                                 id: config().id,
                               });
                               inform("Provider selected");
-                            })
-                          }
+                            })}
                         >
                           Use{capability ? ` for ${capability}` : " provider"}
                         </button>
@@ -1674,8 +1636,7 @@ export default function Resources(props: {
                               }`,
                               type: "password",
                             })),
-                          })
-                        }
+                          })}
                       >
                         Credentials
                       </button>
@@ -1712,8 +1673,7 @@ export default function Resources(props: {
                 void run(async () => {
                   await navigator.clipboard.writeText(hook().secret);
                   inform("Secret copied");
-                })
-              }
+                })}
             >
               Copy secret
             </button>
@@ -1822,8 +1782,7 @@ export default function Resources(props: {
                       `${old}\n[${file()?.path}, lines ${selection().from}–${selection().to}]\n${selection().text}\n`,
                     );
                     props.navigate(c.key);
-                  })
-                }
+                  })}
               >
                 {c.title}
               </button>
@@ -1864,7 +1823,10 @@ export default function Resources(props: {
       </Show>
       <Show when={blueprint()}>
         {(item) => (
-          <Dialog title={item().title} close={() => setBlueprint(undefined)}>
+          <Dialog
+            title={item().title}
+            close={() => setBlueprint(undefined)}
+          >
             <p>{item().description}</p>
             <form
               onSubmit={(event) => {
@@ -1896,8 +1858,7 @@ export default function Resources(props: {
                             setBlueprintValues((value) => ({
                               ...value,
                               [field.name]: event.currentTarget.value,
-                            }))
-                          }
+                            }))}
                         />
                       }
                     >
@@ -1908,8 +1869,7 @@ export default function Resources(props: {
                           setBlueprintValues((value) => ({
                             ...value,
                             [field.name]: event.currentTarget.value,
-                          }))
-                        }
+                          }))}
                       >
                         <option value="">Choose…</option>
                         <For each={field.options}>

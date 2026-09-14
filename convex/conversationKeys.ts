@@ -1,4 +1,4 @@
-import type { MutationCtx, QueryCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server.ts";
 
 export async function resolveKey(ctx: QueryCtx | MutationCtx, key: string) {
   const seen = new Set<string>();

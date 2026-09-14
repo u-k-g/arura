@@ -1,7 +1,8 @@
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
-  name: "backup progress is shared and completed archives download using the returned path",
+  name:
+    "backup progress is shared and completed archives download using the returned path",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({

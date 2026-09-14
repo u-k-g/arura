@@ -107,7 +107,7 @@ client provides a cleaner API. This pattern is common in published components.
 
 ```ts
 // src/client/index.ts
-import type { GenericMutationCtx, GenericDataModel } from "convex/server";
+import type { GenericDataModel, GenericMutationCtx } from "convex/server";
 import type { ComponentApi } from "../component/_generated/component.js";
 
 type MutationCtx = Pick<GenericMutationCtx<GenericDataModel>, "runMutation">;

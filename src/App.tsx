@@ -14,8 +14,8 @@ import {
   connected,
   inform,
   login,
-  mutate,
   moreConversations,
+  mutate,
   notice,
   request,
   start,
@@ -61,10 +61,11 @@ export default function App() {
     setSearchError("");
     const timer = setTimeout(async () => {
       const cacheKey = `search:${query}`;
-      const cached =
-        await loadCache<{ key: string; title: string; profile: string }[]>(
-          cacheKey,
-        );
+      const cached = await loadCache<
+        { key: string; title: string; profile: string }[]
+      >(
+        cacheKey,
+      );
       if (disposed) return;
       if (cached) setMatches(cached);
       if (!online) return;
@@ -114,8 +115,9 @@ export default function App() {
   const [archiveHasMore, setArchiveHasMore] = createSignal(false);
   const [menu, setMenu] = createSignal<any>(),
     [folderName, setFolderName] = createSignal<string | null>(null);
-  const [activeConversation, setActiveConversation] =
-    createSignal<Conversation | null>(null);
+  const [activeConversation, setActiveConversation] = createSignal<
+    Conversation | null
+  >(null);
   createEffect(() => {
     const key = view();
     connected();
@@ -265,8 +267,8 @@ export default function App() {
     );
   const selected = () =>
     chats().find((c) => c.key === view()) ??
-    archived().find((c) => c.key === view()) ??
-    activeConversation();
+      archived().find((c) => c.key === view()) ??
+      activeConversation();
   async function newChat(profile = "default") {
     await run(async () => {
       const result = await command("create", "", { profile });
@@ -278,7 +280,8 @@ export default function App() {
       <button
         type="button"
         class="thread-select"
-        onClick={() => navigate(c.key)}
+        onClick={() =>
+          navigate(c.key)}
       >
         <Icon name={c.running ? "clock" : "chat-bubble"} />
         <span>{c.title}</span>
@@ -289,7 +292,8 @@ export default function App() {
       <IconButton
         icon="more-horiz"
         label={`Actions for ${c.title}`}
-        onClick={() => setMenu(c)}
+        onClick={() =>
+          setMenu(c)}
       />
     </div>
   );
@@ -389,7 +393,7 @@ export default function App() {
                     const name = prompt("Folder name", folder.name);
                     if (name?.trim()) {
                       void run(() =>
-                        mutate("workspace.folder", { id: folder._id, name }),
+                        mutate("workspace.folder", { id: folder._id, name })
                       );
                     }
                   }}
@@ -403,9 +407,8 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: 1,
-                      }),
-                    )
-                  }
+                      })
+                    )}
                 />
                 <IconButton
                   icon="nav-arrow-down"
@@ -417,9 +420,8 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: -1,
-                      }),
-                    )
-                  }
+                      })
+                    )}
                 />
                 <button
                   type="button"
@@ -436,7 +438,7 @@ export default function App() {
                         mutate("workspace.folder", {
                           id: folder._id,
                           remove: true,
-                        }),
+                        })
                       );
                     }
                   }}
@@ -504,9 +506,8 @@ export default function App() {
                         mutate("workspace.move", {
                           key: c.key,
                           section: "recent",
-                        }),
-                      )
-                    }
+                        })
+                      )}
                   />
                 </div>
               )}
@@ -549,7 +550,7 @@ export default function App() {
               e.preventDefault();
               setBusy(true);
               void run(() => login(name(), code())).finally(() =>
-                setBusy(false),
+                setBusy(false)
               );
             }}
           >
@@ -600,10 +601,10 @@ export default function App() {
                 (view() === "settings"
                   ? "Settings"
                   : view().startsWith("resources:")
-                    ? view()
-                        .slice(10)
-                        .replace(/^./, (x) => x.toUpperCase())
-                    : "Your conversations")}
+                  ? view()
+                    .slice(10)
+                    .replace(/^./, (x) => x.toUpperCase())
+                  : "Your conversations")}
             </span>
             <Show when={selected()}>
               {(c) => (
@@ -624,8 +625,8 @@ export default function App() {
               {!connected()
                 ? "Offline"
                 : workspace()?.connection?.online
-                  ? "Connected"
-                  : "Connecting to Hermes"}
+                ? "Connected"
+                : "Connecting to Hermes"}
             </span>
             <IconButton
               icon="bell"
@@ -742,7 +743,10 @@ export default function App() {
               ]}
             >
               {(target) => (
-                <button type="button" onClick={() => navigate(target)}>
+                <button
+                  type="button"
+                  onClick={() => navigate(target)}
+                >
                   {target.replace("resources:", "")}
                 </button>
               )}
@@ -812,8 +816,7 @@ export default function App() {
                             direction,
                           });
                           setMenu(undefined);
-                        })
-                      }
+                        })}
                     >
                       Move {direction === -1 ? "up" : "down"}
                     </button>
@@ -838,8 +841,7 @@ export default function App() {
                           section,
                         });
                         setMenu(undefined);
-                      })
-                    }
+                      })}
                   >
                     {label}
                   </button>
@@ -857,8 +859,7 @@ export default function App() {
                           folderId: f._id,
                         });
                         setMenu(undefined);
-                      })
-                    }
+                      })}
                   >
                     Move to {f.name}
                   </button>
@@ -879,9 +880,11 @@ export default function App() {
                 </button>
               </Show>
               <a
-                href={`/api/download?type=conversation&id=${encodeURIComponent(
-                  c().sourceId,
-                )}&profile=${encodeURIComponent(c().profile)}`}
+                href={`/api/download?type=conversation&id=${
+                  encodeURIComponent(
+                    c().sourceId,
+                  )
+                }&profile=${encodeURIComponent(c().profile)}`}
                 download=""
               >
                 Export conversation

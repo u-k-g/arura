@@ -38,14 +38,12 @@ function Question(props: {
   async function submit(skip = false) {
     setBusy(true);
     try {
-      const answer = skip
-        ? ""
-        : props.question.multiple
-          ? JSON.stringify([
-              ...selected(),
-              ...(text().trim() ? [text().trim()] : []),
-            ])
-          : text().trim();
+      const answer = skip ? "" : props.question.multiple
+        ? JSON.stringify([
+          ...selected(),
+          ...(text().trim() ? [text().trim()] : []),
+        ])
+        : text().trim();
       await props.submit(answer);
     } finally {
       setBusy(false);
@@ -93,9 +91,8 @@ function Question(props: {
                     setSelected((values) =>
                       event.currentTarget.checked
                         ? [...values, option]
-                        : values.filter((value) => value !== option),
-                    )
-                  }
+                        : values.filter((value) => value !== option)
+                    )}
                 />
               </Field>
             )}
@@ -140,8 +137,7 @@ export default function Clarification(props: {
             multiple: props.interaction.multiple ?? false,
           }}
           submit={(answer) =>
-            props.respond({ request_id: props.interaction.id, answer })
-          }
+            props.respond({ request_id: props.interaction.id, answer })}
         />
       }
     >
@@ -149,18 +145,15 @@ export default function Clarification(props: {
         {(id) => (
           <Question
             batch
-            question={
-              props.interaction.questions!.find(
-                (question) => question.id === id,
-              )!
-            }
+            question={props.interaction.questions!.find(
+              (question) => question.id === id,
+            )!}
             submit={(answer) =>
               props.respond({
                 request_id: props.interaction.id,
                 question_id: id,
                 answer,
-              })
-            }
+              })}
           />
         )}
       </For>

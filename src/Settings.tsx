@@ -85,19 +85,19 @@ export default function Settings(props: {
   const route = (id: string) =>
     props.navigate(
       [
-        "devices",
-        "storage",
-        "navigation",
-        "notifications",
-        "appearance",
-        "maintenance",
-      ].includes(id)
+          "devices",
+          "storage",
+          "navigation",
+          "notifications",
+          "appearance",
+          "maintenance",
+        ].includes(id)
         ? "settings:" + id
         : "resources:" + id,
     );
   const title = () =>
     groups.flatMap((g) => g.items).find((x) => x[0] === props.section)?.[1] ??
-    "Settings";
+      "Settings";
   return (
     <div class="settings-page">
       <Show
@@ -113,7 +113,10 @@ export default function Settings(props: {
                   <div class="settings-grid">
                     <For each={group.items}>
                       {([id, label, icon]) => (
-                        <button type="button" onClick={() => route(id)}>
+                        <button
+                          type="button"
+                          onClick={() => route(id)}
+                        >
                           <Icon name={icon} />
                           <span>{label}</span>
                           <span aria-hidden="true">›</span>
@@ -145,11 +148,9 @@ export default function Settings(props: {
             {(d) => (
               <div class="device-card">
                 <Icon
-                  name={
-                    /phone|mobile/i.test(d.name)
-                      ? "smartphone-device"
-                      : "computer"
-                  }
+                  name={/phone|mobile/i.test(d.name)
+                    ? "smartphone-device"
+                    : "computer"}
                 />
                 <div>
                   <h3>
@@ -175,7 +176,7 @@ export default function Settings(props: {
                       const name = prompt("Device name", d.name);
                       if (name) {
                         void run(() =>
-                          mutate("devices.rename", { id: d.id, name }),
+                          mutate("devices.rename", { id: d.id, name })
                         );
                       }
                     }}
@@ -201,9 +202,8 @@ export default function Settings(props: {
               class="primary"
               onClick={() =>
                 void run(async () =>
-                  setInvite(await request("/api/invite", {})),
-                )
-              }
+                  setInvite(await request("/api/invite", {}))
+                )}
             >
               Authorize another device
             </button>
@@ -243,8 +243,8 @@ export default function Settings(props: {
             />
           </Field>
           <p>
-            {((storage().usage ?? 0) / 1024 / 1024).toFixed(1)} MB stored on
-            this device
+            {((storage().usage ?? 0) / 1024 / 1024).toFixed(1)}{" "}
+            MB stored on this device
           </p>
           <button
             type="button"
@@ -255,8 +255,7 @@ export default function Settings(props: {
                 inform(
                   "Saved conversations and drafts cleared from this device",
                 );
-              })
-            }
+              })}
           >
             Clear local data
           </button>
@@ -277,9 +276,8 @@ export default function Settings(props: {
                     mutate("workspace.setting", {
                       key: "archiveDays",
                       value: Number(e.currentTarget.value),
-                    }),
-                  )
-                }
+                    })
+                  )}
               />
               <span>days</span>
             </div>
@@ -344,7 +342,7 @@ export default function Settings(props: {
                   readOnly
                   value={(
                     workspace()?.settings?.shortcuts?.[shortcut.id] ??
-                    shortcut.default
+                      shortcut.default
                   ).replace("Mod", "Ctrl/⌘")}
                   onKeyDown={(event) => {
                     const value = shortcutFromEvent(event);
@@ -354,8 +352,7 @@ export default function Settings(props: {
                     const current = workspace()?.settings?.shortcuts ?? {};
                     if (
                       shortcuts.some(
-                        (other) =>
-                          other.id !== shortcut.id &&
+                        (other) => other.id !== shortcut.id &&
                           (current[other.id] ?? other.default) === value,
                       )
                     ) {
@@ -366,7 +363,7 @@ export default function Settings(props: {
                       mutate("workspace.setting", {
                         key: "shortcuts",
                         value: { ...current, [shortcut.id]: value },
-                      }),
+                      })
                     );
                   }}
                 />
@@ -377,9 +374,8 @@ export default function Settings(props: {
             type="button"
             onClick={() =>
               void run(() =>
-                mutate("workspace.setting", { key: "shortcuts", value: {} }),
-              )
-            }
+                mutate("workspace.setting", { key: "shortcuts", value: {} })
+              )}
           >
             Reset shortcuts
           </button>
@@ -443,8 +439,7 @@ export default function Settings(props: {
                   });
                 });
                 download("arura-workspace.json", result);
-              })
-            }
+              })}
           >
             Download workspace backup
           </button>
@@ -467,8 +462,7 @@ export default function Settings(props: {
             type="button"
             class="primary"
             onClick={() =>
-              void run(() => navigator.clipboard.writeText(invite().code))
-            }
+              void run(() => navigator.clipboard.writeText(invite().code))}
           >
             Copy code
           </button>

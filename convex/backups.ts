@@ -1,6 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { adapter, device } from "./access";
+import { mutation, query } from "./_generated/server.ts";
+import { adapter, device } from "./access.ts";
 
 export const latest = query({
   args: {},
@@ -22,8 +22,9 @@ export const begin = mutation({
   handler: async (ctx) => {
     await adapter(ctx);
     const previous = await ctx.db.query("backups").order("desc").first();
-    if (previous && ["starting", "running"].includes(previous.status))
+    if (previous && ["starting", "running"].includes(previous.status)) {
       throw new Error("A backup is already in progress");
+    }
     return ctx.db.insert("backups", { status: "starting" });
   },
 });

@@ -4,7 +4,8 @@ import { anyApi } from "convex/server";
 import { identity } from "../server/identity.ts";
 
 Deno.test({
-  name: "profile rename preserves folders, open conversations and drafts; clones and deletion remain independent",
+  name:
+    "profile rename preserves folders, open conversations and drafts; clones and deletion remain independent",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -35,7 +36,9 @@ Deno.test({
         id?: string,
       ) => {
         const response = await a.request.fetch(
-          `${url}/api/resource/${op}${id ? `?id=${encodeURIComponent(id)}` : ""}`,
+          `${url}/api/resource/${op}${
+            id ? `?id=${encodeURIComponent(id)}` : ""
+          }`,
           { method, headers: { origin: url }, data },
         );
         expect(response.ok(), await response.text()).toBe(true);

@@ -1,7 +1,8 @@
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
-  name: "webhook creation reveals its secret once while shared listings and caches omit it",
+  name:
+    "webhook creation reveals its secret once while shared listings and caches omit it",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({

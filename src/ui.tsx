@@ -10,9 +10,8 @@ export function Icon(props: { name: string }) {
     <span
       class="icon"
       aria-hidden="true"
-      innerHTML={
-        icons[`./icons/${props.name}.svg`] ?? icons["./icons/chat-bubble.svg"]
-      }
+      innerHTML={icons[`./icons/${props.name}.svg`] ??
+        icons["./icons/chat-bubble.svg"]}
     />
   );
 }

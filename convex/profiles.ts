@@ -1,7 +1,7 @@
 import { v } from "convex/values";
-import { conversationKey } from "../shared/model";
-import { mutation, query } from "./_generated/server";
-import { adapter } from "./access";
+import { conversationKey } from "../shared/model.ts";
+import { mutation, query } from "./_generated/server.ts";
+import { adapter } from "./access.ts";
 
 export const prepareRename = mutation({
   args: { from: v.string(), to: v.string() },
@@ -11,8 +11,9 @@ export const prepareRename = mutation({
       .query("profileRenames")
       .withIndex("from", (q) => q.eq("from", args.from))
       .unique();
-    if (old && old.to !== args.to)
+    if (old && old.to !== args.to) {
       throw new Error("An earlier profile rename still needs reconciliation");
+    }
     if (!old) await ctx.db.insert("profileRenames", args);
   },
 });
@@ -71,10 +72,12 @@ export const renamed = mutation({
         .withIndex("key", (q) => q.eq("key", target))
         .unique();
       if (targetAlias) await ctx.db.delete(targetAlias._id);
-      for (const alias of await ctx.db
-        .query("conversationAliases")
-        .withIndex("target", (q) => q.eq("target", row.key))
-        .collect()) {
+      for (
+        const alias of await ctx.db
+          .query("conversationAliases")
+          .withIndex("target", (q) => q.eq("target", row.key))
+          .collect()
+      ) {
         await ctx.db.patch(alias._id, { target });
       }
       const oldAlias = await ctx.db
@@ -85,36 +88,52 @@ export const renamed = mutation({
       else await ctx.db.insert("conversationAliases", { key: row.key, target });
       // Public projections are rebuilt from Hermes; web-owned organization and
       // queued actions retain their identity.
-      for (const page of await ctx.db
-        .query("pages")
-        .withIndex("page", (q) => q.eq("conversation", row.key))
-        .collect())
+      for (
+        const page of await ctx.db
+          .query("pages")
+          .withIndex("page", (q) => q.eq("conversation", row.key))
+          .collect()
+      ) {
         await ctx.db.delete(page._id);
-      for (const turn of await ctx.db
-        .query("turns")
-        .withIndex("conversation", (q) => q.eq("conversation", row.key))
-        .collect())
+      }
+      for (
+        const turn of await ctx.db
+          .query("turns")
+          .withIndex("conversation", (q) => q.eq("conversation", row.key))
+          .collect()
+      ) {
         await ctx.db.delete(turn._id);
-      for (const file of await ctx.db
-        .query("artifacts")
-        .withIndex("conversation", (q) => q.eq("conversation", row.key))
-        .collect())
+      }
+      for (
+        const file of await ctx.db
+          .query("artifacts")
+          .withIndex("conversation", (q) => q.eq("conversation", row.key))
+          .collect()
+      ) {
         await ctx.db.delete(file._id);
-      for (const scan of await ctx.db
-        .query("artifactScans")
-        .withIndex("conversation", (q) => q.eq("conversation", row.key))
-        .collect())
+      }
+      for (
+        const scan of await ctx.db
+          .query("artifactScans")
+          .withIndex("conversation", (q) => q.eq("conversation", row.key))
+          .collect()
+      ) {
         await ctx.db.delete(scan._id);
-      for (const command of await ctx.db
-        .query("commands")
-        .withIndex("conversation", (q) => q.eq("conversation", row.key))
-        .collect()) {
+      }
+      for (
+        const command of await ctx.db
+          .query("commands")
+          .withIndex("conversation", (q) => q.eq("conversation", row.key))
+          .collect()
+      ) {
         await ctx.db.patch(command._id, { conversation: target });
       }
-      for (const notice of await ctx.db
-        .query("notices")
-        .withIndex("conversation", (q) => q.eq("conversation", row.key))
-        .collect()) {
+      for (
+        const notice of await ctx.db
+          .query("notices")
+          .withIndex("conversation", (q) => q.eq("conversation", row.key))
+          .collect()
+      ) {
         await ctx.db.patch(notice._id, { conversation: target });
       }
     }

@@ -6,20 +6,20 @@ import {
   $createTextNode,
   $getRoot,
   $getSelection,
-  $isRangeSelection,
   $isElementNode,
+  $isRangeSelection,
   $isTextNode,
   CLEAR_HISTORY_COMMAND,
-  HISTORY_PUSH_TAG,
   COMMAND_PRIORITY_HIGH,
   createEditor,
+  type EditorConfig,
+  HISTORY_PUSH_TAG,
   KEY_DOWN_COMMAND,
+  type NodeKey,
   PASTE_COMMAND,
+  type SerializedTextNode,
   SKIP_DOM_SELECTION_TAG,
   TextNode,
-  type EditorConfig,
-  type NodeKey,
-  type SerializedTextNode,
 } from "lexical";
 import { createEffect, onCleanup, onMount, untrack } from "solid-js";
 
@@ -93,9 +93,9 @@ export default function ComposerInput(props: {
   const select = (position: number) => {
     let remaining = position;
     const paragraph = $getRoot().getFirstChild();
-    for (const node of $isElementNode(paragraph)
-      ? paragraph.getChildren()
-      : []) {
+    for (
+      const node of $isElementNode(paragraph) ? paragraph.getChildren() : []
+    ) {
       const length = node.getTextContentSize();
       if ($isTextNode(node) && remaining <= length) {
         node.select(remaining, remaining);
@@ -116,9 +116,10 @@ export default function ComposerInput(props: {
         // Complete reference syntax only; a partially typed slash stays editable
         // so the existing upstream autocomplete remains in charge of suggestions.
         const match =
-          /\[(?:Attached file|Conversation): [^\]\n]+\]|(?:^|(?<=\s))\/[\w-]+(?=\s)/.exec(
-            node.getTextContent(),
-          );
+          /\[(?:Attached file|Conversation): [^\]\n]+\]|(?:^|(?<=\s))\/[\w-]+(?=\s)/
+            .exec(
+              node.getTextContent(),
+            );
         if (!match) return;
         const start = match.index;
         const pieces = node.splitText(start, start + match[0].length);
@@ -195,8 +196,9 @@ export default function ComposerInput(props: {
           tag: [SKIP_DOM_SELECTION_TAG, HISTORY_PUSH_TAG],
         });
         // Never undo into another conversation, a sent message, or an edit target.
-        if (changedContext || value === "")
+        if (changedContext || value === "") {
           editor.dispatchCommand(CLEAR_HISTORY_COMMAND, undefined);
+        }
       }
     });
   });

@@ -135,10 +135,11 @@ export function configPatch(
       );
       if (Object.keys(nested).length) patch[key] = nested;
     } else {
-      if (JSON.stringify(current[key]) !== JSON.stringify(original[key]))
+      if (JSON.stringify(current[key]) !== JSON.stringify(original[key])) {
         throw new Error(
           `${path} changed on the host. Reopen settings before saving; your edits have been kept.`,
         );
+      }
       patch[key] = value;
     }
   }

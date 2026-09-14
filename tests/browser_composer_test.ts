@@ -4,7 +4,8 @@ import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
 
 Deno.test({
-  name: "Lexical preserves prompt text, completion caret, reference undo, and draft isolation",
+  name:
+    "Lexical preserves prompt text, completion caret, reference undo, and draft isolation",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -148,7 +149,7 @@ Deno.test({
       client.setAuth(auth.token);
       const transcript = await client.query(anyApi.workspace.transcript, {
         conversation: await page.evaluate(() =>
-          localStorage.getItem("arura.view"),
+          localStorage.getItem("arura.view")
         ),
         pages: 1,
       });

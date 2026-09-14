@@ -90,29 +90,29 @@ export function interactionFromEvent(
     multiple: payload.multi_select === true,
     ...(Array.isArray(payload.questions)
       ? {
-          questions: payload.questions
-            .filter(
-              (q: any) =>
-                q &&
-                typeof q.qid === "string" &&
-                typeof q.question === "string",
-            )
-            .map((q: any) => ({
-              id: q.qid,
-              text: visibleText(q.question),
-              options: choices(q.choices),
-              multiple: q.multi_select === true,
-              ...(payload.answers?.[q.qid] !== undefined
-                ? {
-                    answer: visibleText(
-                      Array.isArray(payload.answers[q.qid])
-                        ? JSON.stringify(payload.answers[q.qid])
-                        : String(payload.answers[q.qid]),
-                    ),
-                  }
-                : {}),
-            })),
-        }
+        questions: payload.questions
+          .filter(
+            (q: any) =>
+              q &&
+              typeof q.qid === "string" &&
+              typeof q.question === "string",
+          )
+          .map((q: any) => ({
+            id: q.qid,
+            text: visibleText(q.question),
+            options: choices(q.choices),
+            multiple: q.multi_select === true,
+            ...(payload.answers?.[q.qid] !== undefined
+              ? {
+                answer: visibleText(
+                  Array.isArray(payload.answers[q.qid])
+                    ? JSON.stringify(payload.answers[q.qid])
+                    : String(payload.answers[q.qid]),
+                ),
+              }
+              : {}),
+          })),
+      }
       : {}),
   };
 }
@@ -188,12 +188,11 @@ export function subagentTranscript(text: string, details = false): string {
       );
       if (!match) return [];
       const [, time, role, body] = match;
-      const content =
-        !details && role === "tool"
-          ? body.split("(")[0]
-          : !details && role === "result"
-            ? body.split(":")[0]
-            : visibleText(body);
+      const content = !details && role === "tool"
+        ? body.split("(")[0]
+        : !details && role === "result"
+        ? body.split(":")[0]
+        : visibleText(body);
       return [`${time} ${role} | ${content}`];
     })
     .join("\n");

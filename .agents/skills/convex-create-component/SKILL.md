@@ -131,8 +131,9 @@ export const listUnread = query({
   handler: async (ctx, args) => {
     return await ctx.db
       .query("notifications")
-      .withIndex("by_user_read", (q) =>
-        q.eq("userId", args.userId).eq("read", false),
+      .withIndex(
+        "by_user_read",
+        (q) => q.eq("userId", args.userId).eq("read", false),
       )
       .collect();
   },

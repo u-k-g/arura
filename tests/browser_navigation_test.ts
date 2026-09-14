@@ -1,7 +1,8 @@
 import { chromium, expect, type Page } from "@playwright/test";
 
 Deno.test({
-  name: "conversation rename, context, independent views, shortcuts, notices and deletion work across devices",
+  name:
+    "conversation rename, context, independent views, shortcuts, notices and deletion work across devices",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -23,7 +24,7 @@ Deno.test({
     }
     async function newChat(page: Page) {
       const before = await page.evaluate(() =>
-        localStorage.getItem("arura.view"),
+        localStorage.getItem("arura.view")
       );
       await page
         .getByRole("button", { name: "New conversation", exact: true })
