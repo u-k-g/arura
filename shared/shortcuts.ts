@@ -1,6 +1,7 @@
 export const shortcuts = [
   { id: "palette", label: "Find conversations and actions", default: "Mod+k" },
   { id: "newChat", label: "New conversation", default: "Mod+Shift+o" },
+  { id: "sidebar", label: "Toggle sidebar", default: "Mod+." },
 ] as const;
 
 export function shortcutFromEvent(

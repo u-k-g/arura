@@ -11,8 +11,8 @@ export default defineConfig({
         name: "Arura",
         short_name: "Arura",
         description: "Your Hermes conversations",
-        theme_color: "#eef1f5",
-        background_color: "#f8f9fc",
+        theme_color: "#f3f3f3",
+        background_color: "#f3f3f3",
         display: "standalone",
         icons: [
           {

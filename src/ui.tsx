@@ -18,7 +18,7 @@ export function Icon(props: { name: string }) {
 export function IconButton(props: {
   icon: string;
   label: string;
-  onClick: () => void;
+  onClick: (event: MouseEvent) => void;
   disabled?: boolean;
   class?: string;
 }) {
@@ -40,18 +40,65 @@ export function Dialog(props: {
   children: JSX.Element;
   close: () => void;
   class?: string;
+  anchor?: { x: number; y: number };
 }) {
   let el!: HTMLDialogElement;
+  const position = () => {
+    if (props.anchor) {
+      const rect = el.getBoundingClientRect();
+      el.style.setProperty(
+        "--menu-x",
+        `${
+          Math.max(8, Math.min(props.anchor.x, innerWidth - rect.width - 8))
+        }px`,
+      );
+      el.style.setProperty(
+        "--menu-y",
+        `${
+          Math.max(8, Math.min(props.anchor.y, innerHeight - rect.height - 8))
+        }px`,
+      );
+    }
+  };
   onMount(() => {
     el.showModal();
+    position();
+    if (props.anchor) globalThis.addEventListener("resize", position);
   });
-  onCleanup(() => el.close());
+  onCleanup(() => {
+    globalThis.removeEventListener("resize", position);
+    el.close();
+  });
   return (
-    // biome-ignore lint/a11y/useKeyWithClickEvents: Escape closes the native dialog through onCancel.
     <dialog
       ref={el}
       aria-label={props.title}
       class={props.class ?? ""}
+      onKeyDown={(event) => {
+        if (
+          props.class !== "conversation-menu" ||
+          !["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)
+        ) {
+          return;
+        }
+        const items = Array.from(
+          el.querySelectorAll<HTMLElement>(
+            ".action-list button:not(:disabled), .action-list a[href]",
+          ),
+        );
+        if (!items.length) return;
+        event.preventDefault();
+        const current = items.indexOf(document.activeElement as HTMLElement);
+        const next = event.key === "Home"
+          ? 0
+          : event.key === "End"
+          ? items.length - 1
+          : (current +
+            (event.key === "ArrowDown" ? 1 : -1) +
+            items.length) %
+            items.length;
+        items[next].focus();
+      }}
       onCancel={(e) => {
         e.preventDefault();
         props.close();

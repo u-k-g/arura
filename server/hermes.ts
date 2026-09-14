@@ -46,6 +46,7 @@ export class Hermes extends EventEmitter {
   private reverse = new Map<string, string>();
   private turns = new Map<string, Turn>();
   private connecting?: Promise<void>;
+  private reconnectTimer?: ReturnType<typeof setTimeout>;
   private authPromise?: Promise<void>;
   private replaying = new Set<string>();
   private held = new Map<string, RpcFrame[]>();
@@ -166,10 +167,24 @@ export class Hermes extends EventEmitter {
     if (this.stopped) return;
     if (this.online) return;
     if (this.connecting) return await this.connecting;
-    this.connecting = this.open().finally(() => {
-      this.connecting = undefined;
-    });
+    clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = undefined;
+    this.connecting = this.open()
+      .catch((error) => {
+        this.scheduleReconnect();
+        throw error;
+      })
+      .finally(() => {
+        this.connecting = undefined;
+      });
     return await this.connecting;
+  }
+  private scheduleReconnect() {
+    if (this.stopped || this.reconnectTimer !== undefined) return;
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = undefined;
+      void this.connect().catch((error) => this.emit("fault", error));
+    }, 2000);
   }
   private async open() {
     await this.login();
@@ -181,6 +196,7 @@ export class Hermes extends EventEmitter {
     } else if (process.env.HERMES_TOKEN) {
       url.searchParams.set("token", process.env.HERMES_TOKEN);
     }
+    if (this.stopped) return;
     const socket = new WebSocket(url, { headers: this.headers() });
     this.socket = socket;
     await new Promise<void>((resolve, reject) => {
@@ -216,17 +232,14 @@ export class Hermes extends EventEmitter {
           );
         }
         this.pending.clear();
-        if (!this.stopped) {
-          setTimeout(
-            () => void this.connect().catch((e) => this.emit("fault", e)),
-            2000,
-          );
-        }
+        this.scheduleReconnect();
       });
     });
   }
   close() {
     this.stopped = true;
+    clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = undefined;
     for (const sid of this.recovering.keys()) this.stopRecovery(sid);
     this.socket?.close();
   }

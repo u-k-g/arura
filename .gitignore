@@ -45,3 +45,5 @@
 !*.nix
 
 !src/icons/LICENSE
+!public/fonts/*.woff2
+!public/fonts/*-LICENSE

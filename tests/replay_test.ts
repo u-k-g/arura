@@ -1,7 +1,37 @@
-import { equal } from "node:assert/strict";
+import { equal, rejects } from "node:assert/strict";
 import { Hermes } from "../server/hermes.ts";
 import { hermesFixture } from "./hermes_fixture.ts";
 import type { Turn } from "../shared/model.ts";
+
+Deno.test("a startup login failure retries without a browser refresh", async () => {
+  const fixture = hermesFixture(0);
+  const before = Deno.env.get("HERMES_URL");
+  Deno.env.set("HERMES_URL", `http://127.0.0.1:${fixture.server.addr.port}`);
+  class StartingHermes extends Hermes {
+    attempts = 0;
+    override async login() {
+      if (++this.attempts === 1) throw new Error("Dashboard is starting");
+      await super.login();
+    }
+  }
+  const hermes = new StartingHermes();
+  try {
+    await rejects(hermes.connect(), /Dashboard is starting/);
+    const deadline = Date.now() + 6000;
+    while (!hermes.online) {
+      if (Date.now() > deadline) {
+        throw new Error("Startup retry did not connect");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    equal(hermes.attempts, 2);
+  } finally {
+    hermes.close();
+    await fixture.close();
+    if (before === undefined) Deno.env.delete("HERMES_URL");
+    else Deno.env.set("HERMES_URL", before);
+  }
+});
 
 Deno.test("password login discovers its provider and authorizes REST and WebSocket requests", async () => {
   const fixture = hermesFixture(0, { requirePassword: true });

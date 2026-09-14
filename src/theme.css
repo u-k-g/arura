@@ -1,0 +1,76 @@
+/* Macro's current neutral theme and type scale, applied to Arura's own UI.
+   Reference sources and bundled font licenses: docs/design.md. */
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Roboto Mono Variable";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+  src: url("/fonts/roboto-mono-latin-wght-normal.woff2") format("woff2");
+}
+:root {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Inter Variable", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  font-size: 16px;
+  font-synthesis: none;
+  font-optical-sizing: auto;
+  font-feature-settings:
+    "dlig" 1,
+    "calt" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --mono: "Roboto Mono Variable", monospace;
+  --canvas: oklch(0.964 0 59deg);
+  --panel: color-mix(in srgb, var(--canvas) 30%, white);
+  --surface: white;
+  --dialog: color-mix(in srgb, var(--canvas) 7%, white);
+  --ink: oklch(0.16 0 59deg);
+  --muted: oklch(0.45 0 59deg);
+  --subtle: oklch(0.55 0 59deg);
+  --line: oklch(0.91 0 59deg);
+  --accent: oklch(0.65 0.2 59deg);
+  --danger: oklch(63.7% 0.237 25.331);
+  --accent-soft: color-mix(in oklch, var(--accent) 8%, transparent);
+  --hover: color-mix(in oklch, var(--ink) 3%, transparent);
+  --active: color-mix(in oklch, var(--ink) 6%, transparent);
+  --message-size: 16px;
+  --hairline: 0.5px;
+  color: var(--ink);
+  background: var(--canvas);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: oklch(0 0 21deg);
+    --panel: oklch(0.18 0 21deg);
+    --surface: oklch(0.28 0 21deg);
+    --dialog: oklch(0.23 0 21deg);
+    --ink: oklch(1 0 21deg);
+    --muted: oklch(0.75 0 21deg);
+    --subtle: oklch(0.63 0 21deg);
+    --line: oklch(0.28 0 21deg);
+    --accent: oklch(0.75 0.2 59deg);
+    --danger: oklch(0.75 0.2 25.331deg);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --canvas: oklch(0 0 21deg);
+  --panel: oklch(0.18 0 21deg);
+  --surface: oklch(0.28 0 21deg);
+  --dialog: oklch(0.23 0 21deg);
+  --ink: oklch(1 0 21deg);
+  --muted: oklch(0.75 0 21deg);
+  --subtle: oklch(0.63 0 21deg);
+  --line: oklch(0.28 0 21deg);
+  --accent: oklch(0.75 0.2 59deg);
+  --danger: oklch(0.75 0.2 25.331deg);
+  color-scheme: dark;
+}
