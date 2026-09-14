@@ -47,3 +47,6 @@
 !src/icons/LICENSE
 !public/fonts/*.woff2
 !public/fonts/*-LICENSE
+
+!public/hermes/*.png
+!public/hermes/LICENSE

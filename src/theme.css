@@ -1,22 +1,22 @@
-/* Macro's current neutral theme and type scale, applied to Arura's own UI.
+@font-face {
+  font-family: "Hermes Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/hermes-sans.woff2") format("woff2");
+}
+/* Hermes desktop proportions with Macro light/dark color tokens.
    Reference sources and bundled font licenses: docs/design.md. */
 @font-face {
-  font-family: "Inter Variable";
+  font-family: "Hermes Mono";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 400;
   font-display: swap;
-  src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
-}
-@font-face {
-  font-family: "Roboto Mono Variable";
-  font-style: normal;
-  font-weight: 100 700;
-  font-display: swap;
-  src: url("/fonts/roboto-mono-latin-wght-normal.woff2") format("woff2");
+  src: url("/fonts/hermes-mono.woff2") format("woff2");
 }
 :root {
   font-family:
-    -apple-system, BlinkMacSystemFont, "Inter Variable", Roboto,
+    "Hermes Sans", "IBM Plex Sans", -apple-system, BlinkMacSystemFont,
     "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   font-size: 16px;
   font-synthesis: none;
@@ -26,7 +26,7 @@
     "calt" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --mono: "Roboto Mono Variable", monospace;
+  --mono: "Hermes Mono", monospace;
   --canvas: oklch(0.964 0 59deg);
   --panel: color-mix(in srgb, var(--canvas) 30%, white);
   --surface: white;
@@ -40,8 +40,8 @@
   --accent-soft: color-mix(in oklch, var(--accent) 8%, transparent);
   --hover: color-mix(in oklch, var(--ink) 3%, transparent);
   --active: color-mix(in oklch, var(--ink) 6%, transparent);
-  --message-size: 16px;
-  --hairline: 0.5px;
+  --message-size: 14px;
+  --hairline: 1px;
   color: var(--ink);
   background: var(--canvas);
   color-scheme: light;

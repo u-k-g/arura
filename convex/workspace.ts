@@ -1,5 +1,6 @@
 import { anyApi } from "convex/server";
 import { v } from "convex/values";
+import { incomingOrganization } from "../shared/organization.ts";
 import { shouldArchive } from "../shared/model.ts";
 import { internalMutation, mutation, query } from "./_generated/server.ts";
 import { adapter, device } from "./access.ts";
@@ -164,6 +165,8 @@ export const move = mutation({
       throw new Error("Finish the active work before archiving");
     }
     await ctx.db.patch(c._id, {
+      organizationPending: true,
+      organizationRevision: (c.organizationRevision ?? 0) + 1,
       section: args.section,
       folderId: args.folderId,
       rank: args.rank ?? Date.now(),
@@ -249,18 +252,8 @@ export const setting = mutation({
   args: { key: v.string(), value: v.any() },
   handler: async (ctx, args) => {
     await device(ctx);
-    if (
-      !["archiveDays", "modelFavorites", "shortcuts", "appearance"].includes(
-        args.key,
-      )
-    ) {
+    if (!["modelFavorites", "shortcuts", "appearance"].includes(args.key)) {
       throw new Error("Unknown preference");
-    }
-    if (
-      args.key === "archiveDays" &&
-      (typeof args.value !== "number" || args.value < 1 || args.value > 3650)
-    ) {
-      throw new Error("Choose 1–3650 days");
     }
     const old = await ctx.db
       .query("settings")
@@ -303,6 +296,11 @@ export const sweep = internalMutation({
       .query("settings")
       .withIndex("key", (q) => q.eq("key", "archiveDays"))
       .unique();
+    const policy = await ctx.db
+      .query("settings")
+      .withIndex("key", (q) => q.eq("key", "archiveEnabled"))
+      .unique();
+    if (policy?.value === false) return;
     const batch = await ctx.db
       .query("conversations")
       .withIndex("section", (q) => q.eq("section", "recent"))
@@ -314,6 +312,8 @@ export const sweep = internalMutation({
       ) {
         await ctx.db.patch(c._id, {
           section: "archived",
+          organizationPending: true,
+          organizationRevision: (c.organizationRevision ?? 0) + 1,
           archivedAt: Date.now(),
         });
       }
@@ -328,6 +328,9 @@ export const sweep = internalMutation({
 export const ingest = mutation({
   args: {
     conversations: v.optional(v.array(v.any())),
+    archivePolicy: v.optional(
+      v.object({ days: v.number(), enabled: v.boolean() }),
+    ),
     page: v.optional(v.any()),
     turn: v.optional(v.any()),
     online: v.optional(v.boolean()),
@@ -338,6 +341,22 @@ export const ingest = mutation({
   },
   handler: async (ctx, args) => {
     await adapter(ctx);
+    if (args.archivePolicy) {
+      for (
+        const [key, value] of Object.entries({
+          archiveDays: args.archivePolicy.days,
+          archiveEnabled: args.archivePolicy.enabled,
+        })
+      ) {
+        const previous = await ctx.db
+          .query("settings")
+          .withIndex("key", (q) => q.eq("key", key))
+          .unique();
+        if (previous && previous.value !== value) {
+          await ctx.db.patch(previous._id, { value });
+        } else if (!previous) await ctx.db.insert("settings", { key, value });
+      }
+    }
     for (const key of args.deletedKeys ?? []) {
       const old = await ctx.db
         .query("conversations")
@@ -376,11 +395,13 @@ export const ingest = mutation({
         activityAt: Number(input.activityAt),
         deleted: false,
       };
-      if (old) await ctx.db.patch(old._id, data);
+      const organization = incomingOrganization(old, input, Date.now());
+      if (old) await ctx.db.patch(old._id, { ...data, ...organization });
       else {
         await ctx.db.insert("conversations", {
           ...data,
           section: "recent",
+          ...organization,
           rank: data.activityAt,
           running: false,
           pendingInput: false,
@@ -515,5 +536,42 @@ export const backup = query({
       profileRenames: await ctx.db.query("profileRenames").collect(),
       settings: await ctx.db.query("settings").collect(),
     };
+  },
+});
+
+// Durable outbox: the host drains this before taking its next Hermes snapshot.
+export const pendingOrganization = query({
+  args: {},
+  handler: async (ctx) => {
+    await adapter(ctx);
+    return await ctx.db
+      .query("conversations")
+      .withIndex(
+        "organizationPending",
+        (q) => q.eq("organizationPending", true),
+      )
+      .filter((q) => q.neq(q.field("deleted"), true))
+      .take(100);
+  },
+});
+export const organizationSaved = mutation({
+  args: {
+    key: v.string(),
+    revision: v.number(),
+    pinned: v.boolean(),
+    archived: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await adapter(ctx);
+    const c = await ctx.db
+      .query("conversations")
+      .withIndex("key", (q) => q.eq("key", args.key))
+      .unique();
+    if (!c || c.organizationRevision !== args.revision) return;
+    await ctx.db.patch(c._id, {
+      organizationPending: false,
+      sourcePinned: args.pinned,
+      sourceArchived: args.archived,
+    });
   },
 });

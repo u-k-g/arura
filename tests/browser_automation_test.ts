@@ -79,6 +79,7 @@ Deno.test({
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
+      await page.getByLabel("More composer actions", { exact: true }).click();
       await page
         .getByRole("button", { name: "Automations", exact: true })
         .click();

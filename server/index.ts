@@ -149,6 +149,34 @@ async function reconcile() {
   reconciling = (async () => {
     do {
       reconcileAgain = false;
+      const pendingOrganization = await convex.query(
+        anyApi.workspace.pendingOrganization,
+        {},
+      );
+      for (const item of pendingOrganization) {
+        const pinned = item.section === "pinned" ||
+          item.section === "essential";
+        const archived = item.section === "archived";
+        try {
+          await hermes.setOrganization(item.key, pinned, archived);
+          await convex.mutation(anyApi.workspace.organizationSaved, {
+            key: item.key,
+            revision: item.organizationRevision,
+            pinned,
+            archived,
+          });
+        } catch (error) {
+          report(error);
+          await convex.mutation(anyApi.workspace.ingest, {
+            notice: {
+              id: `organization:${item.key}:${item.organizationRevision}`,
+              title:
+                "Pin/archive change is waiting for Hermes. Arura will retry.",
+              conversation: item.key,
+            },
+          });
+        }
+      }
       const conversations = await hermes.list();
       const pending = await convex.query(anyApi.profiles.pendingRenames, {});
       const profiles = new Set(conversations.map((c) => c.profile));
@@ -157,10 +185,19 @@ async function reconcile() {
           await migrateProfile(rename.from, rename.to, conversations);
         }
       }
+      const rawConfig = await hermes.rest("/api/config");
+      const config = record(rawConfig.config ?? rawConfig);
+      const sessionsConfig = record(config.sessions);
+      const days = Number(sessionsConfig.auto_archive_days ?? 7);
+      const archivePolicy = {
+        days: Number.isFinite(days) && days >= 1 ? days : 7,
+        enabled: sessionsConfig.auto_archive !== false,
+      };
       const existing = await convex.query(anyApi.workspace.sourceKeys, {});
       const keys = new Set(conversations.map((c) => c.key));
       await convex.mutation(anyApi.workspace.ingest, {
         conversations,
+        archivePolicy,
         deletedKeys: existing.filter((key: string) => !keys.has(key)),
         online: true,
         changed: true,
@@ -465,7 +502,7 @@ async function processCommands() {
   }
 }
 const commandTimer = setInterval(() => void processCommands(), 500);
-const reconcileTimer = setInterval(() => void reconcile().catch(report), 30000);
+const reconcileTimer = setInterval(() => void reconcile().catch(report), 5000);
 let checkingBackup = false;
 async function checkBackup() {
   if (checkingBackup) return;
@@ -1044,7 +1081,9 @@ async function handle(request: Request, ip: string): Promise<Response> {
       await migrateProfile(params.id, result.name, await hermes.list());
       await reconcile();
     }
-    if (["createProfile", "deleteProfile"].includes(op)) await reconcile();
+    if (["createProfile", "deleteProfile", "saveConfig"].includes(op)) {
+      await reconcile();
+    }
     if (spec.method !== "GET") {
       await convex.mutation(anyApi.workspace.ingest, { changed: true });
     }

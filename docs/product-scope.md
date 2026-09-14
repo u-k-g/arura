@@ -75,7 +75,7 @@ and
 | 106–107        | Install/repair/uninstall and diagnostic health/security-audit actions                                          | Exclude. Status/log reading remains included.                                                                                                   |
 | 108–109        | Backups and diagnostic reports                                                                                 | Retain host creation and local download. No upstream support uploads. Include web-owned state in backup coverage.                               |
 | 110–111        | Advanced runtime settings, warm backends/idle timeouts                                                         | Retain in Settings. Preserve managed-setting boundaries.                                                                                        |
-| 112–114        | Appearance, themes, detailed visual controls                                                                   | Own UI design; not required desktop parity or a commitment to a theme marketplace.                                                              |
+| 112–114        | Appearance, themes, detailed visual controls                                                                   | Match Hermes desktop styling for retained UI; no theme-marketplace commitment.                                                                  |
 | 115            | Language selection                                                                                             | Exclude initially; English only.                                                                                                                |
 | 116–117        | Command palette and customizable shortcuts                                                                     | Retain relevant actions; keyboard controls need touch equivalents. No desktop-global shortcuts.                                                 |
 | 118            | Notifications                                                                                                  | Silent in-app completion/failure/input alerts. No implicit external push service.                                                               |
@@ -88,6 +88,23 @@ and avatars; it does not prohibit attaching, opening, or downloading existing
 images.
 
 ## Navigation and activity contract
+
+Hermes desktop is the visual/interaction reference for retained features,
+including placement and sizing, with Iconoir equivalents and Macro's color
+scheme. Hermes owns supported state; Convex caches it for the UI. Pin/archive
+changes work in both directions with the old client. Essentials, folders and
+Arura ordering are web-only data.
+
+Organization writes use the same profile-scoped session PATCH API as desktop.
+Convex keeps pending writes until the host acknowledges their revision; an older
+snapshot cannot undo a pending action. Source changes arrive on session events
+or a five-second fallback poll. Essentials and folder members appear pinned in
+the old UI. An explicit upstream unpin/archive removes Arura saved placement;
+unchanged upstream pins preserve it. No history databases are copied or
+replaced. Automatic-archive enablement and days come from Hermes's session
+configuration; the settings page writes that configuration. Arura's sweep
+consumes its cached copy while protecting active work and its own unarchive
+grace period.
 
 - Use Lexical for the chat composer, with selectable skill/command and context
   references. Keep drafts and Hermes messages as plain text. CodeMirror remains

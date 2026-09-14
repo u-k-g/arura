@@ -51,6 +51,10 @@ export default defineSchema({
     ),
     folderId: v.optional(v.id("folders")),
     rank: v.number(),
+    sourcePinned: v.optional(v.boolean()),
+    sourceArchived: v.optional(v.boolean()),
+    organizationRevision: v.optional(v.number()),
+    organizationPending: v.optional(v.boolean()),
     archivedAt: v.optional(v.number()),
     unarchivedAt: v.optional(v.number()),
     running: v.boolean(),
@@ -58,6 +62,7 @@ export default defineSchema({
     deleted: v.optional(v.boolean()),
   })
     .index("key", ["key"])
+    .index("organizationPending", ["organizationPending"])
     .index("section", ["section", "rank"])
     .index("profile", ["profile"])
     .index("activity", ["section", "activityAt"])

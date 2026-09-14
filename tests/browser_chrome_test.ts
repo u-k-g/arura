@@ -32,7 +32,7 @@ Deno.test({
         .getByRole("button", { name: "Collapse sidebar", exact: true })
         .click();
       await expect(
-        page.getByRole("navigation", { name: "Main navigation", exact: true }),
+        page.getByRole("button", { name: "Expand sidebar", exact: true }),
       ).toBeVisible();
       await page.reload();
       await expect(

@@ -731,6 +731,8 @@ export class Hermes extends EventEmitter {
         title: string;
         activityAt: number;
         bot?: boolean;
+        pinned?: boolean;
+        archived?: boolean;
       }
     >();
     for (const profile of profiles) {
@@ -752,6 +754,12 @@ export class Hermes extends EventEmitter {
             profile,
             sourceId,
             title: row.title || "Untitled conversation",
+            ...(row.pinned !== undefined
+              ? { pinned: Boolean(row.pinned) }
+              : {}),
+            ...(row.archived !== undefined
+              ? { archived: Boolean(row.archived) }
+              : {}),
             activityAt: Number(
               row.last_active ??
                 row.last_activity ??
@@ -776,6 +784,7 @@ export class Hermes extends EventEmitter {
       if (typeof sourceId !== "string") continue;
       const key = conversationKey(profile.name, sourceId);
       all.set(key, {
+        ...all.get(key),
         key,
         profile: profile.name,
         sourceId,
@@ -788,6 +797,22 @@ export class Hermes extends EventEmitter {
       });
     }
     return [...all.values()];
+  }
+  async setOrganization(key: string, pinned: boolean, archived: boolean) {
+    const [profile, sourceId] = JSON.parse(key) as [string, string];
+    // Match desktop: the owner belongs in the PATCH body, not just the URL.
+    const result = await this.rest(
+      `/api/sessions/${encodeURIComponent(sourceId)}`,
+      "PATCH",
+      {
+        profile,
+        pinned,
+        archived,
+      },
+    );
+    if (result.ok !== true) {
+      throw new Error("Hermes did not save conversation organization");
+    }
   }
   async search(query: string) {
     const discovery = await this.rest(

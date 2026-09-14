@@ -59,7 +59,7 @@ Deno.test({
       );
       await a
         .getByRole("button", {
-          name: "Reference a file, folder, URL, or conversation",
+          name: "Add context",
           exact: true,
         })
         .click();
@@ -72,7 +72,7 @@ Deno.test({
       );
       await a
         .getByRole("button", {
-          name: "Reference a file, folder, URL, or conversation",
+          name: "Add context",
           exact: true,
         })
         .click();
@@ -109,6 +109,7 @@ Deno.test({
       await expect(
         b.locator(`.notification-card[data-notice-id="${id}"]`),
       ).not.toHaveClass(/unread/);
+      await a.getByLabel("More composer actions", { exact: true }).click();
       await a
         .getByRole("button", { name: "Delegated work", exact: true })
         .click();

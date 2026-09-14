@@ -37,6 +37,7 @@ import CommandPalette, { type PaletteItem } from "./CommandPalette.tsx";
 const Chat = lazy(() => import("./Chat.tsx"));
 const Settings = lazy(() => import("./Settings.tsx"));
 const Resources = lazy(() => import("./Resources.tsx"));
+const Capabilities = lazy(() => import("./Capabilities.tsx"));
 const Artifacts = lazy(() => import("./Artifacts.tsx"));
 
 export default function App() {
@@ -174,7 +175,7 @@ export default function App() {
   onMount(() => {
     document.documentElement.dataset.theme =
       preferences.getItem("arura.theme") ?? "system";
-    const size = Number(preferences.getItem("arura.textSize") ?? 16);
+    const size = Number(preferences.getItem("arura.textSize") ?? 14);
     document.documentElement.style.setProperty(
       "--message-size",
       `${Math.min(20, Math.max(14, size))}px`,
@@ -382,11 +383,17 @@ export default function App() {
         }}
         aria-current={view() === c.key ? "page" : undefined}
         title={c.title}
+        aria-label={c.title}
         onClick={() =>
           navigate(c.key)}
       >
-        <Icon name={c.running ? "clock" : "chat-bubble"} />
+        <span class="session-dot" classList={{ running: c.running }} />
         <span>{c.title}</span>
+        <time class="session-age">
+          {Math.max(0, Math.floor((Date.now() - c.activityAt) / 86400000)) ||
+            ""}
+          {Date.now() - c.activityAt >= 86400000 ? "d" : "now"}
+        </time>
         <Show when={c.running}>
           <i class="busy-dot" />
         </Show>
@@ -401,28 +408,80 @@ export default function App() {
   );
   const navigation = () => (
     <div class="navigation">
-      <header class="brand">
-        <a
-          href="/"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("");
-          }}
-        >
-          <span class="brand-mark">a</span> arura
-        </a>
+      <header class="sidebar-titlebar">
         <IconButton
-          icon="menu"
+          icon="sidebar-collapse"
           class="desktop-only"
           label="Collapse sidebar"
           onClick={toggleSidebar}
         />
-        <IconButton
-          icon="plus"
-          label="New conversation"
-          onClick={() => void newChat()}
-        />
       </header>
+      <nav class="sidebar-sections" aria-label="Main navigation">
+        <button
+          type="button"
+          classList={{ active: !view().startsWith("resources:profiles") }}
+          onClick={() => navigate("")}
+        >
+          Sessions
+        </button>
+        <button
+          type="button"
+          classList={{ active: view() === "resources:profiles" }}
+          onClick={() => navigate("resources:profiles")}
+        >
+          Bots
+        </button>
+      </nav>
+      <nav class="sidebar-actions" aria-label="Hermes tools">
+        <button
+          type="button"
+          aria-label="New conversation"
+          onClick={() => void newChat()}
+        >
+          <Icon name="bot" />
+          <span>New session</span>
+          <kbd>
+            {String(
+              workspace()?.settings?.shortcuts?.newChat ?? "Mod+Shift+o",
+            ).replace(
+              "Mod",
+              /Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl",
+            )}
+          </kbd>
+        </button>
+        <button
+          type="button"
+          classList={{ selected: view() === "capabilities" }}
+          onClick={() => navigate("capabilities")}
+        >
+          <Icon name="capabilities" />
+          <span>Capabilities</span>
+        </button>
+        <button
+          type="button"
+          classList={{ selected: view() === "resources:platforms" }}
+          onClick={() => navigate("resources:platforms")}
+        >
+          <Icon name="chat-bubble" />
+          <span>Messaging</span>
+        </button>
+        <button
+          type="button"
+          classList={{ selected: view() === "resources:artifacts" }}
+          onClick={() => navigate("resources:artifacts")}
+        >
+          <Icon name="page" />
+          <span>Artifacts</span>
+        </button>
+        <button
+          type="button"
+          classList={{ selected: view() === "resources:jobs" }}
+          onClick={() => navigate("resources:jobs")}
+        >
+          <Icon name="clock" />
+          <span>Scheduled jobs</span>
+        </button>
+      </nav>
       <button
         type="button"
         class="nav-search"
@@ -430,41 +489,37 @@ export default function App() {
         onClick={() => setPalette(true)}
       >
         <Icon name="search" />
-        <span>Search</span>
-        <kbd>
-          {String(workspace()?.settings?.shortcuts?.palette ?? "Mod+k").replace(
-            "Mod",
-            "Ctrl/⌘",
-          )}
-        </kbd>
+        <span>Search sessions…</span>
       </button>
       <div class="nav-scroll">
-        <div class="essentials">
-          <For
-            each={chats()
-              .filter((c) => c.section === "essential")
-              .sort((a, b) => a.rank - b.rank)}
-          >
-            {(c) => (
-              <button
-                type="button"
-                classList={{ selected: view() === c.key }}
-                title={c.title}
-                onClick={() => navigate(c.key)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  openMenu(c, e);
-                }}
-              >
-                <Icon name="chat-bubble" />
-                <span>{c.title}</span>
-              </button>
-            )}
-          </For>
-          <Show when={!chats().some((c) => c.section === "essential")}>
-            <p class="quiet">Keep your everyday chats here.</p>
-          </Show>
-        </div>
+        <Show when={chats().some((c) => c.section === "essential")}>
+          <div class="section-heading">
+            <span>Essentials</span>
+          </div>
+          <div class="essentials">
+            <For
+              each={chats()
+                .filter((c) => c.section === "essential")
+                .sort((a, b) => a.rank - b.rank)}
+            >
+              {(c) => (
+                <button
+                  type="button"
+                  classList={{ selected: view() === c.key }}
+                  title={c.title}
+                  onClick={() => navigate(c.key)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    openMenu(c, e);
+                  }}
+                >
+                  <Icon name="chat-bubble" />
+                  <span>{c.title}</span>
+                </button>
+              )}
+            </For>
+          </div>
+        </Show>
         <div class="section-heading">
           <span>Pinned</span>
           <IconButton
@@ -570,7 +625,7 @@ export default function App() {
           )}
         </For>
         <div class="section-heading">
-          <span>Conversations</span>
+          <span>Sessions</span>
         </div>
         <For
           each={chats()
@@ -638,17 +693,40 @@ export default function App() {
         </div>
       </div>
       <footer class="nav-footer">
-        <button type="button" onClick={() => navigate("resources:profiles")}>
-          <Icon name="chat-bubble" />
-          Bots
-        </button>
-        <button type="button" onClick={() => navigate("resources:files")}>
-          <Icon name="folder" />
-          Files
-        </button>
-        <button type="button" onClick={() => navigate("settings")}>
-          <Icon name="settings" />
-          Settings
+        <div class="profile-actions">
+          <IconButton
+            icon="bot"
+            label="Profiles and bots"
+            onClick={() => navigate("resources:profiles")}
+          />
+          <span>{selected()?.profile ?? "default"}</span>
+          <IconButton
+            icon="folder"
+            label="Files"
+            onClick={() => navigate("resources:files")}
+          />
+          <IconButton
+            icon="more-horiz"
+            label="All settings"
+            onClick={() => navigate("settings")}
+          />
+        </div>
+        <button
+          type="button"
+          class="gateway-status"
+          onClick={() => navigate("resources:status")}
+        >
+          <span
+            class="connection"
+            classList={{
+              offline: !connected() || !workspace()?.connection?.online,
+            }}
+          >
+            <i />
+            Gateway {workspace()?.connection?.online && connected()
+              ? "connected"
+              : "disconnected"}
+          </span>
         </button>
       </footer>
     </div>
@@ -667,7 +745,13 @@ export default function App() {
               );
             }}
           >
-            <span class="brand-mark">a</span>
+            <img
+              class="brand-mark"
+              src="/hermes/app-icon.png"
+              alt="Hermes"
+              width="26"
+              height="26"
+            />
             <h1>Your space for Hermes.</h1>
             <p>Authorize this browser to access your conversations.</p>
             <Field label="Device name">
@@ -701,69 +785,7 @@ export default function App() {
     >
       <div class="app-shell" classList={{ "sidebar-collapsed": collapsed() }}>
         <aside class="desktop-navigation">
-          <Show
-            when={!collapsed()}
-            fallback={
-              <nav class="navigation-rail" aria-label="Main navigation">
-                <a
-                  href="/"
-                  class="rail-brand"
-                  title="Home"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    navigate("");
-                  }}
-                >
-                  <span class="brand-mark">a</span>
-                </a>
-                <IconButton
-                  icon="menu"
-                  label="Expand sidebar"
-                  onClick={toggleSidebar}
-                />
-                <IconButton
-                  icon="plus"
-                  label="New conversation"
-                  onClick={() => void newChat()}
-                />
-                <IconButton
-                  icon="search"
-                  label="Find anything"
-                  onClick={() => setPalette(true)}
-                />
-                <div class="rail-divider" />
-                <For
-                  each={destinations.filter((item) => item.id !== "settings")}
-                >
-                  {(item) => (
-                    <button
-                      type="button"
-                      class="icon-button"
-                      title={item.label}
-                      aria-label={item.label}
-                      aria-current={view() === item.id ? "page" : undefined}
-                      onClick={() => navigate(item.id)}
-                    >
-                      <Icon name={item.icon} />
-                    </button>
-                  )}
-                </For>
-                <div class="rail-spacer" />
-                <IconButton
-                  icon="bell"
-                  label="Notifications"
-                  onClick={() => navigate("settings:notifications")}
-                />
-                <IconButton
-                  icon="settings"
-                  label="Settings"
-                  onClick={() => navigate("settings")}
-                />
-              </nav>
-            }
-          >
-            {navigation()}
-          </Show>
+          <Show when={!collapsed()}>{navigation()}</Show>
         </aside>
         <main class="main-view">
           <header class="topbar">
@@ -773,42 +795,28 @@ export default function App() {
               label="Open conversations"
               onClick={() => setSheet(true)}
             />
-            <nav class="breadcrumbs" aria-label="Breadcrumb">
-              <button
-                type="button"
-                aria-label="Go to home"
-                onClick={() => navigate("")}
-              >
-                Home
-              </button>
-              <Show when={view()}>
-                <span class="breadcrumb-separator">/</span>
-              </Show>
-              <Show when={view().startsWith("settings:")}>
-                <button
-                  type="button"
-                  aria-label="Back to settings"
-                  onClick={() => navigate("settings")}
-                >
-                  Settings
-                </button>
-                <span class="breadcrumb-separator">/</span>
-              </Show>
-              <span class="view-title" aria-current="page">
-                {selected()?.title ??
-                  (view() === "settings"
-                    ? "Settings"
-                    : view().startsWith("resources:")
-                    ? view()
-                      .slice(10)
-                      .replace(/^./, (x) => x.toUpperCase())
-                    : view().startsWith("settings:")
-                    ? view()
-                      .slice(9)
-                      .replace(/^./, (x) => x.toUpperCase())
-                    : "Your conversations")}
-              </span>
-            </nav>
+            <Show when={collapsed()}>
+              <IconButton
+                icon="sidebar-collapse"
+                class="desktop-only"
+                label="Expand sidebar"
+                onClick={toggleSidebar}
+              />
+            </Show>
+            <span class="view-title">
+              {selected()
+                ? ""
+                : view() === "capabilities"
+                ? "Capabilities"
+                : view()
+                  .replace(/^(resources|settings):/, "")
+                  .replace(/^./, (x) => x.toUpperCase())}
+            </span>
+            <IconButton
+              icon="search"
+              label="Search conversations"
+              onClick={() => setPalette(true)}
+            />
             <Show when={selected()}>
               {(c) => (
                 <>
@@ -843,23 +851,15 @@ export default function App() {
                 </>
               )}
             </Show>
-            <span
-              class="connection"
-              classList={{
-                offline: !connected() || !workspace()?.connection?.online,
-              }}
-            >
-              <i />
-              {!connected()
-                ? "Offline"
-                : workspace()?.connection?.online
-                ? "Connected"
-                : "Connecting to Hermes"}
-            </span>
             <IconButton
               icon="bell"
               label="Notifications"
               onClick={() => navigate("settings:notifications")}
+            />
+            <IconButton
+              icon="settings"
+              label="Settings"
+              onClick={() => navigate("settings")}
             />
             <Show when={workspace()?.notices?.some((n) => !n.read)}>
               <span
@@ -873,144 +873,155 @@ export default function App() {
           </header>
           <Suspense fallback={<div class="loading">Opening…</div>}>
             <Show
-              when={view().startsWith("settings")}
-              fallback={
-                <Show
-                  when={view().startsWith("resources:")}
-                  fallback={
-                    <Show
-                      when={view()}
-                      fallback={
-                        <section class="home-view">
-                          <header class="home-heading">
-                            <span class="brand-mark">a</span>
-                            <h1>Your conversations</h1>
-                            <p class="quiet">
-                              Pick up where you left off, or start something
-                              new.
-                            </p>
-                          </header>
-                          <div class="home-actions">
-                            <button
-                              type="button"
-                              onClick={() => void newChat()}
-                            >
-                              <Icon name="plus" />
-                              <span>
-                                New conversation
-                                <small>Ask Hermes anything</small>
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => setPalette(true)}
-                            >
-                              <Icon name="search" />
-                              <span>
-                                Find a conversation
-                                <small>Search your history</small>
-                              </span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => navigate("resources:artifacts")}
-                            >
-                              <Icon name="folder" />
-                              <span>
-                                Browse generated files
-                                <small>Outputs across conversations</small>
-                              </span>
-                            </button>
-                          </div>
-                          <div class="home-list-heading">
-                            <h2>Recent conversations</h2>
-                            <button
-                              type="button"
-                              class="text-button"
-                              onClick={() => setPalette(true)}
-                            >
-                              View all <Icon name="arrow-left" />
-                            </button>
-                          </div>
-                          <div class="home-conversations">
-                            <For
-                              each={chats()
-                                .filter((item) => item.section !== "archived")
-                                .slice(0, 12)}
-                              fallback={
-                                <p class="quiet">
-                                  Your conversations will appear here.
-                                </p>
-                              }
-                            >
-                              {(item) => (
-                                <div class="home-conversation">
-                                  <button
-                                    type="button"
-                                    onClick={() => navigate(item.key)}
-                                  >
-                                    <Icon name="chat-bubble" />
-                                    <span>
-                                      {item.title}
-                                      <small>{item.profile}</small>
-                                    </span>
-                                    <Show when={item.running}>
-                                      <span class="badge">Working</span>
-                                    </Show>
-                                    <time
-                                      datetime={new Date(
-                                        item.activityAt,
-                                      ).toISOString()}
-                                    >
-                                      {new Date(
-                                        item.activityAt,
-                                      ).toLocaleDateString(undefined, {
-                                        month: "short",
-                                        day: "numeric",
-                                      })}
-                                    </time>
-                                  </button>
-                                  <IconButton
-                                    icon="more-horiz"
-                                    label={`Home actions for ${item.title}`}
-                                    onClick={(event) => openMenu(item, event)}
-                                  />
-                                </div>
-                              )}
-                            </For>
-                          </div>
-                        </section>
-                      }
-                    >
-                      <Chat
-                        conversation={view()}
-                        title={selected()?.title ?? "Conversation"}
-                        navigate={navigate}
-                      />
-                    </Show>
-                  }
-                >
+              when={view() !== "capabilities"}
+              fallback={<Capabilities navigate={navigate} />}
+            >
+              <Show
+                when={view().startsWith("settings")}
+                fallback={
                   <Show
-                    when={view() === "resources:artifacts"}
+                    when={view().startsWith("resources:")}
                     fallback={
-                      <Resources
-                        name={view().slice(10)}
-                        navigate={navigate}
-                        newChat={async (profile) => {
-                          const result = await command("openBot", "", {
-                            profile,
-                          });
-                          navigate(String(result.key));
-                        }}
-                      />
+                      <Show
+                        when={view()}
+                        fallback={
+                          <section class="home-view">
+                            <header class="home-heading">
+                              <img
+                                class="brand-mark"
+                                src="/hermes/app-icon.png"
+                                alt="Hermes"
+                                width="26"
+                                height="26"
+                              />
+                              <h1>Your conversations</h1>
+                              <p class="quiet">
+                                Pick up where you left off, or start something
+                                new.
+                              </p>
+                            </header>
+                            <div class="home-actions">
+                              <button
+                                type="button"
+                                onClick={() => void newChat()}
+                              >
+                                <Icon name="plus" />
+                                <span>
+                                  New conversation
+                                  <small>Ask Hermes anything</small>
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setPalette(true)}
+                              >
+                                <Icon name="search" />
+                                <span>
+                                  Find a conversation
+                                  <small>Search your history</small>
+                                </span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => navigate("resources:artifacts")}
+                              >
+                                <Icon name="folder" />
+                                <span>
+                                  Browse generated files
+                                  <small>Outputs across conversations</small>
+                                </span>
+                              </button>
+                            </div>
+                            <div class="home-list-heading">
+                              <h2>Recent conversations</h2>
+                              <button
+                                type="button"
+                                class="text-button"
+                                onClick={() => setPalette(true)}
+                              >
+                                View all <Icon name="arrow-left" />
+                              </button>
+                            </div>
+                            <div class="home-conversations">
+                              <For
+                                each={chats()
+                                  .filter((item) => item.section !== "archived")
+                                  .slice(0, 12)}
+                                fallback={
+                                  <p class="quiet">
+                                    Your conversations will appear here.
+                                  </p>
+                                }
+                              >
+                                {(item) => (
+                                  <div class="home-conversation">
+                                    <button
+                                      type="button"
+                                      onClick={() => navigate(item.key)}
+                                    >
+                                      <Icon name="chat-bubble" />
+                                      <span>
+                                        {item.title}
+                                        <small>{item.profile}</small>
+                                      </span>
+                                      <Show when={item.running}>
+                                        <span class="badge">Working</span>
+                                      </Show>
+                                      <time
+                                        datetime={new Date(
+                                          item.activityAt,
+                                        ).toISOString()}
+                                      >
+                                        {new Date(
+                                          item.activityAt,
+                                        ).toLocaleDateString(undefined, {
+                                          month: "short",
+                                          day: "numeric",
+                                        })}
+                                      </time>
+                                    </button>
+                                    <IconButton
+                                      icon="more-horiz"
+                                      label={`Home actions for ${item.title}`}
+                                      onClick={(event) => openMenu(item, event)}
+                                    />
+                                  </div>
+                                )}
+                              </For>
+                            </div>
+                          </section>
+                        }
+                      >
+                        <Chat
+                          conversation={view()}
+                          title={selected()?.title ?? "Conversation"}
+                          navigate={navigate}
+                        />
+                      </Show>
                     }
                   >
-                    <Artifacts navigate={navigate} />
+                    <Show
+                      when={view() === "resources:artifacts"}
+                      fallback={
+                        <Resources
+                          name={view().slice(10)}
+                          navigate={navigate}
+                          newChat={async (profile) => {
+                            const result = await command("openBot", "", {
+                              profile,
+                            });
+                            navigate(String(result.key));
+                          }}
+                        />
+                      }
+                    >
+                      <Artifacts navigate={navigate} />
+                    </Show>
                   </Show>
-                </Show>
-              }
-            >
-              <Settings section={view().split(":")[1]} navigate={navigate} />
+                }
+              >
+                <Settings section={view().split(":")[1]} navigate={navigate} />
+              </Show>
             </Show>
           </Suspense>
         </main>

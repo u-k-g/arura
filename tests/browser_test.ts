@@ -558,6 +558,7 @@ Deno.test({
       await expect(
         a.getByRole("dialog", { name: "Choose a model" }),
       ).toHaveCount(0);
+      await a.getByLabel("More composer actions", { exact: true }).click();
       await a.getByRole("button", { name: "Context", exact: true }).click();
       await expect(
         a.getByRole("dialog", { name: "Context usage" }),

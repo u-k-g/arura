@@ -6,6 +6,7 @@ import {
   logout,
   mutate,
   request,
+  resource,
   subscribe,
   workspace,
 } from "./client.ts";
@@ -64,6 +65,28 @@ export default function Settings(props: {
   section?: string;
   navigate: (view: string) => void;
 }) {
+  async function saveArchivePolicy(days: number, enabled: boolean) {
+    if (!Number.isInteger(days) || days < 1 || days > 3650) {
+      throw new Error("Choose 1–3650 days");
+    }
+    const raw = await resource("config");
+    const config = (raw.config ?? raw) as Record<string, unknown>;
+    const sessions = (config.sessions ?? {}) as Record<string, unknown>;
+    await resource(
+      "saveConfig",
+      {},
+      {
+        config: {
+          ...config,
+          sessions: {
+            ...sessions,
+            auto_archive: enabled,
+            auto_archive_days: days,
+          },
+        },
+      },
+    );
+  }
   const [devices, setDevices] = createSignal<
       (Omit<Doc<"devices">, "secretHash"> & { current?: boolean })[]
     >([]),
@@ -264,6 +287,19 @@ export default function Settings(props: {
           </button>
         </Show>
         <Show when={props.section === "navigation"}>
+          <Field label="Automatically archive inactive conversations">
+            <input
+              type="checkbox"
+              checked={workspace()?.settings?.archiveEnabled !== false}
+              onChange={(e) =>
+                void run(() =>
+                  saveArchivePolicy(
+                    Number(workspace()?.settings?.archiveDays ?? 7),
+                    e.currentTarget.checked,
+                  )
+                )}
+            />
+          </Field>
           <Field
             label="Archive inactive conversations after"
             hint="Essentials, pinned chats, and everything inside folders are kept. Active work and pending questions are protected."
@@ -276,10 +312,10 @@ export default function Settings(props: {
                 value={workspace()?.settings?.archiveDays ?? 7}
                 onChange={(e) =>
                   void run(() =>
-                    mutate("workspace.setting", {
-                      key: "archiveDays",
-                      value: Number(e.currentTarget.value),
-                    })
+                    saveArchivePolicy(
+                      Number(e.currentTarget.value),
+                      workspace()?.settings?.archiveEnabled !== false,
+                    )
                   )}
               />
               <span>days</span>
@@ -387,7 +423,7 @@ export default function Settings(props: {
               type="range"
               min="14"
               max="20"
-              value={preferences.getItem("arura.textSize") ?? 16}
+              value={preferences.getItem("arura.textSize") ?? 14}
               onInput={(e) => {
                 preferences.setItem("arura.textSize", e.currentTarget.value);
                 document.documentElement.style.setProperty(

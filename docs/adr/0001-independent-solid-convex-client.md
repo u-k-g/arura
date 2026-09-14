@@ -23,11 +23,12 @@ to extend with more desktop overrides. ADRs in that reference repository still
 describe its running app; this decision governs the new client and does not
 claim the old app has migrated.
 
-Study [Macro](https://github.com/macro-inc/macro) for SolidJS engineering,
-interaction, and editor quality. Build our own UI rather than forking Macro or
-embedding its workspace app. Appearance and theming are ours to design, not
-desktop-parity work. Record provenance and honor licenses for any literal source
-reuse. Macro's sync implementation is not a chosen dependency.
+Use Hermes desktop as the visual and interaction reference, matching placement
+and sizing for the retained scope with Iconoir equivalents. Preserve the agreed
+mobile bottom sheets and exclusions. Keep Macro's light/dark color scheme.
+[Macro](https://github.com/macro-inc/macro) remains a SolidJS engineering and
+file-editor reference, not the shell design. Record provenance and honor
+licenses for literal source reuse.
 
 ## Backend, ownership, and sync
 
@@ -67,10 +68,10 @@ Reasons for the choice and limits:
 Hermes remains authoritative for its runtime, conversations, runs, tools, and
 configuration. Keep its existing database and interfaces intact. The integration
 must bring relevant Hermes activity into Convex, including activity originating
-outside this web UI. Any replicated Hermes read model must be rebuildable;
-web-only organization, preferences, and device/session records belong to the web
-application. Convex does not automatically synchronize the existing Hermes
-database.
+outside this web UI. Any replicated Hermes read model must be rebuildable; only
+organization and preferences unsupported by Hermes, plus browser access records,
+belong to the web application. Convex does not automatically synchronize the
+existing Hermes database.
 
 Shared durable changes and ongoing agent activity must reach all authorized,
 connected browser instances promptly. Reconnect must recover missed changes

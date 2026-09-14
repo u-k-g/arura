@@ -95,6 +95,7 @@ export default function Chat(props: {
   const [tool, setTool] = createSignal<Message>(),
     [models, setModels] = createSignal<ModelOption[]>([]),
     [model, setModel] = createSignal("");
+  const [currentModel, setCurrentModel] = createSignal("");
   const [customizeModels, setCustomizeModels] = createSignal(false);
   const modelKey = (entry: ModelOption) =>
     JSON.stringify([entry.provider ?? "", entry.id ?? entry.model ?? entry]);
@@ -153,6 +154,18 @@ export default function Chat(props: {
     setText("");
     setPages(1);
     setEdit(undefined);
+    setCurrentModel("");
+    void request("/api/query", {
+      method: "session.context_breakdown",
+      conversation: key,
+      params: {},
+    })
+      .then((result) => {
+        if (props.conversation === key) {
+          setCurrentModel(String(result.model ?? ""));
+        }
+      })
+      .catch(() => {});
     setUploads([]);
     void draftAttachments(key).then((value) => {
       if (props.conversation === key && uploads().length === 0) {
@@ -354,9 +367,6 @@ export default function Chat(props: {
           </details>
         }
       >
-        <div class="message-label">
-          {message.role === "user" ? "You" : "Hermes"}
-        </div>
         <Markdown text={message.text} />
         <div class="message-actions">
           <IconButton
@@ -404,59 +414,6 @@ export default function Chat(props: {
         void run(() => upload(e.dataTransfer?.files ?? null));
       }}
     >
-      <div class="conversation-toolbar">
-        <button
-          type="button"
-          class="text-button"
-          onClick={() =>
-            void run(async () => {
-              const result = await rpc("model.options");
-              setModels(
-                result.providers?.flatMap(
-                  (provider: {
-                    slug: string;
-                    name: string;
-                    models?: string[];
-                  }) =>
-                    (provider.models ?? []).map((id: string) => ({
-                      id,
-                      provider: provider.slug,
-                      name: `${id} · ${provider.name}`,
-                    })),
-                ) ??
-                  result.models ??
-                  [],
-              );
-              setModel("choose");
-              setCustomizeModels(false);
-            })}
-        >
-          <Icon name="chat-bubble" />
-          Model
-        </button>
-        <button
-          type="button"
-          class="text-button"
-          onClick={() => setControls("automation")}
-        >
-          <Icon name="clock" />
-          Automations
-        </button>
-        <button
-          type="button"
-          class="text-button"
-          onClick={() => setControls("context")}
-        >
-          Context
-        </button>
-        <button
-          type="button"
-          class="text-button"
-          onClick={() => setControls("subagents")}
-        >
-          Delegated work
-        </button>
-      </div>
       <div class="transcript" ref={scroller}>
         <div class="transcript-inner">
           <Show when={data().pages.at(-1)?.hasMore}>
@@ -785,6 +742,12 @@ export default function Chat(props: {
             void run(send);
           }}
         >
+          <IconButton
+            icon="plus"
+            class="composer-add"
+            label="Add context"
+            onClick={() => setAttachment(true)}
+          />
           <ComposerInput
             ref={(handle) => {
               input = handle;
@@ -795,7 +758,7 @@ export default function Chat(props: {
               ? `completion-${completionIndex()}`
               : undefined}
             placeholder={connected()
-              ? "Message Hermes…"
+              ? "Describe what you need"
               : "Write a draft while offline…"}
             value={text()}
             onChange={changeText}
@@ -840,42 +803,90 @@ export default function Chat(props: {
             onPasteFiles={(files) => void run(() => upload(files))}
           />
           <div class="composer-bottom">
-            <div>
-              <IconButton
-                icon="attachment"
-                label="Attach files"
-                onClick={() => fileInput.click()}
-              />
-              <IconButton
-                icon="folder"
-                label="Reference a file, folder, URL, or conversation"
-                onClick={() => setAttachment(true)}
-              />
-              <button
-                type="button"
-                class="text-button"
-                onClick={() =>
-                  void run(async () => {
-                    const result = await rpc("commands.catalog");
-                    setSuggestions(
-                      (result.pairs ?? [])
-                        .map(([command, description]: [string, string]) => ({
-                          command,
-                          description,
-                        }))
-                        .filter(
-                          (item: { command: string }) =>
-                            !/^\/(?:image|voice|wake|terminal|shell|hud|radio|pet|browser)(?:\s|$)/i
-                              .test(
-                                item.command,
-                              ),
-                        ),
-                    );
-                  })}
-              >
-                / Commands
-              </button>
-            </div>
+            <button
+              type="button"
+              class="text-button composer-model"
+              aria-label="Model"
+              onClick={() =>
+                void run(async () => {
+                  const result = await rpc("model.options");
+                  setModels(
+                    result.providers?.flatMap(
+                      (provider: {
+                        slug: string;
+                        name: string;
+                        models?: string[];
+                      }) =>
+                        (provider.models ?? []).map((id: string) => ({
+                          id,
+                          provider: provider.slug,
+                          name: `${id} · ${provider.name}`,
+                        })),
+                    ) ??
+                      result.models ??
+                      [],
+                  );
+                  setModel("choose");
+                  setCustomizeModels(false);
+                })}
+            >
+              {currentModel() || "Select model"}
+              <Icon name="nav-arrow-down" />
+            </button>
+
+            <details class="composer-tools">
+              <summary aria-label="More composer actions">
+                <Icon name="more-horiz" />
+              </summary>
+              <div class="composer-tools-menu">
+                <IconButton
+                  icon="attachment"
+                  label="Attach files"
+                  onClick={() => fileInput.click()}
+                />
+                <IconButton
+                  icon="folder"
+                  label="Reference a file, folder, URL, or conversation"
+                  onClick={() => setAttachment(true)}
+                />
+                <button
+                  type="button"
+                  class="text-button"
+                  onClick={() =>
+                    void run(async () => {
+                      const result = await rpc("commands.catalog");
+                      setSuggestions(
+                        (result.pairs ?? [])
+                          .map(([command, description]: [string, string]) => ({
+                            command,
+                            description,
+                          }))
+                          .filter(
+                            (item: { command: string }) =>
+                              !/^\/(?:image|voice|wake|terminal|shell|hud|radio|pet|browser)(?:\s|$)/i
+                                .test(
+                                  item.command,
+                                ),
+                          ),
+                      );
+                    })}
+                >
+                  / Commands
+                </button>
+                <button type="button" onClick={() => setControls("automation")}>
+                  <Icon name="clock" />
+                  Automations
+                </button>
+                <button type="button" onClick={() => setControls("context")}>
+                  <Icon name="page" />
+                  Context
+                </button>
+                <button type="button" onClick={() => setControls("subagents")}>
+                  <Icon name="bot" />
+                  Delegated work
+                </button>
+              </div>
+            </details>
             <div>
               <Show when={turn()?.state === "running"}>
                 <button
@@ -921,13 +932,15 @@ export default function Chat(props: {
             </div>
           </div>
         </form>
-        <p class="compose-hint">
-          {!connected()
-            ? "Draft saved on this device. Connect to send."
-            : turn()?.state === "running"
-            ? "Messages sent now join the queue."
-            : "Hermes runs on your host."}
-        </p>
+        <Show when={!connected() || turn()?.state === "running"}>
+          <p class="compose-hint">
+            {!connected()
+              ? "Draft saved on this device. Connect to send."
+              : turn()?.state === "running"
+              ? "Messages sent now join the queue."
+              : "Hermes runs on your host."}
+          </p>
+        </Show>
         <input
           ref={fileInput}
           type="file"
@@ -938,6 +951,16 @@ export default function Chat(props: {
       </div>
       <Show when={attachment()}>
         <Dialog title="Add context" close={() => setAttachment(false)}>
+          <button
+            type="button"
+            onClick={() => {
+              setAttachment(false);
+              fileInput.click();
+            }}
+          >
+            <Icon name="attachment" />
+            Upload files
+          </button>
           <Field label="File, folder, or URL">
             <input
               value={reference()}
@@ -1040,6 +1063,7 @@ export default function Chat(props: {
                           confirm_expensive_model: true,
                         });
                       }
+                      setCurrentModel(modelLabel(m));
                       setModel("");
                     })}
                 >
