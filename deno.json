@@ -1,0 +1,23 @@
+{
+  "nodeModulesDir": "manual",
+  "tasks": {
+    "serve": "deno run --allow-env --allow-net --allow-read --allow-write --allow-run server/index.ts",
+    "watch": "deno run --watch --allow-env --allow-net --allow-read --allow-write --allow-run server/index.ts",
+    "setup": "deno run --allow-env --allow-read --allow-write scripts/setup.ts",
+    "check": "deno run -A npm:typescript/tsc --noEmit && deno check server/index.ts scripts/setup.ts scripts/dev.ts scripts/deploy-functions.ts",
+    "dev": "deno run -A scripts/dev.ts",
+    "web": "deno run -A npm:vite --host 127.0.0.1",
+    "build": "deno task check && deno run -A npm:vite build",
+    "test": "deno test -A tests/",
+    "format": "deno run -A npm:@biomejs/biome format --write .",
+    "format:check": "deno run -A npm:@biomejs/biome format .",
+    "lint": "deno run -A npm:@biomejs/biome lint .",
+    "convex": "deno run -A npm:convex",
+    "browser": "deno run -A npm:@playwright/test",
+    "test:integration": "deno task build && deno run -A scripts/test-stack.ts",
+    "dev:external": {
+      "dependencies": ["watch", "web"]
+    },
+    "deploy:functions": "deno task check && deno run -A scripts/deploy-functions.ts"
+  }
+}

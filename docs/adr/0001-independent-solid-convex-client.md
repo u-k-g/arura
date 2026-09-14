@@ -1,6 +1,6 @@
 # 0001 — Independent SolidJS client with self-hosted Convex
 
-**Status**: accepted direction; not implemented
+**Status**: accepted; implementation in progress
 
 **Read when** designing the replacement web client, changing its feature scope,
 choosing its storage/sync architecture, or integrating it into the host deployment.
@@ -32,6 +32,12 @@ Use **self-hosted Convex**, with TypeScript application functions. The earlier R
 application-backend requirement has been dropped. Convex replaces the earlier Zero
 proposal; do not provision Zero, zero-cache, or Postgres as assumed requirements.
 Convex's documented default is its own local SQLite storage, separate from Hermes.
+
+Run Arura's host adapter and HTTP server on **Deno**, as explicitly selected during
+implementation. Convex runs its own backend engine and function environment;
+Deno manages dependencies, project tasks, frontend tooling, and the application
+host runtime. Convex retains its own function runtime. Use Biome for formatting
+and linting; do not reintroduce pnpm or Prettier.
 
 The user accepts Convex's FSL for this self-hosted use despite its restrictions;
 do not re-exclude it solely because it is not unrestricted open source. This is

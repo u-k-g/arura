@@ -86,7 +86,7 @@ additional engine selection or a deployed architecture.
 flowchart LR
   W[SolidJS browser] <--> C[Self-hosted Convex]
   W <--> L[Persistent local cache]
-  C <--> A[TypeScript host adapter]
+  C <--> A[Deno / TypeScript host adapter]
   A <-->|REST and JSON-RPC WebSocket| H[Hermes dashboard API]
   H <--> S[Hermes state]
 ```
@@ -235,11 +235,20 @@ word/browser/terminal tools); those are not errors to fix during this UI project
 - Normal and failed/interrupted turns, simultaneous input responses, edits, and
   compression descendants are exercised against the pinned backend.
 
-Unverified implementation choices: exact authentication/bootstrap library,
-stream batching cadence, persistent cache format, queue-control payload mapping,
-and package/service runtime versions. These should be resolved in the scaffold
-and first-slice tests, not guessed from this audit. No runtime or performance tests
-have run yet.
+The implementation now uses individually revocable browser cookies, short-lived
+RS256 Convex tokens, serialized 150 ms turn batches, IndexedDB conversation/draft
+caching, and atomic command claims. The isolated integration suite exercises
+two-device reactive updates, archive/restore, offline reopening, storage failure,
+revocation, command idempotency, replay ordering, and restarted-gateway recovery.
+Its gateway fixture follows the audited contracts but is not the real Hermes
+runtime. See [Development](development.md) for the reproducible command.
+
+Still requiring live validation: profile ownership during concurrent desktop/CLI
+use, replay-window overflow while a run is active, compressed-session lineage,
+provider-specific settings, all retained administration flows, and physical phone
+performance. Reattaching after a gateway restart restores public inflight content;
+it does not promise recovery of every historical tool event beyond Hermes's replay
+window. Deployment into the host configuration has not been performed.
 
 [sessions-rest]: https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/sessions.py
 [profiles-rest]: https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/profiles.py
@@ -279,3 +288,71 @@ have run yet.
 [macro-sync]: https://github.com/macro-inc/macro/blob/e00d041ac7541f773c6119b0183e7868c0130de8/services/sync-service/README.md
 [nc-module]: https://github.com/u-k-g/nc/blob/c70f93faab21ccad5edd9e8b078893f77d2f8f9d/modules/hermes.mod.nix
 [nc-package]: https://github.com/u-k-g/nc/blob/c70f93faab21ccad5edd9e8b078893f77d2f8f9d/packages/hermes-desktop-web.mod.nix
+
+
+## Implementation validation update
+
+The Deno adapter has completed authenticated read-only checks against the host's
+Hermes dashboard: profiles, conversation discovery, schedules, installed skills,
+message history, and the authenticated WebSocket handshake. Provider discovery
+was required before password login and is now covered by a regression test. No
+agent prompt or settings mutation was used for these checks.
+
+The isolated two-browser suite exercises the real self-hosted Convex backend,
+conversation streaming, organization, device revocation, offline reopening,
+storage-disabled browsers, file editing and selected-line attachment, generated
+file indexing, and schedule blueprints. The Nix-built application also passed the
+suite with a fresh runtime cache. Fixture coverage does not establish every
+retained resource's compatibility with live Hermes.
+
+History projection now serializes page updates per conversation, invalidates
+older offset pages when the newest page changes, and rejects older pages fetched
+against a stale head. Older-page reads compare the head before and after fetching;
+a continuously changing conversation reports a retryable error after three tries.
+This handles offset movement without claiming an atomic snapshot API from Hermes.
+
+Outstanding validation includes live sends and settings writes,
+long-running mobile performance, and the NixOS
+rollout. Advanced retained feature surfaces still need implementation and acceptance
+coverage; the product scope is not a completion ledger.
+
+Additional isolated coverage exercises provider device authorization, auxiliary
+model cost confirmation, ordered fallback preservation and disabling, MCP OAuth
+callback state validation, memory-map editing and local visualization import/export,
+and basic bot appearance, uploaded avatars, and canonical hidden-chat selection.
+Bot identity follows the profile's canonical `Bot Chat`, rather than whichever
+conversation was most recently active. Upstream does not provide a database-level
+unique-title guarantee; Arura serializes its own bot-opening commands and adopts
+the gateway's resolved canonical session.
+
+File previews flagged as truncated, binary, or containing replacement characters
+cannot be saved through the editor. Conversation exports use Arura's versioned
+JSON format and contain normalized public messages only, excluding hidden reasoning.
+They are readable conversation exports, not Hermes database backups. Search results
+likewise omit upstream snippets, whose truncation could expose private reasoning.
+
+Dedicated Settings pages cover delegated-work limits and inference inheritance,
+cached-agent lifetime and memory thresholds, and host computer-use readiness and
+permission mode. They submit changed fields only and detect overlapping changes
+before saving. The source does not offer an atomic configuration compare-and-swap,
+so concurrent writes after that check remain an upstream limitation.
+Field names and defaults follow [Hermes configuration defaults](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/config_defaults.py)
+and [delegation validation](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/tools/delegate_tool_config.py).
+
+Hermes does not provide an atomic inflight snapshot plus replay cursor. On replay
+truncation or attaching to an already running turn, Arura switches to one-second
+whole-snapshot refreshes instead of appending deltas to a potentially overlapping
+snapshot. The UI labels recovery, and final completion replaces the partial answer.
+Intact same-epoch replay continues to deduplicate actual event sequence numbers;
+the adapter never advances its cursor directly to the separately sampled
+`latest_seq`. Isolated tests cover both gateway restart and truncated replay.
+
+Mixture presets have explicit add/rename/delete controls, reference model rows,
+an aggregator, cadence, temperatures, and timeout settings. The audited dedicated
+MoA PUT replaces the preset map but silently clears `privacy_filter`; generic
+config PUT preserves it but recursively merges maps and cannot delete old names.
+Arura uses the dedicated endpoint only when no filter is configured. With an
+existing filter, add/edit uses the generic endpoint and rename/delete is disabled.
+This preserves host policy without modifying Hermes or replacing its complete raw
+configuration. See [MoA routes](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/models.py)
+and [configuration merging](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/config.py).

@@ -17,8 +17,21 @@ Read [Product scope](docs/product-scope.md) when building or reviewing features;
 - [Convex backend](https://github.com/get-convex/convex-backend): selected self-hosted database, reactive subscriptions, and backend deployment.
 - [Convex JavaScript SDK](https://github.com/get-convex/convex-js): TypeScript functions, browser subscriptions, authentication, and host-side clients.
 - [SolidJS](https://github.com/solidjs/solid) and [Solid Router](https://github.com/solidjs/solid-router): frontend reactivity and navigation.
+- [Iconoir](https://github.com/iconoir-icons/iconoir): required UI icon family; use bundled icons, not a remote icon service.
+- [Deno](https://github.com/denoland/deno): required runtime for Arura's host adapter and HTTP server; Convex retains its own engine/runtime.
+- [Biome](https://github.com/biomejs/biome): required formatter and linter.
+- [CodeMirror](https://github.com/codemirror/dev): text editing, selection, search, and language support.
 - [nc](https://github.com/u-k-g/nc): declarative host packaging, services, and routing.
+- [Nixpkgs](https://github.com/NixOS/nixpkgs) and [nix-direnv](https://github.com/nix-community/nix-direnv): pinned project tools, package definitions, and flake shell integration.
 
 Previously evaluated, not selected: [Zero](https://github.com/rocicorp/mono/tree/main/packages/zero), [LiveStore](https://github.com/livestorejs/livestore), [Turso Sync](https://github.com/tursodatabase/turso), and [Electric](https://github.com/electric-sql/electric). See ADR-0001 before revisiting the sync decision.
 
 Keep repository documentation portable: use GitHub repository links for external projects and repository-relative paths for files in this project. Do not record machine-specific absolute paths.
+
+Use the pinned development shell with `nix develop` or direnv's `use flake`.
+Use modern `nix` subcommands for builds, shells, formatting, and checks.
+Use Deno for dependency installation and all project tasks, and Biome for code
+formatting and linting. Do not introduce pnpm, npm scripts, or Prettier tooling.
+The npm-compatible dependency manifest is `package.json`; Deno owns `deno.lock`.
+See [Development](docs/development.md) for toolchain commands. Use `/var/tmp`
+for temporary files, package stores, browser artifacts, and scratch work.

@@ -1,0 +1,483 @@
+import { createSignal, createEffect, onCleanup, For, Show } from "solid-js";
+import { shortcuts, shortcutFromEvent } from "../shared/shortcuts";
+import {
+  workspace,
+  mutate,
+  subscribe,
+  request,
+  logout,
+  inform,
+} from "./client";
+import {
+  caching,
+  clearCache,
+  storageInfo,
+  cacheIssue,
+  preferences,
+} from "./cache";
+import { Icon, IconButton, Field, Dialog, run } from "./ui";
+const groups = [
+  {
+    title: "Your workspace",
+    items: [
+      ["devices", "Access & devices", "computer"],
+      ["storage", "Storage & offline", "download"],
+      ["navigation", "Conversations & archive", "archive"],
+      ["notifications", "Notifications", "bell"],
+      ["appearance", "Appearance & shortcuts", "settings"],
+    ],
+  },
+  {
+    title: "Hermes",
+    items: [
+      ["models", "Models & providers", "chat-bubble"],
+      ["profiles", "Profiles & bots", "chat-bubble"],
+      ["jobs", "Schedules", "clock"],
+      ["skills", "Skills", "page"],
+      ["toolsets", "Tools", "settings"],
+      ["computer", "Computer use", "computer"],
+      ["delegation", "Delegated work", "chat-bubble"],
+      ["resources", "Backend resources", "settings"],
+      ["mcp", "MCP servers", "computer"],
+      ["connectors", "App connections", "key"],
+      ["agentPlugins", "Agent plugins", "settings"],
+      ["platforms", "Messaging", "chat-bubble"],
+      ["pairing", "Messaging access", "key"],
+      ["webhooks", "Incoming triggers", "clock"],
+      ["memory", "Memory", "page"],
+      ["graph", "Memory graph", "star"],
+      ["curator", "Skill curator", "refresh"],
+    ],
+  },
+  {
+    title: "Administration",
+    items: [
+      ["usage", "Usage", "clock"],
+      ["status", "Status & logs", "computer"],
+      ["maintenance", "Maintenance & backups", "refresh"],
+      ["advanced", "Advanced settings", "settings"],
+    ],
+  },
+];
+export default function Settings(props: {
+  section?: string;
+  navigate: (view: string) => void;
+}) {
+  const [devices, setDevices] = createSignal<any[]>([]),
+    [invite, setInvite] = createSignal<any>(),
+    [cache, setCache] = createSignal(caching()),
+    [storage, setStorage] = createSignal<any>({}),
+    [actions, setActions] = createSignal<any[]>([]);
+  createEffect(() => {
+    if (props.section === "devices") {
+      const stop = subscribe("devices", "list", {}, setDevices);
+      onCleanup(stop);
+    }
+  });
+  createEffect(() => {
+    if (props.section === "storage") void storageInfo().then(setStorage);
+    if (props.section === "maintenance")
+      void request("/api/maintenance")
+        .then(setActions)
+        .catch((e) => inform(e.message));
+  });
+  const route = (id: string) =>
+    props.navigate(
+      [
+        "devices",
+        "storage",
+        "navigation",
+        "notifications",
+        "appearance",
+        "maintenance",
+      ].includes(id)
+        ? "settings:" + id
+        : "resources:" + id,
+    );
+  const title = () =>
+    groups.flatMap((g) => g.items).find((x) => x[0] === props.section)?.[1] ??
+    "Settings";
+  return (
+    <div class="settings-page">
+      <Show
+        when={props.section}
+        fallback={
+          <>
+            <h1>Make it yours.</h1>
+            <p class="subtitle">Your devices, your preferences, your Hermes.</p>
+            <For each={groups}>
+              {(group) => (
+                <section class="settings-group">
+                  <h2>{group.title}</h2>
+                  <div class="settings-grid">
+                    <For each={group.items}>
+                      {([id, label, icon]) => (
+                        <button type="button" onClick={() => route(id)}>
+                          <Icon name={icon} />
+                          <span>{label}</span>
+                          <span aria-hidden="true">›</span>
+                        </button>
+                      )}
+                    </For>
+                  </div>
+                </section>
+              )}
+            </For>
+          </>
+        }
+      >
+        <button
+          type="button"
+          class="text-button"
+          onClick={() => props.navigate("settings")}
+        >
+          <Icon name="arrow-left" />
+          All settings
+        </button>
+        <h1>{title()}</h1>
+        <Show when={props.section === "devices"}>
+          <p class="subtitle">
+            Every browser that can access this workspace. Revoke one without
+            signing out the others.
+          </p>
+          <For each={devices()}>
+            {(d) => (
+              <div class="device-card">
+                <Icon
+                  name={
+                    /phone|mobile/i.test(d.name)
+                      ? "smartphone-device"
+                      : "computer"
+                  }
+                />
+                <div>
+                  <h3>
+                    {d.name}{" "}
+                    <Show when={d.current}>
+                      <span class="badge">This device</span>
+                    </Show>
+                  </h3>
+                  <p>
+                    {d.revoked
+                      ? "Access revoked"
+                      : `Last active ${new Date(d.lastSeen).toLocaleString()}`}
+                  </p>
+                  <small>
+                    Authorized {new Date(d.createdAt).toLocaleDateString()}
+                  </small>
+                </div>
+                <Show when={!d.revoked}>
+                  <IconButton
+                    icon="edit-pencil"
+                    label={`Rename ${d.name}`}
+                    onClick={() => {
+                      const name = prompt("Device name", d.name);
+                      if (name)
+                        void run(() =>
+                          mutate("devices.rename", { id: d.id, name }),
+                        );
+                    }}
+                  />
+                  <button
+                    type="button"
+                    class="danger"
+                    onClick={() => {
+                      if (confirm(`Revoke access for ${d.name}?`))
+                        void run(() => mutate("devices.revoke", { id: d.id }));
+                    }}
+                  >
+                    Revoke
+                  </button>
+                </Show>
+              </div>
+            )}
+          </For>
+          <div class="button-row">
+            <button
+              type="button"
+              class="primary"
+              onClick={() =>
+                void run(async () =>
+                  setInvite(await request("/api/invite", {})),
+                )
+              }
+            >
+              Authorize another device
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm("Revoke all other devices?"))
+                  void run(() => mutate("devices.revoke", { others: true }));
+              }}
+            >
+              Revoke other devices
+            </button>
+            <button type="button" onClick={() => void run(logout)}>
+              Sign out
+            </button>
+          </div>
+        </Show>
+        <Show when={props.section === "storage"}>
+          <Show when={cacheIssue()}>
+            <p role="status">{cacheIssue()}</p>
+          </Show>
+          <Field
+            label="Keep data on this device"
+            hint="Save recent conversations and drafts for quick reopening. Your browser may reclaim storage."
+          >
+            <input
+              type="checkbox"
+              checked={cache()}
+              onChange={(e) => {
+                const value = e.currentTarget.checked;
+                preferences.setItem("arura.keepData", String(value));
+                setCache(value);
+                if (value) void navigator.storage?.persist();
+                else void clearCache();
+              }}
+            />
+          </Field>
+          <p>
+            {((storage().usage ?? 0) / 1024 / 1024).toFixed(1)} MB stored on
+            this device
+          </p>
+          <button
+            type="button"
+            onClick={() =>
+              void run(async () => {
+                await clearCache();
+                setStorage(await storageInfo());
+                inform(
+                  "Saved conversations and drafts cleared from this device",
+                );
+              })
+            }
+          >
+            Clear local data
+          </button>
+        </Show>
+        <Show when={props.section === "navigation"}>
+          <Field
+            label="Archive inactive conversations after"
+            hint="Essentials, pinned chats, and everything inside folders are kept. Active work and pending questions are protected."
+          >
+            <div class="inline-field">
+              <input
+                type="number"
+                min="1"
+                max="3650"
+                value={workspace()?.settings?.archiveDays ?? 7}
+                onChange={(e) =>
+                  void run(() =>
+                    mutate("workspace.setting", {
+                      key: "archiveDays",
+                      value: Number(e.currentTarget.value),
+                    }),
+                  )
+                }
+              />
+              <span>days</span>
+            </div>
+          </Field>
+          <p>
+            Archived conversations remain available at the bottom of your
+            conversation list. Restoring one starts a new inactivity window.
+          </p>
+        </Show>
+        <Show when={props.section === "notifications"}>
+          <p class="subtitle">
+            Silent updates from Hermes. No sounds or external push service.
+          </p>
+          <For each={workspace()?.notices ?? []}>
+            {(n: any) => (
+              <button
+                type="button"
+                class="notification-card"
+                classList={{ unread: !n.read }}
+                onClick={() => {
+                  void run(() => mutate("workspace.readNotice", { id: n._id }));
+                  if (n.conversation) props.navigate(n.conversation);
+                }}
+              >
+                <Icon name="bell" />
+                <span>
+                  {n.title}
+                  <small>{new Date(n.createdAt).toLocaleString()}</small>
+                </span>
+              </button>
+            )}
+          </For>
+          <Show when={!workspace()?.notices?.length}>
+            <p>Completion and input alerts will appear here.</p>
+          </Show>
+        </Show>
+        <Show when={props.section === "appearance"}>
+          <Field label="Color scheme">
+            <select
+              value={preferences.getItem("arura.theme") ?? "system"}
+              onChange={(e) => {
+                const value = e.currentTarget.value;
+                preferences.setItem("arura.theme", value);
+                document.documentElement.dataset.theme = value;
+              }}
+            >
+              <option value="system">System</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </Field>
+          <h3>Keyboard shortcuts</h3>
+          <p>
+            Focus a shortcut, then press your preferred Ctrl/⌘ combination.
+            These preferences sync across devices.
+          </p>
+          <For each={shortcuts}>
+            {(shortcut) => (
+              <Field label={shortcut.label}>
+                <input
+                  readOnly
+                  value={(
+                    workspace()?.settings?.shortcuts?.[shortcut.id] ??
+                    shortcut.default
+                  ).replace("Mod", "Ctrl/⌘")}
+                  onKeyDown={(event) => {
+                    const value = shortcutFromEvent(event);
+                    if (!value) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const current = workspace()?.settings?.shortcuts ?? {};
+                    if (
+                      shortcuts.some(
+                        (other) =>
+                          other.id !== shortcut.id &&
+                          (current[other.id] ?? other.default) === value,
+                      )
+                    ) {
+                      inform("That shortcut is already assigned");
+                      return;
+                    }
+                    void run(() =>
+                      mutate("workspace.setting", {
+                        key: "shortcuts",
+                        value: { ...current, [shortcut.id]: value },
+                      }),
+                    );
+                  }}
+                />
+              </Field>
+            )}
+          </For>
+          <button
+            type="button"
+            onClick={() =>
+              void run(() =>
+                mutate("workspace.setting", { key: "shortcuts", value: {} }),
+              )
+            }
+          >
+            Reset shortcuts
+          </button>
+          <Field label="Message text size">
+            <input
+              type="range"
+              min="14"
+              max="20"
+              value={preferences.getItem("arura.textSize") ?? 16}
+              onInput={(e) => {
+                preferences.setItem("arura.textSize", e.currentTarget.value);
+                document.documentElement.style.setProperty(
+                  "--message-size",
+                  e.currentTarget.value + "px",
+                );
+              }}
+            />
+          </Field>
+        </Show>
+        <Show when={props.section === "maintenance"}>
+          <p class="subtitle">
+            Maintenance actions are configured on your host, so they can match
+            Nix or a conventional installation.
+          </p>
+          <For each={actions()}>
+            {(a) => (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm(`${a.label}?`))
+                    void run(async () => {
+                      await request("/api/maintenance", { id: a.id });
+                      inform("Action completed");
+                    });
+                }}
+              >
+                {a.label}
+              </button>
+            )}
+          </For>
+          <Show when={!actions().length}>
+            <p>No restart or update actions configured.</p>
+          </Show>
+          <h2>Backups and diagnostics</h2>
+          <button
+            type="button"
+            onClick={() => props.navigate("resources:backup")}
+          >
+            Create Hermes backup
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              void run(async () => {
+                const result = await new Promise<any>((resolve) => {
+                  let stop = () => {};
+                  stop = subscribe("workspace", "backup", {}, (value) => {
+                    resolve(value);
+                    queueMicrotask(stop);
+                  });
+                });
+                download("arura-workspace.json", result);
+              })
+            }
+          >
+            Download workspace backup
+          </button>
+          <a class="button" href="/api/diagnostics" download="">
+            Download diagnostic report
+          </a>
+        </Show>
+      </Show>
+      <Show when={invite()}>
+        <Dialog
+          title="Authorize another device"
+          close={() => setInvite(undefined)}
+        >
+          <p>
+            Open this website on the other device and enter this single-use
+            code. It expires in ten minutes.
+          </p>
+          <output class="invite-code">{invite().code}</output>
+          <button
+            type="button"
+            class="primary"
+            onClick={() =>
+              void run(() => navigator.clipboard.writeText(invite().code))
+            }
+          >
+            Copy code
+          </button>
+        </Dialog>
+      </Show>
+    </div>
+  );
+}
+function download(name: string, value: unknown) {
+  const url = URL.createObjectURL(
+    new Blob([JSON.stringify(value, null, 2)], { type: "application/json" }),
+  );
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
