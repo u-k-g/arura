@@ -1,3 +1,4 @@
+import { record } from "../shared/contracts.ts";
 import "dotenv/config";
 import { spawn } from "node:child_process";
 import { readFile, stat } from "node:fs/promises";
@@ -143,7 +144,7 @@ async function migrateProfile(
 async function reconcile() {
   if (reconciling) {
     reconcileAgain = true;
-    return reconciling;
+    return await reconciling;
   }
   reconciling = (async () => {
     do {
@@ -180,7 +181,7 @@ async function reconcile() {
   })().finally(() => {
     reconciling = undefined;
   });
-  return reconciling;
+  return await reconciling;
 }
 const turnBuffer = new Map<string, Turn>();
 hermes.on("started", (key: string) => {
@@ -294,7 +295,7 @@ async function processCommands() {
       const { kind, payload, conversation: key } = command;
       const alreadyRunning = activeCommands.has(key);
       try {
-        let result: any = { ok: true };
+        let result: unknown = { ok: true };
         if (kind === "create") {
           result = await hermes.create(payload.profile ?? "default");
           await convex.mutation(anyApi.workspace.ingest, {
@@ -352,9 +353,10 @@ async function processCommands() {
                 command: prompt,
               });
             }
-            shouldSubmit = ["send", "skill"].includes(result.type) &&
-              typeof result.message === "string";
-            if (shouldSubmit) prompt = result.message;
+            shouldSubmit =
+              ["send", "skill"].includes(String(record(result).type)) &&
+              typeof record(result).message === "string";
+            if (shouldSubmit) prompt = String(record(result).message);
           }
           if (shouldSubmit) {
             activeCommands.add(key);
@@ -395,14 +397,14 @@ async function processCommands() {
             ...(session_id ? { session_id } : {}),
           });
           if (payload.method === "subagent.tail") {
-            result.text = subagentTranscript(
-              String(result.text ?? ""),
+            record(result).text = subagentTranscript(
+              String(record(result).text ?? ""),
               payload.params?.details === true,
             );
           }
-          const dispatch = result.dispatch ?? result;
+          const dispatch = record(record(result).dispatch ?? result);
           if (
-            ["send", "skill"].includes(dispatch.type) &&
+            ["send", "skill"].includes(String(dispatch.type)) &&
             typeof dispatch.message === "string"
           ) {
             activeCommands.add(key);
@@ -419,16 +421,18 @@ async function processCommands() {
             hermes.answered(
               key,
               payload.params.request_id,
-              result.status === "expired"
+              record(result).status === "expired"
                 ? undefined
                 : payload.params.question_id,
               payload.params.answer,
-              Array.isArray(result.remaining) ? result.remaining : undefined,
+              Array.isArray(record(result).remaining)
+                ? (record(result).remaining as string[])
+                : undefined,
             );
             if (
-              result.status === "expired" ||
+              record(result).status === "expired" ||
               (payload.method === "approval.respond" &&
-                result.resolved === false)
+                record(result).resolved === false)
             ) {
               throw new Error(
                 "This input request expired or was already answered.",
@@ -624,7 +628,7 @@ async function handle(request: Request, ip: string): Promise<Response> {
         value,
       });
       hermes.answered(conversation, requestId);
-      if (result.status === "expired") {
+      if (record(result).status === "expired") {
         return json(
           { error: "This input request expired or was already answered." },
           409,
@@ -656,8 +660,8 @@ async function handle(request: Request, ip: string): Promise<Response> {
       ...(session_id ? { session_id } : {}),
     });
     if (method === "subagent.tail") {
-      result.text = subagentTranscript(
-        String(result.text ?? ""),
+      record(result).text = subagentTranscript(
+        String(record(result).text ?? ""),
         params.details === true,
       );
     }

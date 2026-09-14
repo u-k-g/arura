@@ -1,3 +1,4 @@
+import { record } from "../shared/contracts.ts";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { inform, resource, revision } from "./client.ts";
 import { Field, run } from "./ui.tsx";
@@ -51,17 +52,22 @@ const labels: Record<string, string> = {
   capability_manifest: "Reviewed capability manifest on the host",
   native_wayland: "Use native Wayland capture",
 };
-function section(config: any, kind: string): Values {
+function section(config: Record<string, unknown>, kind: string): Values {
   const source = kind === "resources"
-    ? config.agent?.agent_cache
+    ? record(config.agent).agent_cache
     : kind === "computer"
     ? config.computer_use
     : config.delegation;
   return Object.fromEntries(
-    Object.entries(defaults[kind]).map(([key, fallback]) => [
-      key,
-      source?.[key] ?? fallback,
-    ]),
+    Object.entries(defaults[kind]).map(([key, fallback]) => {
+      const value = record(source)[key];
+      return [
+        key,
+        typeof value === typeof fallback
+          ? (value as string | number | boolean)
+          : fallback,
+      ];
+    }),
   );
 }
 export default function RuntimeSettings(props: { kind: string }) {
@@ -70,7 +76,13 @@ export default function RuntimeSettings(props: { kind: string }) {
   const [ready, setReady] = createSignal(false);
   const [error, setError] = createSignal("");
   const [changedElsewhere, setChangedElsewhere] = createSignal(false);
-  const [status, setStatus] = createSignal<any>();
+  const [status, setStatus] = createSignal<{
+    ready?: boolean;
+    platform?: string;
+    version?: string;
+    error?: string;
+    checks?: { label: string; message?: string; status?: string }[];
+  }>();
   const dirty = () => JSON.stringify(values()) !== JSON.stringify(original());
   async function read() {
     const result = await resource("config");
@@ -206,7 +218,7 @@ export default function RuntimeSettings(props: { kind: string }) {
               {state().version ? ` · ${state().version}` : ""}
             </p>
             <For each={state().checks ?? []}>
-              {(check: any) => (
+              {(check) => (
                 <p>
                   {check.label}: {check.message || check.status}
                 </p>

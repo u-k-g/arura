@@ -1,16 +1,17 @@
+import type { Doc } from "../shared/contracts.ts";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { connected, resource, subscribe } from "./client.ts";
 import { run } from "./ui.tsx";
 
 export default function Backups() {
-  const [backup, setBackup] = createSignal<any>();
+  const [backup, setBackup] = createSignal<Doc<"backups"> | null>();
   const [starting, setStarting] = createSignal(false);
   createEffect(() => {
     if (!connected()) return;
     onCleanup(subscribe("backups", "latest", {}, setBackup));
   });
   const busy = () =>
-    starting() || ["starting", "running"].includes(backup()?.status);
+    starting() || ["starting", "running"].includes(backup()?.status ?? "");
   return (
     <section aria-label="Hermes backup">
       <p>
@@ -48,7 +49,7 @@ export default function Backups() {
                 class="button"
                 href={`/api/download?${new URLSearchParams({
                   type: "backup",
-                  archive: value().archive,
+                  archive: value().archive ?? "",
                 })}`}
                 download=""
               >

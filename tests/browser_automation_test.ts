@@ -58,7 +58,9 @@ Deno.test({
       const state = async () =>
         (
           await (await page.request.get(`${url}/api/resource/jobs`)).json()
-        ).find((job: any) => job.name === "Garden schedule test");
+        ).find(
+          (job: Record<string, unknown>) => job.name === "Garden schedule test",
+        );
       await card.getByRole("button", { name: "Pause", exact: true }).click();
       await expect.poll(async () => (await state()).enabled).toBe(false);
       await page.getByRole("button", { name: "Close", exact: true }).click();

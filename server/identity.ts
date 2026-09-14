@@ -30,11 +30,19 @@ export async function identity() {
       flag: "wx",
     });
   }
-  const { d, p, q, dp, dq, qi, ...publicJwk } = privateJwk;
+  const {
+    d: _d,
+    p: _p,
+    q: _q,
+    dp: _dp,
+    dq: _dq,
+    qi: _qi,
+    ...publicJwk
+  } = privateJwk;
   const key = await importJWK(privateJwk, "RS256");
   return {
     jwks: { keys: [publicJwk] },
-    sign: async (subject: string) =>
+    sign: (subject: string) =>
       new SignJWT({})
         .setProtectedHeader({ alg: "RS256", kid: privateJwk.kid, typ: "JWT" })
         .setSubject(subject)

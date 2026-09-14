@@ -1,3 +1,4 @@
+import { record } from "./contracts.ts";
 type RecordValue = Record<string, unknown>;
 
 const jobFields = [
@@ -110,9 +111,9 @@ export function mcpBody(values: RecordValue): RecordValue {
 // Hermes deep-merges config writes. Send only changed leaves, so untouched
 // defaults, masked credentials and another device's edits are preserved.
 export function configPatch(
-  values: Record<string, any>,
-  original: Record<string, any>,
-  current: Record<string, any>,
+  values: Record<string, unknown>,
+  original: Record<string, unknown>,
+  current: Record<string, unknown>,
   prefix = "",
 ): Record<string, unknown> {
   const patch: Record<string, unknown> = {};
@@ -128,9 +129,9 @@ export function configPatch(
       !Array.isArray(original[key])
     ) {
       const nested = configPatch(
-        value,
-        original[key],
-        current[key] ?? {},
+        record(value),
+        record(original[key]),
+        record(current[key]),
         path,
       );
       if (Object.keys(nested).length) patch[key] = nested;

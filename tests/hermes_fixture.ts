@@ -1,3 +1,4 @@
+import { record } from "../shared/contracts.ts";
 type Row = { id: number; role: string; content: string; name?: string };
 export function hermesFixture(
   port = 0,
@@ -164,13 +165,19 @@ export function hermesFixture(
         resolve,
         answers: {},
         ...(Array.isArray(payload.questions)
-          ? { qids: payload.questions.map((q: any) => q.qid) }
+          ? { qids: payload.questions.map((q) => q.qid) }
           : {}),
       });
       event(`${kind}.request`, sid, { request_id, ...payload });
     });
   }
-  const automations = new Map<string, Record<string, any>>();
+  const automations = new Map<
+    string,
+    Record<
+      string,
+      { status?: string; subgoals?: string[]; [key: string]: unknown }
+    >
+  >();
   const controlledRuns = new Map<
     string,
     { finish: () => void; steering: string[] }
@@ -459,7 +466,7 @@ export function hermesFixture(
             hooks.beforeReplay?.();
             result = {
               events: (replay.get(params.session_id) ?? []).filter(
-                (e: any) => e.params.seq > params.last_seen,
+                (e) => Number(record(record(e).params).seq) > params.last_seen,
               ),
               latest_seq: sequences.get(params.session_id) ?? 0,
               truncated: hooks.truncatedReplay ?? false,
@@ -542,9 +549,12 @@ export function hermesFixture(
             const state = automations.get(params.session_id) ?? {};
             const [kind, action] = params.action.split(".");
             if (kind === "subgoal" && state.goal) {
-              if (action === "add") state.goal.subgoals.push(params.args.text);
+              if (action === "add") {
+                state.goal.subgoals ??= [];
+                state.goal.subgoals.push(params.args.text);
+              }
               if (action === "remove") {
-                state.goal.subgoals.splice(params.args.index - 1, 1);
+                state.goal.subgoals?.splice(params.args.index - 1, 1);
               }
             } else if (action === "clear" || action === "stop") {
               delete state[kind];
@@ -652,7 +662,7 @@ export function hermesFixture(
                   (url.searchParams.get("profile") ?? "default"),
             )
             .filter((session) =>
-              session.messages.some((message: any) =>
+              session.messages.some((message) =>
                 String(message.content ?? "")
                   .toLowerCase()
                   .includes(query)

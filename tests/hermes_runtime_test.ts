@@ -19,11 +19,13 @@ Deno.test({
     const hermes = new Hermes();
     const roster = await hermes.rest("/api/profiles");
     assert.equal(
-      roster.profiles.find((profile: any) => profile.name === "default")?.path,
+      roster.profiles.find(
+        (profile: Record<string, unknown>) => profile.name === "default",
+      )?.path,
       home,
       "Refusing writes: the dashboard is not using the disposable home",
     );
-    const op = async (
+    const op = (
       name: string,
       params: Record<string, unknown> = {},
       body?: unknown,
@@ -47,7 +49,9 @@ Deno.test({
         assert.equal((saved.config ?? saved).approvals.mode, "manual");
         const tools = await op("toolsets");
         assert(Array.isArray(tools));
-        const tool = tools.find((row: any) => row.name === "memory");
+        const tool = tools.find(
+          (row: Record<string, unknown>) => row.name === "memory",
+        );
         assert(tool, "The pinned Hermes runtime exposes the memory toolset");
         await op(
           "toggleToolset",
@@ -55,8 +59,9 @@ Deno.test({
           { enabled: !tool.enabled },
         );
         assert.equal(
-          (await op("toolsets")).find((row: any) => row.name === tool.name)
-            .enabled,
+          (await op("toolsets")).find(
+            (row: Record<string, unknown>) => row.name === tool.name,
+          ).enabled,
           !tool.enabled,
         );
         await op("toggleToolset", { id: tool.name }, { enabled: tool.enabled });
@@ -183,8 +188,9 @@ Deno.test({
         );
         await op("toggleSkill", {}, { name, enabled: false });
         assert.equal(
-          (await op("skills")).find((skill: any) => skill.name === name)
-            .enabled,
+          (await op("skills")).find(
+            (skill: Record<string, unknown>) => skill.name === name,
+          ).enabled,
           false,
         );
         await op("toggleSkill", {}, { name, enabled: true });
@@ -201,7 +207,7 @@ Deno.test({
           await op("toggleMcp", { id: name }, { enabled: false });
           const servers = (await op("mcp")).servers;
           const server = Array.isArray(servers)
-            ? servers.find((server: any) => server.name === name)
+            ? servers.find((server) => server.name === name)
             : servers[name];
           assert.equal(server.enabled, false);
         } finally {
@@ -225,7 +231,9 @@ Deno.test({
         );
         const list = await op("endpoints");
         const rows = Array.isArray(list) ? list : list.endpoints;
-        const entry = rows.find((row: any) => row.name === `arura-${suffix}`);
+        const entry = rows.find(
+          (row: Record<string, unknown>) => row.name === `arura-${suffix}`,
+        );
         assert(entry?.id, JSON.stringify(Object.keys(endpoint)));
         try {
           await op(
@@ -242,7 +250,7 @@ Deno.test({
           const updated = await op("endpoints");
           assert(
             (Array.isArray(updated) ? updated : updated.endpoints).some(
-              (row: any) =>
+              (row: Record<string, unknown>) =>
                 row.id === entry.id && row.model === "updated-model",
             ),
           );
@@ -281,11 +289,14 @@ Deno.test({
         await op("toggleWebhook", { id: name }, { enabled: false });
         const hooks = await op("webhooks");
         assert(
-          hooks.subscriptions.every((hook: any) => hook.secret === undefined),
+          hooks.subscriptions.every(
+            (hook: Record<string, unknown>) => hook.secret === undefined,
+          ),
         );
         assert(
           hooks.subscriptions.some(
-            (hook: any) => hook.name === name && hook.enabled === false,
+            (hook: Record<string, unknown>) =>
+              hook.name === name && hook.enabled === false,
           ),
         );
       } finally {
@@ -383,22 +394,27 @@ Deno.test({
           const endpoints = await op("endpoints");
           endpointId = (
             Array.isArray(endpoints) ? endpoints : endpoints.endpoints
-          ).find((row: any) => row.name === "Local acceptance inference").id;
+          ).find(
+            (row: Record<string, unknown>) =>
+              row.name === "Local acceptance inference",
+          ).id;
           await op("activateEndpoint", { id: endpointId }, {});
           await hermes.connect();
           const created = await hermes.create("default");
-          const complete = new Promise<any>((resolve, reject) => {
-            timer = setTimeout(
-              () =>
-                reject(
-                  new Error(
-                    "Real Hermes did not complete the local inference request",
+          const complete = new Promise<import("../shared/model.ts").Turn>(
+            (resolve, reject) => {
+              timer = setTimeout(
+                () =>
+                  reject(
+                    new Error(
+                      "Real Hermes did not complete the local inference request",
+                    ),
                   ),
-                ),
-              45000,
-            );
-            hermes.once("complete", (_key, turn) => resolve(turn));
-          });
+                45000,
+              );
+              hermes.once("complete", (_key, turn) => resolve(turn));
+            },
+          );
           void complete.catch(() => {});
           await hermes.call("prompt.submit", {
             session_id: await hermes.attach(created.key),
@@ -446,10 +462,10 @@ Deno.test({
             const state = (
               await hermes.call("session.control.read", { session_id })
             ).control;
-            assert(state[name], `${name} was not configured`);
+            assert(state?.[name], `${name} was not configured`);
             if (name === "goal") {
               assert.equal(
-                state.goal.contract.verification,
+                state.goal.contract?.verification,
                 "Five native plants",
               );
             } else assert.equal(state[name].interval_seconds, 7200);
@@ -460,7 +476,7 @@ Deno.test({
             });
             assert.equal(
               (await hermes.call("session.control.read", { session_id }))
-                .control[name].status,
+                .control?.[name].status,
               "paused",
             );
             await hermes.call("session.control", {

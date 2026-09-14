@@ -47,7 +47,19 @@ export default function RunControls(props: {
   close: () => void;
 }) {
   const [controls, setControls] = createSignal<Record<string, Automation>>({});
-  const [context, setContext] = createSignal<any>();
+  const [context, setContext] = createSignal<{
+    model?: string;
+    context_used?: number;
+    context_max?: number;
+    context_percent?: number;
+    context_estimated?: boolean;
+    categories?: {
+      label?: string;
+      name?: string;
+      key?: string;
+      tokens?: number;
+    }[];
+  }>();
   const [agents, setAgents] = createSignal<Agent[]>([]);
   const [selected, setSelected] = createSignal("");
   const [transcript, setTranscript] = createSignal<{
@@ -214,7 +226,9 @@ export default function RunControls(props: {
                       <p role="status">
                         Waiting {wait().type === "until"
                           ? `until ${
-                            new Date(wait().until_at! * 1000).toLocaleString()
+                            new Date(
+                              wait().until_at! * 1000,
+                            ).toLocaleString()
                           }`
                           : `for ${wait().type} ${wait().target}`}{" "}
                         {wait().reason}

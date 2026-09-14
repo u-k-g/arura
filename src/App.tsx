@@ -1,3 +1,4 @@
+import type { ConversationPage, Doc } from "../shared/contracts.ts";
 import {
   createEffect,
   createSignal,
@@ -109,11 +110,11 @@ export default function App() {
       }
     })(),
   );
-  const [archived, setArchived] = createSignal<any[]>([]),
+  const [archived, setArchived] = createSignal<Doc<"conversations">[]>([]),
     [archiveOpen, setArchiveOpen] = createSignal(false),
     [archiveLimit, setArchiveLimit] = createSignal(10);
   const [archiveHasMore, setArchiveHasMore] = createSignal(false);
-  const [menu, setMenu] = createSignal<any>(),
+  const [menu, setMenu] = createSignal<Conversation>(),
     [folderName, setFolderName] = createSignal<string | null>(null);
   const [activeConversation, setActiveConversation] = createSignal<
     Conversation | null
@@ -123,33 +124,38 @@ export default function App() {
     connected();
     setActiveConversation(null);
     if (!authorized() || !key.startsWith("[")) return;
-    const stop = subscribe("workspace", "byKey", { key }, (conversation) => {
-      if (conversation && conversation.key !== key) {
-        void (async () => {
-          const oldDraft = await draft(key);
-          const newDraft = await draft(conversation.key);
-          if (oldDraft && oldDraft !== newDraft) {
-            await draft(
-              conversation.key,
-              [newDraft, oldDraft].filter(Boolean).join("\n\n"),
-            );
-            await draft(key, "");
-          }
-          const attachments = await draftAttachments(key);
-          if (attachments.length) {
-            const existing = await draftAttachments(conversation.key);
-            await draftAttachments(conversation.key, [
-              ...existing,
-              ...attachments.filter(
-                (file) => !existing.some((old) => old.path === file.path),
-              ),
-            ]);
-            await draftAttachments(key, []);
-          }
-          if (view() === key) navigate(conversation.key);
-        })().catch((error) => inform(String(error)));
-      } else setActiveConversation(conversation);
-    });
+    const stop = subscribe<Conversation | null>(
+      "workspace",
+      "byKey",
+      { key },
+      (conversation) => {
+        if (conversation && conversation.key !== key) {
+          void (async () => {
+            const oldDraft = await draft(key);
+            const newDraft = await draft(conversation.key);
+            if (oldDraft && oldDraft !== newDraft) {
+              await draft(
+                conversation.key,
+                [newDraft, oldDraft].filter(Boolean).join("\n\n"),
+              );
+              await draft(key, "");
+            }
+            const attachments = await draftAttachments(key);
+            if (attachments.length) {
+              const existing = await draftAttachments(conversation.key);
+              await draftAttachments(conversation.key, [
+                ...existing,
+                ...attachments.filter(
+                  (file) => !existing.some((old) => old.path === file.path),
+                ),
+              ]);
+              await draftAttachments(key, []);
+            }
+            if (view() === key) navigate(conversation.key);
+          })().catch((error) => inform(String(error)));
+        } else setActiveConversation(conversation);
+      },
+    );
     onCleanup(stop);
   });
   const [name, setName] = createSignal(""),
@@ -190,59 +196,68 @@ export default function App() {
       const count = archiveLimit() / 10;
       const pages = new Map<
         number,
-        { page: any[]; isDone: boolean; continueCursor: string }
+        {
+          page: Doc<"conversations">[];
+          isDone: boolean;
+          continueCursor: string;
+        }
       >();
       const stops = new Map<number, () => void>();
       let disposed = false,
         fresh = false;
       const cacheKey = `archive:${count}`;
-      void loadCache<{ items: any[]; hasMore: boolean }>(cacheKey).then(
-        (cached) => {
-          if (cached && !disposed && !fresh) {
-            setArchived(cached.items);
-            setArchiveHasMore(cached.hasMore);
-          }
-        },
-      );
-      function follow(index: number, cursor: string | null) {
+      void loadCache<{ items: Doc<"conversations">[]; hasMore: boolean }>(
+        cacheKey,
+      ).then((cached) => {
+        if (cached && !disposed && !fresh) {
+          setArchived(cached.items);
+          setArchiveHasMore(cached.hasMore);
+        }
+      });
+      const follow = function (index: number, cursor: string | null) {
         let nextCursor: string | undefined;
         stops.set(
           index,
-          subscribe("workspace", "archived", { cursor }, (result) => {
-            if (disposed) return;
-            fresh = true;
-            pages.set(index, result);
-            if (result.isDone || result.continueCursor !== nextCursor) {
-              for (const [page, stop] of stops) {
-                if (page > index) {
-                  stop();
-                  stops.delete(page);
-                  pages.delete(page);
+          subscribe<ConversationPage>(
+            "workspace",
+            "archived",
+            { cursor },
+            (result) => {
+              if (disposed) return;
+              fresh = true;
+              pages.set(index, result);
+              if (result.isDone || result.continueCursor !== nextCursor) {
+                for (const [page, stop] of stops) {
+                  if (page > index) {
+                    stop();
+                    stops.delete(page);
+                    pages.delete(page);
+                  }
+                }
+                nextCursor = result.continueCursor;
+                if (!result.isDone && index + 1 < count) {
+                  follow(index + 1, result.continueCursor);
                 }
               }
-              nextCursor = result.continueCursor;
-              if (!result.isDone && index + 1 < count) {
-                follow(index + 1, result.continueCursor);
-              }
-            }
-            const ordered = [...pages.entries()]
-              .sort(([a], [b]) => a - b)
-              .map(([, value]) => value);
-            setArchived([
-              ...new Map(
-                ordered
-                  .flatMap((page) => page.page)
-                  .map((row) => [row._id, row]),
-              ).values(),
-            ]);
-            setArchiveHasMore(!ordered.at(-1)?.isDone);
-            void saveCache(cacheKey, {
-              items: archived(),
-              hasMore: archiveHasMore(),
-            });
-          }),
+              const ordered = [...pages.entries()]
+                .sort(([a], [b]) => a - b)
+                .map(([, value]) => value);
+              setArchived([
+                ...new Map(
+                  ordered
+                    .flatMap((page) => page.page)
+                    .map((row) => [row._id, row]),
+                ).values(),
+              ]);
+              setArchiveHasMore(!ordered.at(-1)?.isDone);
+              void saveCache(cacheKey, {
+                items: archived(),
+                hasMore: archiveHasMore(),
+              });
+            },
+          ),
         );
-      }
+      };
       follow(0, null);
       onCleanup(() => {
         disposed = true;
@@ -272,7 +287,7 @@ export default function App() {
   async function newChat(profile = "default") {
     await run(async () => {
       const result = await command("create", "", { profile });
-      navigate(result.key);
+      navigate(String(result.key));
     });
   }
   const row = (c: Conversation) => (
@@ -368,7 +383,7 @@ export default function App() {
           {row}
         </For>
         <For each={workspace()?.folders ?? []}>
-          {(folder: any) => (
+          {(folder) => (
             <details
               class="folder"
               open={!closedFolders()[folder._id]}
@@ -633,13 +648,13 @@ export default function App() {
               label="Notifications"
               onClick={() => navigate("settings:notifications")}
             />
-            <Show when={workspace()?.notices?.some((n: any) => !n.read)}>
+            <Show when={workspace()?.notices?.some((n) => !n.read)}>
               <span
                 class="notification-count"
                 role="status"
                 aria-label="Unread notifications"
               >
-                {workspace()?.notices?.filter((n: any) => !n.read).length}
+                {workspace()?.notices?.filter((n) => !n.read).length}
               </span>
             </Show>
           </header>
@@ -689,7 +704,7 @@ export default function App() {
                           const result = await command("openBot", "", {
                             profile,
                           });
-                          navigate(result.key);
+                          navigate(String(result.key));
                         }}
                       />
                     }
@@ -848,7 +863,7 @@ export default function App() {
                 )}
               </For>
               <For each={workspace()?.folders ?? []}>
-                {(f: any) => (
+                {(f) => (
                   <button
                     type="button"
                     onClick={() =>

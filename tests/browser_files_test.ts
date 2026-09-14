@@ -77,7 +77,7 @@ Deno.test({
       );
       expect(imageDownload.status()).toBe(200);
       expect((await imageDownload.body()).toString("base64")).toBe(png);
-      async function edit(page: Page, text: string) {
+      const edit = async function (page: Page, text: string) {
         await page.getByRole("button", { name: "Files", exact: true }).click();
         await page
           .locator(".resource-card")
@@ -89,7 +89,7 @@ Deno.test({
         await editor.click();
         await page.keyboard.press("ControlOrMeta+a");
         await page.keyboard.insertText(text);
-      }
+      };
       await edit(a, "First device revision");
       await edit(b, "Second device draft");
       await a.getByRole("button", { name: "Save", exact: true }).click();

@@ -1,3 +1,57 @@
+type ResourceField = {
+  key: string;
+  label?: string;
+  prompt?: string;
+  value?: unknown;
+  kind?: string;
+  is_set?: boolean;
+  required?: boolean;
+};
+type ResourceRow = Record<string, unknown> & {
+  id?: string;
+  name?: string;
+  key?: string;
+  title?: string;
+  path?: string;
+  description?: string;
+  display_name?: string;
+  platform?: string;
+  user_id?: string;
+  slug?: string;
+  status?: string;
+  type?: string;
+  kind?: string;
+  enabled?: boolean;
+  is_dir?: boolean;
+  is_directory?: boolean;
+  has_avatar?: boolean;
+  accessStatus?: string;
+  scheduleHuman?: string;
+  ui_meta?: Record<string, { title?: string; imageKind?: string }>;
+  ui_meta_revisions?: Record<string, number>;
+  fields?: ResourceField[];
+  env_vars?: ResourceField[];
+};
+type ResourceData = Record<string, unknown> & {
+  config?: Record<string, unknown>;
+  enabled?: boolean;
+  paused?: boolean;
+  pending?: Record<string, unknown>[];
+  approved?: Record<string, unknown>[];
+};
+type ToolConfig = {
+  id: string;
+  name: string;
+  providers?: {
+    name: string;
+    requires_nous_auth?: boolean;
+    is_active?: boolean;
+    status?: string;
+    capabilities?: string[];
+    env_vars?: ResourceField[];
+  }[];
+};
+import { record } from "../shared/contracts.ts";
 import {
   createEffect,
   createMemo,
@@ -217,12 +271,13 @@ const surfaces: Record<string, Surface> = {
   artifacts: { title: "Generated files", read: "artifacts" },
   backup: { title: "Backups", read: "health" },
 };
-const dataRows = (data: any, keys: string[] = []) => {
-  if (Array.isArray(data)) return data;
+const dataRows = (data: unknown, keys: string[] = []): ResourceRow[] => {
+  const object = record(data);
+  if (Array.isArray(data)) return data as ResourceRow[];
   for (const key of keys) {
-    if (Array.isArray(data?.[key])) return data[key];
-    if (data?.[key] && typeof data[key] === "object") {
-      return dataRows(data[key]);
+    if (Array.isArray(object[key])) return object[key] as ResourceRow[];
+    if (object[key] && typeof object[key] === "object") {
+      return dataRows(object[key]);
     }
   }
   if (data && typeof data === "object") {
@@ -255,7 +310,7 @@ function Scalar(props: { value: unknown }) {
     </Show>
   );
 }
-function Value(props: { value: any }) {
+function Value(props: { value: unknown }) {
   return (
     <Show
       when={typeof props.value === "object" && props.value !== null}
@@ -296,8 +351,8 @@ function Value(props: { value: any }) {
   );
 }
 function Editor(props: {
-  value: any;
-  change: (value: any) => void;
+  value: Record<string, unknown>;
+  change: (value: Record<string, unknown>) => void;
   prefix?: string;
 }) {
   return (
@@ -419,7 +474,7 @@ function Editor(props: {
                 <details class="config-section">
                   <summary>{human(key)}</summary>
                   <Editor
-                    value={value()}
+                    value={record(value())}
                     change={update}
                     prefix={(props.prefix ? props.prefix + "." : "") + key}
                   />
@@ -445,7 +500,7 @@ export default function Resources(props: {
   const [creatingBlueprint, setCreatingBlueprint] = createSignal(false);
   const surface = () =>
     surfaces[props.name] ?? { title: human(props.name), read: props.name };
-  const [data, setData] = createSignal<any>(),
+  const [data, setData] = createSignal<ResourceData>(),
     [loading, setLoading] = createSignal(false),
     [error, setError] = createSignal(""),
     [filter, setFilter] = createSignal("");
@@ -536,7 +591,7 @@ export default function Resources(props: {
     }
     setMcpFlow(undefined);
   }
-  const [toolConfig, setToolConfig] = createSignal<any>();
+  const [toolConfig, setToolConfig] = createSignal<ToolConfig>();
   const [avatarEditor, setAvatarEditor] = createSignal<{
     name: string;
     data?: string;
@@ -544,7 +599,7 @@ export default function Resources(props: {
   async function avatarKind(name: string, imageKind: "photo" | "shape") {
     const roster = await resource("profileRoster");
     const profile = roster.profiles?.find(
-      (profile: any) => profile.name === name,
+      (profile: { name: string }) => profile.name === name,
     );
     if (!profile) throw new Error("Profile is no longer available");
     const result = await resource(
@@ -604,13 +659,13 @@ export default function Resources(props: {
       {
         operation: string;
         params: Record<string, unknown>;
-        values: any;
+        values: Record<string, unknown>;
         original?: Record<string, unknown>;
         fields?: FormField[];
         title: string;
       } | null
     >(null),
-    [detail, setDetail] = createSignal<any>();
+    [detail, setDetail] = createSignal<unknown>();
   let refreshVersion = 0;
   onCleanup(() => {
     refreshVersion++;
@@ -676,12 +731,12 @@ export default function Resources(props: {
     path();
     void refresh();
   });
-  const rows = () =>
+  const rows = (): ResourceRow[] =>
     (props.name === "pairing"
-      ? pairingRows(data())
+      ? (pairingRows(data() ?? {}) as ResourceRow[])
       : dataRows(data(), surface().list))
       .filter(
-        (r: any) =>
+        (r) =>
           !(
             props.name === "toolsets" &&
             /^(image_gen|image_generation|tts|stt|voice)$/.test(
@@ -689,12 +744,12 @@ export default function Resources(props: {
             )
           ),
       )
-      .filter((r: any) =>
+      .filter((r) =>
         String(r.name ?? r.title ?? r.id ?? "")
           .toLowerCase()
           .includes(filter().toLowerCase())
       );
-  async function action(operation: string, item: any = {}) {
+  async function action(operation: string, item: ResourceRow = {}) {
     const id = String(
       (props.name === "webhooks" ? item.name : item.id) ??
         item.name ??
@@ -832,12 +887,12 @@ export default function Resources(props: {
         params,
         title: `Configure ${config.label ?? id}`,
         values: Object.fromEntries(
-          (config.fields ?? []).map((field: any) => [
+          ((config.fields ?? []) as ResourceField[]).map((field) => [
             field.key,
             field.value ?? "",
           ]),
         ),
-        fields: (config.fields ?? []).map((field: any) => ({
+        fields: ((config.fields ?? []) as ResourceField[]).map((field) => ({
           key: field.key,
           label: `${field.label}${
             field.kind === "secret" && field.is_set
@@ -848,7 +903,7 @@ export default function Resources(props: {
             ? "password"
             : field.kind === "boolean"
             ? "boolean"
-            : ["integer", "number"].includes(field.kind)
+            : ["integer", "number"].includes(field.kind ?? "")
             ? "number"
             : "text",
           required: field.required && !field.is_set,
@@ -1003,7 +1058,7 @@ export default function Resources(props: {
     setFileChanged(false);
     inform("File saved");
   }
-  async function openFile(item: any) {
+  async function openFile(item: ResourceRow) {
     const p = item.path ?? [path(), item.name].filter(Boolean).join("/");
     if (
       item.is_directory ||
@@ -1060,7 +1115,7 @@ export default function Resources(props: {
           >
             <option value="">Choose a conversation</option>
             <For each={workspace()?.conversations ?? []}>
-              {(c: any) => <option value={c.key}>{c.title}</option>}
+              {(c) => <option value={c.key}>{c.title}</option>}
             </For>
           </select>
         </Field>
@@ -1289,7 +1344,7 @@ export default function Resources(props: {
           <div class="resource-list">
             <For
               each={props.name === "files"
-                ? dataRows(data(), ["entries", "files"]).filter((item: any) =>
+                ? dataRows(data(), ["entries", "files"]).filter((item) =>
                   String(item.name ?? "")
                     .toLowerCase()
                     .includes(filter().toLowerCase())
@@ -1305,7 +1360,7 @@ export default function Resources(props: {
                         item.ui_meta?.["hermes-bots"]?.imageKind !== "shape"}
                     >
                       <ProfileAvatar
-                        name={item.name}
+                        name={item.name ?? ""}
                         version={item.ui_meta_revisions?.["hermes-bots"] ?? 0}
                       />
                     </Show>
@@ -1356,13 +1411,16 @@ export default function Resources(props: {
                         Open
                       </button>
                       <a
-                        href={download(item.path ?? item.name)}
+                        href={download(item.path ?? item.name ?? "")}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
                         Open with browser
                       </a>
-                      <a href={download(item.path ?? item.name)} download="">
+                      <a
+                        href={download(item.path ?? item.name ?? "")}
+                        download=""
+                      >
                         Download
                       </a>
                     </Show>
@@ -1441,7 +1499,7 @@ export default function Resources(props: {
                             checked={field.type === "boolean"
                               ? Boolean(f().values[field.key])
                               : undefined}
-                            value={f().values[field.key] ?? ""}
+                            value={String(f().values[field.key] ?? "")}
                             onInput={(e) =>
                               setForm({
                                 ...f(),
@@ -1459,7 +1517,7 @@ export default function Resources(props: {
                       >
                         <textarea
                           required={field.required}
-                          value={f().values[field.key] ?? ""}
+                          value={String(f().values[field.key] ?? "")}
                           onInput={(e) =>
                             setForm({
                               ...f(),
@@ -1574,10 +1632,10 @@ export default function Resources(props: {
           >
             <For
               each={(config().providers ?? []).filter(
-                (provider: any) => !provider.requires_nous_auth,
+                (provider) => !provider.requires_nous_auth,
               )}
             >
-              {(provider: any) => (
+              {(provider) => (
                 <article class="resource-card">
                   <h3>{provider.name}</h3>
                   <p>{provider.is_active ? "Active" : provider.status}</p>
@@ -1622,12 +1680,12 @@ export default function Resources(props: {
                             params: { id: config().id },
                             title: `${provider.name} credentials`,
                             values: Object.fromEntries(
-                              provider.env_vars.map((field: any) => [
+                              (provider.env_vars ?? []).map((field) => [
                                 field.key,
                                 "",
                               ]),
                             ),
-                            fields: provider.env_vars.map((field: any) => ({
+                            fields: (provider.env_vars ?? []).map((field) => ({
                               key: field.key,
                               label: `${field.prompt ?? field.key}${
                                 field.is_set
@@ -1686,7 +1744,7 @@ export default function Resources(props: {
             when={typeof detail() === "string"}
             fallback={<Value value={detail()} />}
           >
-            <pre>{detail()}</pre>
+            <pre>{String(detail())}</pre>
           </Show>
         </Dialog>
       </Show>
@@ -1764,7 +1822,7 @@ export default function Resources(props: {
           close={() => setAttachSelection(false)}
         >
           <For each={workspace()?.conversations ?? []}>
-            {(c: any) => (
+            {(c) => (
               <button
                 type="button"
                 class="list-button"

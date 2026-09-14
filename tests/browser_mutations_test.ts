@@ -269,7 +269,8 @@ Deno.test({
       });
       expect(
         pending.commands.find(
-          (command: any) => command.payload?.text === "Queued after questions",
+          (command: { payload?: { text?: string } }) =>
+            command.payload?.text === "Queued after questions",
         )?.status,
       ).toBe("queued");
       for (const id of backlog) {

@@ -125,7 +125,10 @@ isolated browser integration tests. A disposable installation of the pinned
 Hermes runtime also passes local configuration and lifecycle writes, real backup
 creation/download, gateway streaming, automation controls, and transcript
 filtering against a local inference stub. These checks do not change the
-production Hermes installation. A live NixOS rollout remains pending.
+production Hermes installation. Manara's NixOS rollout also passes public HTTPS
+device authorization, authenticated Convex queries, existing-history ingestion,
+and device revocation. The old web client remains available. Real inference and
+phone suspension/reconnection still need a device-level acceptance check.
 
 ## Upstream limitations
 
@@ -141,13 +144,31 @@ production Hermes installation. A live NixOS rollout remains pending.
   deletion when a filter is configured. See the pinned
   [upstream route](https://github.com/NousResearch/hermes-agent/blob/ee4452991d17534aa561f31ee55596d082aa94e7/hermes_cli/web_routers/models.py).
 
-## Handoff to nc
+## Manara deployment in nc
 
-The next deployment change belongs in [nc](https://github.com/u-k-g/nc): add
-this flake input, import its NixOS module, supply private instance credentials,
-set the two public origins, and point `hermesUrl` at the dashboard API for the
-existing Hermes service on Manara. Configure the host's HTTP/WebSocket routes,
-backup coverage, and optional restart/update wrappers there. Keep the current
-web client available during the first deployment. The rollout checks are real
-OpenCode Go inference, phone suspension/reconnection, measured phone load time,
-and device revocation through the production routes.
+[nc's Arura module](https://github.com/u-k-g/nc/blob/main/modules/arura.mod.nix)
+imports this flake's services and connects them to the same Hermes dashboard as
+the existing web client. Both read and update Hermes's existing history; Arura's
+separate Convex database stores its projection, organization, and device access.
+It does not create another Hermes installation or copy its database.
+
+Arura uses tailnet HTTPS port **8444**, with browser Convex subscriptions on
+**8445**. The existing Hermes web client stays on **8443**. Each route has its
+own foreground Tailscale Serve service, so stopping Arura does not remove the
+other routes.
+
+The initialization service creates private instance credentials once and reuses
+the existing Hermes dashboard password. Preserve its `arura-credentials` state
+directory along with `arura` and `arura-convex`. Manara declares persistent
+mounts for all three because its root filesystem is ephemeral. On an existing
+installation, create the new backing subvolumes before activating those mounts;
+do not rerun disk formatting. The initial device access code is the
+`ARURA_ACCESS_KEY` entry in the root-only Arura environment file. Authorize
+subsequent devices through Access settings.
+
+The nc input pins a published Arura revision. Update that input when publishing
+an application release, then build and activate the host configuration. The
+remaining production checks are real OpenCode Go inference, phone
+suspension/reconnection, measured phone load time, and device revocation through
+the production routes. Optional restart/update wrappers and whole-service backup
+scheduling remain host administration choices.

@@ -1,3 +1,11 @@
+type ModelOption = {
+  provider?: string;
+  id?: string;
+  model?: string;
+  name?: string;
+  label?: string;
+};
+import type { Transcript } from "../shared/contracts.ts";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import {
@@ -26,7 +34,6 @@ import {
   inform,
   mutate,
   request,
-  resource,
   subscribe,
   workspace,
 } from "./client.ts";
@@ -72,7 +79,7 @@ export default function Chat(props: {
   title: string;
   navigate: (view: string) => void;
 }) {
-  const [data, setData] = createSignal<any>({
+  const [data, setData] = createSignal<Transcript>({
     pages: [],
     commands: [],
     turn: null,
@@ -86,19 +93,21 @@ export default function Chat(props: {
     { path: string; name: string; image: boolean }[]
   >([]);
   const [tool, setTool] = createSignal<Message>(),
-    [models, setModels] = createSignal<any[]>([]),
+    [models, setModels] = createSignal<ModelOption[]>([]),
     [model, setModel] = createSignal("");
   const [customizeModels, setCustomizeModels] = createSignal(false);
-  const modelKey = (entry: any) =>
+  const modelKey = (entry: ModelOption) =>
     JSON.stringify([entry.provider ?? "", entry.id ?? entry.model ?? entry]);
-  const modelLabel = (entry: any) =>
+  const modelLabel = (entry: ModelOption) =>
     entry.name ?? entry.label ?? entry.id ?? String(entry);
   const hiddenModels = createMemo(
     () => new Set<string>(workspace()?.settings?.hiddenModels ?? []),
   );
   const visibleModels = () =>
     models().filter((entry) => !hiddenModels().has(modelKey(entry)));
-  const [suggestions, setSuggestions] = createSignal<any[]>([]),
+  const [suggestions, setSuggestions] = createSignal<
+      { command: string; description: string; name?: string }[]
+    >([]),
     [attachment, setAttachment] = createSignal(false),
     [reference, setReference] = createSignal("");
   const [completions, setCompletions] = createSignal<
@@ -117,8 +126,8 @@ export default function Chat(props: {
   const messages = () =>
     data()
       .pages.slice()
-      .sort((a: any, b: any) => b.offset - a.offset)
-      .flatMap((p: any) => p.messages) as Message[];
+      .sort((a, b) => b.offset - a.offset)
+      .flatMap((p) => p.messages) as Message[];
   const turn = () => data().turn as Turn | null;
   const turnIsInHistory = () => {
     const last = turn()?.state === "running"
@@ -153,7 +162,7 @@ export default function Chat(props: {
     void draft(key).then((value) => {
       if (props.conversation === key && text() === "") setText(value ?? "");
     });
-    void loadCache<any>("chat:" + key).then((value) => {
+    void loadCache<Transcript>("chat:" + key).then((value) => {
       if (
         value &&
         props.conversation === key &&
@@ -168,7 +177,7 @@ export default function Chat(props: {
     const count = pages();
     connected();
     const requested = new Set<string>();
-    const stop = subscribe(
+    const stop = subscribe<Transcript>(
       "workspace",
       "transcript",
       { conversation: key, pages: count },
@@ -178,15 +187,15 @@ export default function Chat(props: {
           scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <
             180;
         setData(value);
-        const head = value.pages.find((page: any) => page.offset === 0);
+        const head = value.pages.find((page) => page.offset === 0);
         for (let offset = 100; head && offset < count * 100; offset += 100) {
           const preceding = value.pages.find(
-            (page: any) => page.offset === offset - 100,
+            (page) => page.offset === offset - 100,
           );
           const requestId = `${head.revision}:${offset}`;
           if (
             preceding?.hasMore &&
-            !value.pages.some((page: any) => page.offset === offset) &&
+            !value.pages.some((page) => page.offset === offset) &&
             !requested.has(requestId) &&
             connected()
           ) {
@@ -378,7 +387,7 @@ export default function Chat(props: {
                   messageId: message.id,
                 });
                 inform("Conversation branched");
-                props.navigate(result.key);
+                props.navigate(String(result.key));
               })}
           />
         </div>
@@ -403,12 +412,17 @@ export default function Chat(props: {
             void run(async () => {
               const result = await rpc("model.options");
               setModels(
-                result.providers?.flatMap((provider: any) =>
-                  (provider.models ?? []).map((id: string) => ({
-                    id,
-                    provider: provider.slug,
-                    name: `${id} · ${provider.name}`,
-                  }))
+                result.providers?.flatMap(
+                  (provider: {
+                    slug: string;
+                    name: string;
+                    models?: string[];
+                  }) =>
+                    (provider.models ?? []).map((id: string) => ({
+                      id,
+                      provider: provider.slug,
+                      name: `${id} · ${provider.name}`,
+                    })),
                 ) ??
                   result.models ??
                   [],
@@ -431,20 +445,14 @@ export default function Chat(props: {
         <button
           type="button"
           class="text-button"
-          onClick={() =>
-            void run(async () => {
-              setControls("context");
-            })}
+          onClick={() => setControls("context")}
         >
           Context
         </button>
         <button
           type="button"
           class="text-button"
-          onClick={() =>
-            void run(async () => {
-              setControls("subagents");
-            })}
+          onClick={() => setControls("subagents")}
         >
           Delegated work
         </button>
@@ -633,13 +641,13 @@ export default function Chat(props: {
           </Show>
           <For
             each={data().commands.filter(
-              (c: any) =>
+              (c) =>
                 c.status === "complete" &&
                 c.kind === "send" &&
                 c.result?.output,
             )}
           >
-            {(c: any) => (
+            {(c) => (
               <article class="message assistant">
                 <div class="message-label">Command result</div>
                 <Markdown text={c.result.output} />
@@ -647,11 +655,11 @@ export default function Chat(props: {
             )}
           </For>
           <For
-            each={data().commands.filter((c: any) =>
+            each={data().commands.filter((c) =>
               ["unknown", "error"].includes(c.status)
             )}
           >
-            {(c: any) => (
+            {(c) => (
               <div class="command-error" role="alert">
                 {c.error}
                 <Show when={c.status === "unknown"}>
@@ -689,16 +697,16 @@ export default function Chat(props: {
         </Show>
         <Show
           when={data().commands.some(
-            (c: any) => c.status === "queued" && c.kind === "send",
+            (c) => c.status === "queued" && c.kind === "send",
           )}
         >
           <div class="queue">
             <For
               each={data().commands.filter(
-                (c: any) => c.status === "queued" && c.kind === "send",
+                (c) => c.status === "queued" && c.kind === "send",
               )}
             >
-              {(c: any) => (
+              {(c) => (
                 <div>
                   <span>{c.payload.text}</span>
                   <IconButton
@@ -948,7 +956,7 @@ export default function Chat(props: {
           </button>
           <h3>Conversations</h3>
           <For each={workspace()?.conversations ?? []}>
-            {(c: any) => (
+            {(c) => (
               <button
                 type="button"
                 class="list-button"

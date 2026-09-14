@@ -6,9 +6,9 @@ Deno.test("conversation exports page public messages without hidden reasoning", 
   const response = await exportConversation(
     "conversation",
     "profile",
-    async (offset) => {
+    (offset) => {
       offsets.push(offset);
-      return {
+      return Promise.resolve({
         messages: offset === 0
           ? Array.from({ length: 500 }, (_, id) => ({
             id,
@@ -24,7 +24,7 @@ Deno.test("conversation exports page public messages without hidden reasoning", 
               reasoning_content: "PRIVATE",
             },
           ],
-      };
+      });
     },
   );
   const text = await response.text();

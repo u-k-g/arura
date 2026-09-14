@@ -88,7 +88,7 @@ Deno.test({
       await client.mutation(anyApi.workspace.folder, { name: original });
       const folder = (
         await client.query(anyApi.workspace.overview, {})
-      ).folders.find((f: any) => f.name === original);
+      ).folders.find((f: Record<string, unknown>) => f.name === original);
       await client.mutation(anyApi.workspace.move, {
         key,
         section: "pinned",
@@ -167,7 +167,9 @@ Deno.test({
       const roster = await (
         await a.request.get(`${url}/api/resource/profileRoster`)
       ).json();
-      expect(roster.profiles.some((p: any) => p.name === clone)).toBe(true);
+      expect(
+        roster.profiles.some((p: Record<string, unknown>) => p.name === clone),
+      ).toBe(true);
       await write("deleteProfile", "DELETE", {}, clone);
       await client.mutation(anyApi.workspace.folder, {
         id: folder._id,

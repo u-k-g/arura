@@ -1,3 +1,4 @@
+import type { Workspace } from "../shared/contracts.ts";
 import { strict as assert } from "node:assert";
 import { ConvexClient, ConvexHttpClient } from "convex/browser";
 import { anyApi as api } from "convex/server";
@@ -46,7 +47,16 @@ Deno.test({
     );
     const live = new ConvexClient(url);
     live.setAuth(() => signer.sign(bId));
-    let snapshot: any,
+    let snapshot: Workspace = {
+        deviceId: "",
+        conversations: [],
+        folders: [],
+        notices: [],
+        connection: null,
+        settings: {},
+        recentCursor: "",
+        recentHasMore: false,
+      },
       revoked = false;
     const stop = live.onUpdate(
       api.workspace.overview,
@@ -77,13 +87,27 @@ Deno.test({
           },
         ],
       });
-      await until(() => snapshot.conversations.some((c: any) => c.key === key));
+      await until(() =>
+        snapshot.conversations.some(
+          (c: {
+            key: string;
+            folderId?: string;
+            section?: string;
+            unarchivedAt?: number;
+          }) => c.key === key,
+        )
+      );
       const folderName = `Folder ${crypto.randomUUID()}`;
       await a.mutation(api.workspace.folder, { name: folderName });
       await until(() =>
-        snapshot.folders.some((f: any) => f.name === folderName)
+        snapshot.folders.some(
+          (f: { name: string; _id: string }) => f.name === folderName,
+        )
       );
-      const folder = snapshot.folders.find((f: any) => f.name === folderName);
+      const folder = snapshot.folders.find(
+        (f: { name: string; _id: string }) => f.name === folderName,
+      );
+      assert(folder);
       await a.mutation(api.workspace.move, {
         key,
         section: "pinned",
@@ -91,7 +115,12 @@ Deno.test({
       });
       await until(() =>
         snapshot.conversations.some(
-          (c: any) => c.key === key && c.folderId === folder._id,
+          (c: {
+            key: string;
+            folderId?: string;
+            section?: string;
+            unarchivedAt?: number;
+          }) => c.key === key && c.folderId === folder._id,
         )
       );
       await b.mutation(api.workspace.folder, {
@@ -100,7 +129,7 @@ Deno.test({
       });
       assert.equal(
         (await a.query(api.workspace.overview, {})).folders.find(
-          (f: any) => f._id === folder._id,
+          (f: { name: string; _id: string }) => f._id === folder._id,
         ).name,
         `${folderName} renamed`,
       );
@@ -116,7 +145,7 @@ Deno.test({
       await a.mutation(api.workspace.folder, { name: `${folderName} second` });
       const folders = (await b.query(api.workspace.overview, {})).folders;
       const second = folders.find(
-        (f: any) => f.name === `${folderName} second`,
+        (f: { name: string; _id: string }) => f.name === `${folderName} second`,
       );
       await b.mutation(api.workspace.reorder, {
         kind: "folder",
@@ -125,8 +154,12 @@ Deno.test({
       });
       const reordered = (await a.query(api.workspace.overview, {})).folders;
       assert(
-        reordered.findIndex((f: any) => f._id === second._id) <
-          reordered.findIndex((f: any) => f._id === folder._id),
+        reordered.findIndex(
+          (f: { name: string; _id: string }) => f._id === second._id,
+        ) <
+          reordered.findIndex(
+            (f: { name: string; _id: string }) => f._id === folder._id,
+          ),
       );
       await b.mutation(api.workspace.folder, { id: folder._id, remove: true });
       const afterRemoval = await a.query(api.workspace.byKey, { key });
@@ -199,19 +232,34 @@ Deno.test({
       await a.mutation(api.workspace.move, { key, section: "essential" });
       await until(() =>
         snapshot.conversations.some(
-          (c: any) => c.key === key && c.section === "essential",
+          (c: {
+            key: string;
+            folderId?: string;
+            section?: string;
+            unarchivedAt?: number;
+          }) => c.key === key && c.section === "essential",
         )
       );
       await a.mutation(api.workspace.move, { key, section: "archived" });
       assert(
         (await b.query(api.workspace.archived, { cursor: null })).page.some(
-          (c: any) => c.key === key,
+          (c: {
+            key: string;
+            folderId?: string;
+            section?: string;
+            unarchivedAt?: number;
+          }) => c.key === key,
         ),
       );
       await b.mutation(api.workspace.move, { key, section: "recent" });
       await until(() =>
         snapshot.conversations.some(
-          (c: any) => c.key === key && c.unarchivedAt,
+          (c: {
+            key: string;
+            folderId?: string;
+            section?: string;
+            unarchivedAt?: number;
+          }) => c.key === key && c.unarchivedAt,
         )
       );
       const archiveKeys = Array.from(
@@ -239,7 +287,9 @@ Deno.test({
         cursor: firstArchive.continueCursor,
       });
       const loadedKeys = new Set(
-        [...firstArchive.page, ...nextArchive.page].map((row: any) => row.key),
+        [...firstArchive.page, ...nextArchive.page].map(
+          (row: Record<string, unknown>) => row.key,
+        ),
       );
       assert(archiveKeys.every((key) => loadedKeys.has(key)));
       const admin = new ConvexHttpClient(url);
@@ -263,7 +313,7 @@ Deno.test({
       const overdue = archiveCases[1004].key;
       const overview = await a.query(api.workspace.overview, {});
       const navigation = new Set(
-        overview.conversations.map((row: any) => row.key),
+        overview.conversations.map((row: Record<string, unknown>) => row.key),
       );
       let cursor = overview.recentCursor,
         more = overview.recentHasMore;
@@ -274,7 +324,9 @@ Deno.test({
         more = !result.isDone;
       }
       assert(
-        archiveCases.every((row) => navigation.has(row.key)),
+        archiveCases.every((row: Record<string, unknown>) =>
+          navigation.has(row.key)
+        ),
         "Recent navigation reaches conversations beyond the first 1,000 entries",
       );
       await a.mutation(api.workspace.move, {
@@ -283,6 +335,17 @@ Deno.test({
         rank: Number.MAX_SAFE_INTEGER,
       });
       await admin.mutation(api.workspace.sweep, {});
+      const expectArchived = async function (key: string) {
+        const deadline = Date.now() + 10000;
+        while (
+          (await a.query(api.workspace.byKey, { key })).section !== "archived"
+        ) {
+          if (Date.now() > deadline) {
+            throw new Error("Archive sweep did not reach later pages");
+          }
+          await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+      };
       await expectArchived(overdue);
       await a.mutation(api.workspace.move, { key: overdue, section: "recent" });
       await admin.mutation(api.workspace.sweep, {});
@@ -293,19 +356,10 @@ Deno.test({
       // Remove synthetic scale data so it cannot crowd subsequent browser test navigation.
       for (let i = 0; i < archiveCases.length; i += 200) {
         await adapter.mutation(api.workspace.ingest, {
-          deletedKeys: archiveCases.slice(i, i + 200).map((row) => row.key),
+          deletedKeys: archiveCases
+            .slice(i, i + 200)
+            .map((row: Record<string, unknown>) => row.key),
         });
-      }
-      async function expectArchived(key: string) {
-        const deadline = Date.now() + 10000;
-        while (
-          (await a.query(api.workspace.byKey, { key })).section !== "archived"
-        ) {
-          if (Date.now() > deadline) {
-            throw new Error("Archive sweep did not reach later pages");
-          }
-          await new Promise((resolve) => setTimeout(resolve, 50));
-        }
       }
       const command = {
         id: crypto.randomUUID(),
@@ -352,7 +406,7 @@ Deno.test({
       );
       assert(
         (await a.query(api.devices.list, {})).every(
-          (d: any) => !("secretHash" in d),
+          (d: Record<string, unknown>) => !("secretHash" in d),
         ),
       );
     } finally {

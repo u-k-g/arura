@@ -1,3 +1,7 @@
+type FallbackConfig = {
+  fallback_providers?: Fallback[];
+  fallback_model?: unknown;
+};
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { inform, resource, revision } from "./client.ts";
 import { Field, run } from "./ui.tsx";
@@ -18,12 +22,12 @@ export default function FallbackModels() {
   const [baseline, setBaseline] = createSignal("");
   const [conflict, setConflict] = createSignal(false);
   let originalLegacy: unknown;
-  const fingerprint = (config: any) =>
+  const fingerprint = (config: FallbackConfig) =>
     JSON.stringify([
       config.fallback_providers ?? [],
       config.fallback_model ?? null,
     ]);
-  function accept(config: any) {
+  function accept(config: FallbackConfig) {
     setRows(structuredClone(config.fallback_providers ?? []));
     originalLegacy = config.fallback_model ?? null;
     setLegacy(Boolean(originalLegacy));

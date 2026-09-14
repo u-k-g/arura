@@ -1,8 +1,9 @@
+import type { ConversationPage, Doc, Workspace } from "../shared/contracts.ts";
 import { createSignal } from "solid-js";
 import { ConvexClient } from "convex/browser";
 import { anyApi } from "convex/server";
 import { clearCache, loadCache, saveCache } from "./cache.ts";
-export const [workspace, setWorkspace] = createSignal<any>(null);
+export const [workspace, setWorkspace] = createSignal<Workspace | null>(null);
 export const [authorized, setAuthorized] = createSignal(false);
 export const [connected, setConnected] = createSignal(false);
 export const [notice, setNotice] = createSignal("");
@@ -64,7 +65,7 @@ async function token(generation: number) {
 }
 export async function start() {
   const generation = ++sessionGeneration;
-  const cached = await loadCache<any>("workspace");
+  const cached = await loadCache<Workspace>("workspace");
   if (generation !== sessionGeneration) return;
   if (cached) {
     setWorkspace(cached);
@@ -79,16 +80,16 @@ export async function start() {
     if (generation !== sessionGeneration) return;
     client = new ConvexClient(config.convexUrl);
     client.setAuth(async () =>
-      generation === sessionGeneration ? token(generation) : null
+      generation === sessionGeneration ? await token(generation) : null
     );
     stopConnection = client.subscribeToConnectionState((state) => {
       if (generation === sessionGeneration) {
         setConnected(state.isWebSocketConnected && authorized());
       }
     });
-    let base: any;
+    let base: Workspace | undefined;
     let requestedPages = 0;
-    const pages = new Map<number, any>();
+    const pages = new Map<number, ConversationPage>();
     const stops = new Map<number, () => void>();
     const publish = () => {
       if (generation !== sessionGeneration || !base) return;
@@ -102,17 +103,17 @@ export async function start() {
             [
               ...base.conversations,
               ...ordered.flatMap((page) => page.page),
-            ].map((row: any) => [row.key, row]),
+            ].map((row) => [row.key, row]),
           ).values(),
         ],
         recentHasMore: ordered.length
-          ? !ordered.at(-1).isDone
+          ? !ordered.at(-1)!.isDone
           : base.recentHasMore,
       };
       setWorkspace(value);
       void saveCache("workspace", value);
     };
-    function truncate(after: number) {
+    const truncate = function (after: number) {
       for (const [index, stop] of stops) {
         if (index > after) {
           stop();
@@ -120,8 +121,8 @@ export async function start() {
           pages.delete(index);
         }
       }
-    }
-    function follow(index: number, cursor: string) {
+    };
+    const follow = function (index: number, cursor: string) {
       let previousCursor: string | undefined;
       stops.set(
         index,
@@ -143,7 +144,7 @@ export async function start() {
           (error) => inform(error.message),
         ),
       );
-    }
+    };
     loadRecentPage = () => {
       if (generation !== sessionGeneration || !connected() || !base) return;
       const previous = pages.get(requestedPages - 1);
@@ -151,7 +152,8 @@ export async function start() {
         ? previous?.continueCursor
         : base.recentCursor;
       if (
-        !cursor || (requestedPages ? previous?.isDone : !base.recentHasMore)
+        !cursor ||
+        (requestedPages ? previous?.isDone : !base.recentHasMore)
       ) {
         return;
       }
@@ -208,13 +210,13 @@ export async function mutate(name: string, args: Record<string, unknown>) {
     throw new Error("Connect to your host to make changes");
   }
   const [module, method] = name.split(".");
-  return client.mutation(anyApi[module][method], args);
+  return await client.mutation(anyApi[module][method], args);
 }
-export function subscribe(
+export function subscribe<T>(
   module: string,
   name: string,
   args: Record<string, unknown>,
-  callback: (value: any) => void,
+  callback: (value: T) => void,
 ) {
   if (!client) return () => {};
   return client.onUpdate(
@@ -224,11 +226,11 @@ export function subscribe(
     (error) => inform(error.message),
   );
 }
-export async function command(
+export async function command<T = Record<string, unknown>>(
   kind: string,
   conversation: string,
   payload: unknown,
-): Promise<any> {
+): Promise<T> {
   if (!client || !connected()) {
     throw new Error("Connect to your host to send this request");
   }
@@ -244,14 +246,21 @@ export async function command(
         ),
       );
     }, 90000);
-    stop = subscribe("commands", "result", { id }, (result) => {
-      if (!result || ["queued", "dispatching"].includes(result.status)) return;
-      clearTimeout(timer);
-      stop();
-      if (["error", "unknown", "cancelled"].includes(result.status)) {
-        reject(new Error(result.error ?? result.status));
-      } else resolve(result.result);
-    });
+    stop = subscribe<Doc<"commands"> | null>(
+      "commands",
+      "result",
+      { id },
+      (result) => {
+        if (!result || ["queued", "dispatching"].includes(result.status)) {
+          return;
+        }
+        clearTimeout(timer);
+        stop();
+        if (["error", "unknown", "cancelled"].includes(result.status)) {
+          reject(new Error(result.error ?? result.status));
+        } else resolve(result.result);
+      },
+    );
   });
 }
 export async function resource(

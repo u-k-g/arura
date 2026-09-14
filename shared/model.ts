@@ -1,3 +1,4 @@
+import { record } from "./contracts.ts";
 export type Section = "essential" | "pinned" | "recent" | "archived";
 export interface Conversation {
   key: string;
@@ -68,7 +69,7 @@ export interface ClarificationQuestion {
 }
 export function interactionFromEvent(
   type: string,
-  payload: Record<string, any>,
+  payload: Record<string, unknown>,
 ): Interaction {
   const choices = (value: unknown) =>
     Array.isArray(value)
@@ -92,22 +93,22 @@ export function interactionFromEvent(
       ? {
         questions: payload.questions
           .filter(
-            (q: any) =>
+            (q) =>
               q &&
               typeof q.qid === "string" &&
               typeof q.question === "string",
           )
-          .map((q: any) => ({
+          .map((q) => ({
             id: q.qid,
             text: visibleText(q.question),
             options: choices(q.choices),
             multiple: q.multi_select === true,
-            ...(payload.answers?.[q.qid] !== undefined
+            ...(record(payload.answers)[q.qid] !== undefined
               ? {
                 answer: visibleText(
-                  Array.isArray(payload.answers[q.qid])
-                    ? JSON.stringify(payload.answers[q.qid])
-                    : String(payload.answers[q.qid]),
+                  Array.isArray(record(payload.answers)[q.qid])
+                    ? JSON.stringify(record(payload.answers)[q.qid])
+                    : String(record(payload.answers)[q.qid]),
                 ),
               }
               : {}),

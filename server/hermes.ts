@@ -1,3 +1,4 @@
+import type { RpcFrame, RpcResult } from "../shared/contracts.ts";
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import WebSocket from "ws";
@@ -12,10 +13,17 @@ import {
 } from "../shared/model.ts";
 
 type Pending = {
-  resolve: (value: any) => void;
+  resolve: (value: RpcResult) => void;
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
 };
+function assertSession(
+  result: RpcResult,
+): asserts result is RpcResult & { session_id: string } {
+  if (typeof result.session_id !== "string" || !result.session_id) {
+    throw new Error("Hermes did not return a session identifier");
+  }
+}
 export class HermesHttpError extends Error {
   constructor(
     message: string,
@@ -40,7 +48,7 @@ export class Hermes extends EventEmitter {
   private connecting?: Promise<void>;
   private authPromise?: Promise<void>;
   private replaying = new Set<string>();
-  private held = new Map<string, any[]>();
+  private held = new Map<string, RpcFrame[]>();
   private recovering = new Map<
     string,
     { timer?: ReturnType<typeof setTimeout> }
@@ -48,7 +56,7 @@ export class Hermes extends EventEmitter {
   online = false;
   async login() {
     if (!process.env.HERMES_USERNAME) return;
-    if (this.authPromise) return this.authPromise;
+    if (this.authPromise) return await this.authPromise;
     this.authPromise = (async () => {
       let provider = process.env.HERMES_AUTH_PROVIDER;
       if (!provider) {
@@ -89,7 +97,7 @@ export class Hermes extends EventEmitter {
     })().finally(() => {
       this.authPromise = undefined;
     });
-    return this.authPromise;
+    return await this.authPromise;
   }
   private captureCookies(r: Response) {
     for (const cookie of r.headers.getSetCookie()) {
@@ -143,7 +151,9 @@ export class Hermes extends EventEmitter {
       let message = `Hermes request failed (${r.status})`;
       try {
         message = JSON.parse(text).detail ?? message;
-      } catch {}
+      } catch {
+        /* Preserve HTTP status when the error body is not JSON. */
+      }
       throw new HermesHttpError(
         typeof message === "string" ? message : JSON.stringify(message),
         r.status,
@@ -155,11 +165,11 @@ export class Hermes extends EventEmitter {
   async connect(): Promise<void> {
     if (this.stopped) return;
     if (this.online) return;
-    if (this.connecting) return this.connecting;
+    if (this.connecting) return await this.connecting;
     this.connecting = this.open().finally(() => {
       this.connecting = undefined;
     });
-    return this.connecting;
+    return await this.connecting;
   }
   private async open() {
     await this.login();
@@ -224,7 +234,7 @@ export class Hermes extends EventEmitter {
     method: string,
     params: Record<string, unknown> = {},
     timeout = 30000,
-  ): Promise<any> {
+  ): Promise<RpcResult> {
     if (!this.online || this.socket?.readyState !== WebSocket.OPEN) {
       return Promise.reject(new Error("Hermes is disconnected"));
     }
@@ -242,7 +252,7 @@ export class Hermes extends EventEmitter {
       this.socket!.send(JSON.stringify({ jsonrpc: "2.0", id, method, params }));
     });
   }
-  private receive(frame: any) {
+  private receive(frame: RpcFrame) {
     if (frame.id !== undefined) {
       const p = this.pending.get(frame.id);
       if (p) {
@@ -254,7 +264,7 @@ export class Hermes extends EventEmitter {
               code: frame.error.code,
             }),
           )
-          : p.resolve(frame.result);
+          : p.resolve(frame.result ?? {});
       }
       return;
     }
@@ -263,7 +273,7 @@ export class Hermes extends EventEmitter {
     const payload = event.payload ?? {};
     if (event.type === "gateway.ready") {
       const changed = this.epoch !== payload.replay_epoch;
-      this.epoch = payload.replay_epoch ?? "";
+      this.epoch = String(payload.replay_epoch ?? "");
       if (changed) {
         for (const sid of this.recovering.keys()) this.stopRecovery(sid);
         const keys = [...this.runtime.keys()];
@@ -290,6 +300,7 @@ export class Hermes extends EventEmitter {
       this.emit("changed");
     }
     const sid = event.session_id;
+    if (!sid) return;
     if (this.replaying.has(sid)) {
       const held = this.held.get(sid) ?? [];
       held.push(frame);
@@ -304,7 +315,7 @@ export class Hermes extends EventEmitter {
       if (
         previous !== undefined &&
         event.seq > previous + 1 &&
-        !["message.start", "message.complete"].includes(event.type)
+        !["message.start", "message.complete"].includes(event.type ?? "")
       ) {
         this.startRecovery(sid, key);
         this.emit("resync", key);
@@ -415,7 +426,7 @@ export class Hermes extends EventEmitter {
     for (const sid of sessions) this.replaying.add(sid);
     for (const sid of sessions) {
       const last_seen = this.seq.get(sid) ?? 0;
-      let events: any[] = [];
+      let events: RpcFrame[] = [];
       try {
         const key = this.reverse.get(sid)!;
         const [profile, sourceId] = JSON.parse(key);
@@ -425,6 +436,7 @@ export class Hermes extends EventEmitter {
           profile,
           omit_messages: true,
         });
+        assertSession(resumed);
         if (resumed.session_id !== sid) {
           this.runtime.set(key, resumed.session_id);
           this.reverse.delete(sid);
@@ -444,7 +456,7 @@ export class Hermes extends EventEmitter {
           this.emit("reconcile");
           this.emit("resync", this.reverse.get(sid));
         } else {
-          events = (result.events ?? []).map((event: any) =>
+          events = (result.events ?? []).map((event) =>
             event.method ? event : { method: "event", params: event }
           );
         }
@@ -519,7 +531,11 @@ export class Hermes extends EventEmitter {
     };
     recovery.timer = setTimeout(() => void poll(), 1000);
   }
-  private restoreTurn(key: string, result: any, preserveActivity = false) {
+  private restoreTurn(
+    key: string,
+    result: RpcResult,
+    preserveActivity = false,
+  ) {
     const previous = this.turns.get(key);
     if (
       result.running ||
@@ -533,7 +549,7 @@ export class Hermes extends EventEmitter {
         text: visibleText(snapshot.assistant ?? ""),
         activity: preserveActivity ? (previous?.activity ?? []) : [],
         interactions: preserveActivity ? (previous?.interactions ?? []) : [],
-        recovering: this.recovering.has(result.session_id),
+        recovering: this.recovering.has(result.session_id ?? ""),
         startedAt: Number(
           snapshot.started_at ?? result.turn_started_at ?? Date.now() / 1000,
         ) * 1000,
@@ -549,7 +565,7 @@ export class Hermes extends EventEmitter {
         const [kind, payload] of [
           ["approval", result.pending_approval],
           ["clarify", result.pending_clarify],
-        ]
+        ] as const
       ) {
         if (payload) {
           this.receive({
@@ -582,7 +598,7 @@ export class Hermes extends EventEmitter {
     if (pending) return pending;
     const work = this.resume(key).finally(() => this.attaching.delete(key));
     this.attaching.set(key, work);
-    return work;
+    return await work;
   }
   private async resume(key: string): Promise<string> {
     const [profile, id] = JSON.parse(key);
@@ -591,6 +607,7 @@ export class Hermes extends EventEmitter {
       profile,
       omit_messages: true,
     });
+    assertSession(result);
     this.runtime.set(key, result.session_id);
     this.reverse.set(result.session_id, key);
     this.restoreTurn(key, result);
@@ -607,6 +624,7 @@ export class Hermes extends EventEmitter {
       throw new Error("Hermes did not return a stored conversation ID");
     }
     const key = conversationKey(profile, sourceId);
+    assertSession(result);
     this.runtime.set(key, result.session_id);
     this.reverse.set(result.session_id, key);
     return {
@@ -628,7 +646,7 @@ export class Hermes extends EventEmitter {
         throw new Error("Hermes did not return the bot conversation lookup");
       }
       return result.sessions.find(
-        (row: any) => row.title === "Bot Chat" && !row.archived,
+        (row) => row.title === "Bot Chat" && !row.archived,
       );
     };
     let row = await lookup();
@@ -657,7 +675,7 @@ export class Hermes extends EventEmitter {
       }
     }
     const roster = await this.call("profiles.list", { include_sessions: true });
-    const bot = roster.profiles?.find((item: any) => item.name === profile);
+    const bot = roster.profiles?.find((item) => item.name === profile);
     const sourceId = String(row.resolved_id ?? row.id ?? row.session_id);
     if (!sourceId || sourceId === "undefined") {
       throw new Error("Hermes did not return a stored bot conversation ID");
@@ -752,8 +770,8 @@ export class Hermes extends EventEmitter {
         title: profile.ui_meta?.["hermes-bots"]?.title ||
           profile.display_name ||
           profile.name,
-        activityAt: Number(canonical.last_active ?? canonical.started_at ?? 0) *
-          1000,
+        activityAt:
+          Number(canonical?.last_active ?? canonical?.started_at ?? 0) * 1000,
       });
     }
     return [...all.values()];
@@ -803,7 +821,9 @@ export class Hermes extends EventEmitter {
       revision: createHash("sha256")
         .update(
           JSON.stringify({
-            ids: (data.messages ?? []).map((row: any) => row.id ?? row.row_id),
+            ids: (data.messages ?? []).map(
+              (row: { id?: string; row_id?: string }) => row.id ?? row.row_id,
+            ),
             messages: normalizeMessages(data.messages ?? []),
           }),
         )
@@ -851,6 +871,7 @@ export class Hermes extends EventEmitter {
     });
     const sourceId = String(result.stored_session_id),
       branchKey = conversationKey(profile, sourceId);
+    assertSession(result);
     this.runtime.set(branchKey, result.session_id);
     this.reverse.set(result.session_id, branchKey);
     return {

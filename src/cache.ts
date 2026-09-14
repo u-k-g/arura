@@ -137,7 +137,8 @@ async function persist(
     await write();
   } catch (error) {
     if (
-      !(error instanceof DOMException) || error.name !== "QuotaExceededError"
+      !(error instanceof DOMException) ||
+      error.name !== "QuotaExceededError"
     ) {
       throw error;
     }
@@ -184,5 +185,5 @@ export async function draft(key: string, text?: string) {
   }
 }
 export async function storageInfo() {
-  return navigator.storage?.estimate() ?? {};
+  return (await navigator.storage?.estimate()) ?? {};
 }

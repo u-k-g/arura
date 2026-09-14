@@ -29,17 +29,27 @@ export default function ContextSuggestions(props: {
         const result = await resource("skills", { profile });
         const rows = (Array.isArray(result) ? result : (result.skills ?? []))
           .filter(
-            (skill: any) =>
+            (skill: {
+              name: string;
+              description?: string;
+              enabled?: boolean;
+            }) =>
               typeof skill.name === "string" &&
               skill.enabled !== false &&
               !/image[-_ ]?gen|voice|terminal/i.test(skill.name),
           )
-          .map((skill: any) => ({
-            name: skill.name,
-            description: typeof skill.description === "string"
-              ? skill.description
-              : "",
-          }));
+          .map(
+            (skill: {
+              name: string;
+              description?: string;
+              enabled?: boolean;
+            }) => ({
+              name: skill.name,
+              description: typeof skill.description === "string"
+                ? skill.description
+                : "",
+            }),
+          );
         if (cancelled) return;
         setSkills(rows);
         setLoaded(profile);
@@ -56,16 +66,18 @@ export default function ContextSuggestions(props: {
   const matching = () => {
     const words = new Set(props.text.toLowerCase().match(/[a-z]{4,}/g) ?? []);
     return skills()
-      .filter((skill) => {
-        if (props.text.includes(`/${skill.name}`)) return false;
-        const name = skill.name.toLowerCase().split(/[-_ ]/);
-        return (
-          name.some((word) => words.has(word)) ||
-          (skill.description?.toLowerCase().match(/[a-z]{5,}/g) ?? []).filter(
-              (word) => words.has(word),
-            ).length >= 2
-        );
-      })
+      .filter(
+        (skill: { name: string; description?: string; enabled?: boolean }) => {
+          if (props.text.includes(`/${skill.name}`)) return false;
+          const name = skill.name.toLowerCase().split(/[-_ ]/);
+          return (
+            name.some((word) => words.has(word)) ||
+            (skill.description?.toLowerCase().match(/[a-z]{5,}/g) ?? []).filter(
+                (word) => words.has(word),
+              ).length >= 2
+          );
+        },
+      )
       .slice(0, 2);
   };
   const schedule = () =>
@@ -82,7 +94,11 @@ export default function ContextSuggestions(props: {
     <Show when={matching().length || schedule() || connection()}>
       <section class="context-suggestions" aria-label="Suggested actions">
         <For each={matching()}>
-          {(skill) => (
+          {(skill: {
+            name: string;
+            description?: string;
+            enabled?: boolean;
+          }) => (
             <button
               type="button"
               onClick={() => props.useSkill(skill.name)}

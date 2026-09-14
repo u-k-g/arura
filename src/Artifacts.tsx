@@ -1,3 +1,4 @@
+import type { ArtifactList } from "../shared/contracts.ts";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { connected, subscribe } from "./client.ts";
 import { loadCache, saveCache } from "./cache.ts";
@@ -6,9 +7,10 @@ import { Empty, Icon } from "./ui.tsx";
 export default function Artifacts(props: { navigate: (view: string) => void }) {
   const [search, setSearch] = createSignal("");
   const [limit, setLimit] = createSignal(30);
-  const [data, setData] = createSignal<any>({
+  const [data, setData] = createSignal<ArtifactList>({
     items: [],
     pending: 0,
+    hasMore: false,
     failures: 0,
   });
   createEffect(() => {
@@ -18,10 +20,10 @@ export default function Artifacts(props: { navigate: (view: string) => void }) {
       key = `artifacts:${term}:${count}`;
     let disposed = false,
       fresh = false;
-    void loadCache<any>(key).then((value) => {
+    void loadCache<ArtifactList>(key).then((value) => {
       if (!disposed && !fresh && value) setData(value);
     });
-    const stop = subscribe(
+    const stop = subscribe<ArtifactList>(
       "artifacts",
       "list",
       { search: term, limit: count },
@@ -71,7 +73,7 @@ export default function Artifacts(props: { navigate: (view: string) => void }) {
       </Show>
       <div class="resource-list">
         <For each={data().items}>
-          {(file: any) => (
+          {(file) => (
             <article class="resource-card">
               <div class="resource-card-heading">
                 <Icon name="page" />

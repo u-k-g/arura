@@ -1,3 +1,4 @@
+import type { Doc } from "../shared/contracts.ts";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { shortcutFromEvent, shortcuts } from "../shared/shortcuts.ts";
 import {
@@ -63,11 +64,13 @@ export default function Settings(props: {
   section?: string;
   navigate: (view: string) => void;
 }) {
-  const [devices, setDevices] = createSignal<any[]>([]),
-    [invite, setInvite] = createSignal<any>(),
+  const [devices, setDevices] = createSignal<
+      (Omit<Doc<"devices">, "secretHash"> & { current?: boolean })[]
+    >([]),
+    [invite, setInvite] = createSignal<{ code: string; expiresAt: number }>(),
     [cache, setCache] = createSignal(caching()),
-    [storage, setStorage] = createSignal<any>({}),
-    [actions, setActions] = createSignal<any[]>([]);
+    [storage, setStorage] = createSignal<StorageEstimate>({}),
+    [actions, setActions] = createSignal<{ id: string; label: string }[]>([]);
   createEffect(() => {
     if (props.section === "devices") {
       const stop = subscribe("devices", "list", {}, setDevices);
@@ -292,7 +295,7 @@ export default function Settings(props: {
             Silent updates from Hermes. No sounds or external push service.
           </p>
           <For each={workspace()?.notices ?? []}>
-            {(n: any) => (
+            {(n) => (
               <button
                 type="button"
                 class="notification-card"
@@ -431,7 +434,7 @@ export default function Settings(props: {
             type="button"
             onClick={() =>
               void run(async () => {
-                const result = await new Promise<any>((resolve) => {
+                const result = await new Promise<unknown>((resolve) => {
                   let stop = () => {};
                   stop = subscribe("workspace", "backup", {}, (value) => {
                     resolve(value);
@@ -457,12 +460,12 @@ export default function Settings(props: {
             Open this website on the other device and enter this single-use
             code. It expires in ten minutes.
           </p>
-          <output class="invite-code">{invite().code}</output>
+          <output class="invite-code">{invite()!.code}</output>
           <button
             type="button"
             class="primary"
             onClick={() =>
-              void run(() => navigator.clipboard.writeText(invite().code))}
+              void run(() => navigator.clipboard.writeText(invite()!.code))}
           >
             Copy code
           </button>

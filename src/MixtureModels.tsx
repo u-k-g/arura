@@ -328,16 +328,13 @@ export default function MixtureModels() {
               />
             </Field>
             <div class="resource-actions">
-              <button
-                type="button"
-                onClick={() => void run(async () => named())}
-              >
+              <button type="button" onClick={() => named()}>
                 Add preset
               </button>
               <button
                 type="button"
                 disabled={Boolean(value().privacy_filter)}
-                onClick={() => void run(async () => named(true))}
+                onClick={() => named(true)}
               >
                 Rename selected preset
               </button>

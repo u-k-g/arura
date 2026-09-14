@@ -6,7 +6,10 @@ export const list = query({
   handler: async (ctx) => {
     const self = await device(ctx);
     return (await ctx.db.query("devices").collect()).map(
-      ({ secretHash, ...d }) => ({ ...d, current: d.id === self.id }),
+      ({ secretHash: _secretHash, ...d }) => ({
+        ...d,
+        current: d.id === self.id,
+      }),
     );
   },
 });

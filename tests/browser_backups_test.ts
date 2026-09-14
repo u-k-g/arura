@@ -11,7 +11,7 @@ Deno.test({
     });
     const url = Deno.env.get("ARURA_TEST_URL")!;
     try {
-      async function device(name: string) {
+      const device = async function (name: string) {
         const page = await browser.newPage();
         await page.goto(url);
         await page.getByLabel("Device name", { exact: true }).fill(name);
@@ -31,7 +31,7 @@ Deno.test({
           .getByRole("button", { name: "Create Hermes backup", exact: true })
           .click();
         return page;
-      }
+      };
       const a = await device("Backup desktop"),
         b = await device("Backup second device");
       await a

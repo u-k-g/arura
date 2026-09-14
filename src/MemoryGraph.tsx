@@ -226,7 +226,7 @@ export default function MemoryGraph() {
                       !Number.isFinite(node.timestamp),
                   ) ||
                   value.graph.edges.some(
-                    (edge: any) =>
+                    (edge: { source?: unknown; target?: unknown }) =>
                       !edge ||
                       typeof edge.source !== "string" ||
                       typeof edge.target !== "string",

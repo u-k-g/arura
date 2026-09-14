@@ -15,6 +15,27 @@ Deno.test({
     const page = await browser.newPage();
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
+    function savedDraft() {
+      return page.evaluate(async () => {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open("arura");
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        try {
+          return await new Promise<string>((resolve, reject) => {
+            const request = db
+              .transaction("drafts")
+              .objectStore("drafts")
+              .get(localStorage.getItem("arura.view")!);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+        } finally {
+          db.close();
+        }
+      });
+    }
     try {
       await page.goto(Deno.env.get("ARURA_TEST_URL")!);
       await page
@@ -78,27 +99,6 @@ Deno.test({
           }),
         );
       }, prompt);
-      async function savedDraft() {
-        return page.evaluate(async () => {
-          const db = await new Promise<IDBDatabase>((resolve, reject) => {
-            const request = indexedDB.open("arura");
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => reject(request.error);
-          });
-          try {
-            return await new Promise<string>((resolve, reject) => {
-              const request = db
-                .transaction("drafts")
-                .objectStore("drafts")
-                .get(localStorage.getItem("arura.view")!);
-              request.onsuccess = () => resolve(request.result);
-              request.onerror = () => reject(request.error);
-            });
-          } finally {
-            db.close();
-          }
-        });
-      }
       await expect.poll(savedDraft).toBe(prompt);
       await page.reload();
       await expect(input).toContainText("keep this Markdown");
