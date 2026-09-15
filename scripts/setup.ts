@@ -1,10 +1,5 @@
 import "dotenv/config";
-import {
-  identity,
-  issuer,
-  randomSecret,
-  stateDir,
-} from "../server/identity.ts";
+import { identity, issuer, stateDir } from "../server/identity.ts";
 import { join } from "node:path";
 import { readFile, writeFile } from "node:fs/promises";
 const keys = await identity();
@@ -15,18 +10,18 @@ try {
   if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   await writeFile(
     ".env",
-    `ARURA_PUBLIC_URL=http://localhost:5173\nARURA_AUTH_ISSUER=${issuer}\nARURA_ACCESS_KEY=${randomSecret()}\nCONVEX_URL=http://127.0.0.1:3210\nCONVEX_PUBLIC_URL=http://localhost:3210\nHERMES_URL=http://127.0.0.1:9119\n`,
+    `ARURA_PUBLIC_URL=http://localhost:5173\nARURA_AUTH_ISSUER=${issuer}\nCONVEX_URL=http://127.0.0.1:3210\nCONVEX_PUBLIC_URL=http://localhost:3210\nHERMES_URL=http://127.0.0.1:9119\n`,
     { mode: 0o600, flag: "wx" },
   );
-  console.log("Created .env with a private device authorization key.");
+  console.log(
+    "Created .env. Configure the adapter's Hermes credentials before starting Arura.",
+  );
 }
 await writeFile(
   join(stateDir, "convex-auth.env"),
-  `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${
-    Buffer.from(
-      JSON.stringify(keys.jwks),
-    ).toString("base64")
-  }\n`,
+  `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${Buffer.from(
+    JSON.stringify(keys.jwks),
+  ).toString("base64")}\n`,
   { mode: 0o600 },
 );
 console.log(

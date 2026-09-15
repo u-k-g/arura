@@ -217,16 +217,14 @@ Deno.test("archive protects pinned folders, active work, input, and recently res
     pendingInput: false,
   };
   equal(shouldArchive(c, 7, now), true);
-  for (
-    const patch of [
-      { section: "essential" },
-      { section: "pinned" },
-      { folderId: "folder" },
-      { running: true },
-      { pendingInput: true },
-      { unarchivedAt: now - 1000 },
-    ]
-  ) {
+  for (const patch of [
+    { section: "essential" },
+    { section: "pinned" },
+    { folderId: "folder" },
+    { running: true },
+    { pendingInput: true },
+    { unarchivedAt: now - 1000 },
+  ]) {
     equal(shouldArchive({ ...c, ...patch } as Conversation, 7, now), false);
   }
   equal(shouldArchive({ ...c, activityAt: now - 7 * 86400000 }, 7, now), true);

@@ -614,8 +614,7 @@ dialog.conversation-menu {
 }
 
 /* Separate navigation groups without adding more vertical space. */
-.navigation .section-heading::after,
-.session-date-group::after {
+.navigation .section-heading::after {
   content: "";
   flex: 1;
   height: 1px;
@@ -625,16 +624,7 @@ dialog.conversation-menu {
 .navigation .section-heading > .icon-button {
   order: 1;
 }
-.session-date-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 8px 3px;
-  color: var(--subtle);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
+
 .profile-actions .profile-name {
   flex: 1;
   min-width: 0;

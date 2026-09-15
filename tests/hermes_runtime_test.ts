@@ -5,8 +5,7 @@ import { operationRequest } from "../shared/resources.ts";
 import { configPatch } from "../shared/resource-forms.ts";
 
 Deno.test({
-  name:
-    "isolated upstream Hermes: profile, schedule, skill, memory, MCP, endpoint and webhook contracts",
+  name: "isolated upstream Hermes: profile, schedule, skill, memory, MCP, endpoint and webhook contracts",
   ignore: !Deno.env.get("ARURA_ISOLATED_HERMES_HOME"),
   async fn(t) {
     const home = Deno.env.get("ARURA_ISOLATED_HERMES_HOME")!;
@@ -168,8 +167,7 @@ Deno.test({
       const name = `arura-test-${suffix}`;
       const directory = join(home, "skills", name);
       await Deno.mkdir(directory, { recursive: true });
-      const content =
-        `---\nname: ${name}\ndescription: Disposable acceptance skill\n---\nOnly test data.\n`;
+      const content = `---\nname: ${name}\ndescription: Disposable acceptance skill\n---\nOnly test data.\n`;
       await Deno.writeTextFile(join(directory, "SKILL.md"), content);
       try {
         assert(
@@ -427,7 +425,7 @@ Deno.test({
           const history = await hermes.history(created.key);
           assert(
             history.messages.some((message) =>
-              message.text.includes("Runtime acceptance answer.")
+              message.text.includes("Runtime acceptance answer."),
             ),
           );
           assert(
@@ -436,13 +434,11 @@ Deno.test({
             ),
           );
           const session_id = await hermes.attach(created.key);
-          for (
-            const [name, arg] of [
-              ["goal", "Plan a garden\nverification: Five native plants"],
-              ["loop", "2h Check the garden"],
-              ["heartbeat", "every 2h Check the garden"],
-            ]
-          ) {
+          for (const [name, arg] of [
+            ["goal", "Plan a garden\nverification: Five native plants"],
+            ["loop", "2h Check the garden"],
+            ["heartbeat", "every 2h Check the garden"],
+          ]) {
             try {
               await hermes.call("command.dispatch", { session_id, name, arg });
             } catch (error) {

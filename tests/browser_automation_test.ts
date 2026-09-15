@@ -1,9 +1,9 @@
+import { signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
-  name:
-    "contextual skill and schedule suggestions lead to editable schedules with lifecycle controls",
+  name: "contextual skill and schedule suggestions lead to editable schedules with lifecycle controls",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -14,15 +14,7 @@ Deno.test({
     const url = Deno.env.get("ARURA_TEST_URL")!;
     try {
       await page.goto(url);
-      await page
-        .getByLabel("Device name", { exact: true })
-        .fill("Automation test");
-      await page
-        .getByLabel("Authorization code", { exact: true })
-        .fill(Deno.env.get("ARURA_TEST_ACCESS_KEY")!);
-      await page
-        .getByRole("button", { name: "Authorize this device", exact: true })
-        .click();
+      await signIn(page, "Automation test");
       await page
         .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })
@@ -107,20 +99,17 @@ Deno.test({
       await expect(goal).toContainText("paused");
       await goal.getByRole("button", { name: "Resume", exact: true }).click();
       await expect(goal).toContainText("active");
-      void onceActionDialog(
-        page,
-        (dialog) => dialog.accept("Choose native plants"),
+      void onceActionDialog(page, (dialog) =>
+        dialog.accept("Choose native plants"),
       );
       await goal.getByRole("button", { name: "Add step", exact: true }).click();
       await expect(goal).toContainText("Choose native plants");
       await goal.getByRole("button", { name: "Clear", exact: true }).click();
       await expect(goal).toHaveCount(0);
-      for (
-        const [kind, title] of [
-          ["loop", "Repeated prompt"],
-          ["heartbeat", "Heartbeat"],
-        ]
-      ) {
+      for (const [kind, title] of [
+        ["loop", "Repeated prompt"],
+        ["heartbeat", "Heartbeat"],
+      ]) {
         await controls
           .getByLabel("Automation", { exact: true })
           .selectOption(kind);

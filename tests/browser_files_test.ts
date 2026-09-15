@@ -1,9 +1,9 @@
+import { signIn } from "./sign_in.ts";
 import { Buffer } from "node:buffer";
 import { chromium, expect, type Page } from "@playwright/test";
 
 Deno.test({
-  name:
-    "uploads round-trip through the host and concurrent file edits preserve the losing draft",
+  name: "uploads round-trip through the host and concurrent file edits preserve the losing draft",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -14,13 +14,7 @@ Deno.test({
     async function device(name: string) {
       const page = await browser.newPage();
       await page.goto(url);
-      await page.getByLabel("Device name", { exact: true }).fill(name);
-      await page
-        .getByLabel("Authorization code", { exact: true })
-        .fill(Deno.env.get("ARURA_TEST_ACCESS_KEY")!);
-      await page
-        .getByRole("button", { name: "Authorize this device", exact: true })
-        .click();
+      await signIn(page, name);
       return page;
     }
     try {
@@ -56,9 +50,8 @@ Deno.test({
         clipboardData.items.add(
           new File(
             [
-              Uint8Array.from(
-                atob(data),
-                (character) => character.charCodeAt(0),
+              Uint8Array.from(atob(data), (character) =>
+                character.charCodeAt(0),
               ),
             ],
             "pasted.png",
@@ -142,8 +135,7 @@ Deno.test({
         save(b, "Concurrent B"),
       ]);
       expect(responses.map((response) => response.status()).sort()).toEqual([
-        200,
-        409,
+        200, 409,
       ]);
       const stored = await (
         await a.request.get(

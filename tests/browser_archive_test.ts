@@ -1,3 +1,4 @@
+import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
@@ -22,15 +23,7 @@ Deno.test({
     try {
       await archive(false);
       await page.goto(url);
-      await page
-        .getByLabel("Device name", { exact: true })
-        .fill("Archive cached startup");
-      await page
-        .getByLabel("Authorization code", { exact: true })
-        .fill(Deno.env.get("ARURA_TEST_ACCESS_KEY")!);
-      await page
-        .getByRole("button", { name: "Authorize this device", exact: true })
-        .click();
+      await signIn(page, "Archive cached startup");
       for (const width of [1280, 390]) {
         await page.setViewportSize({ width, height: 844 });
         if (width === 390) {

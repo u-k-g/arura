@@ -1745,3 +1745,8 @@ progress {
     min-height: 40px;
   }
 }
+
+.badge.is-disabled {
+  color: var(--muted);
+  background: color-mix(in srgb, var(--muted) 8%, transparent);
+}

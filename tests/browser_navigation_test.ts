@@ -1,9 +1,9 @@
+import { signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect, type Page } from "@playwright/test";
 
 Deno.test({
-  name:
-    "conversation rename, context, independent views, notices and deletion work across devices",
+  name: "conversation rename, context, independent views, notices and deletion work across devices",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -14,18 +14,12 @@ Deno.test({
     async function device(name: string) {
       const page = await browser.newPage();
       await page.goto(url);
-      await page.getByLabel("Device name", { exact: true }).fill(name);
-      await page
-        .getByLabel("Authorization code", { exact: true })
-        .fill(Deno.env.get("ARURA_TEST_ACCESS_KEY")!);
-      await page
-        .getByRole("button", { name: "Authorize this device", exact: true })
-        .click();
+      await signIn(page, name);
       return page;
     }
     async function newChat(page: Page) {
       const before = await page.evaluate(() =>
-        localStorage.getItem("arura.view")
+        localStorage.getItem("arura.view"),
       );
       await page
         .locator(".topbar")

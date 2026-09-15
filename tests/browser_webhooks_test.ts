@@ -1,9 +1,9 @@
+import { signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
-  name:
-    "webhook creation reveals its secret once while shared listings and caches omit it",
+  name: "webhook creation reveals its secret once while shared listings and caches omit it",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -14,15 +14,7 @@ Deno.test({
     try {
       const page = await browser.newPage();
       await page.goto(url);
-      await page
-        .getByLabel("Device name", { exact: true })
-        .fill("Webhook test");
-      await page
-        .getByLabel("Authorization code", { exact: true })
-        .fill(Deno.env.get("ARURA_TEST_ACCESS_KEY")!);
-      await page
-        .getByRole("button", { name: "Authorize this device", exact: true })
-        .click();
+      await signIn(page, "Webhook test");
       await page.getByRole("button", { name: "Settings", exact: true }).click();
       await page
         .getByRole("button", { name: "Incoming triggers", exact: true })

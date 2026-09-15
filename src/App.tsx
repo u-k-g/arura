@@ -41,6 +41,7 @@ import CommandPalette, { type PaletteItem } from "./CommandPalette.tsx";
 const Chat = lazy(() => import("./Chat.tsx"));
 const Settings = lazy(() => import("./Settings.tsx"));
 const Resources = lazy(() => import("./Resources.tsx"));
+const Messaging = lazy(() => import("./Messaging.tsx"));
 const Capabilities = lazy(() => import("./Capabilities.tsx"));
 const Artifacts = lazy(() => import("./Artifacts.tsx"));
 
@@ -79,11 +80,10 @@ export default function App() {
     setSearchError("");
     const timer = setTimeout(async () => {
       const cacheKey = `search:${query}`;
-      const cached = await loadCache<
-        { key: string; title: string; profile: string }[]
-      >(
-        cacheKey,
-      );
+      const cached =
+        await loadCache<{ key: string; title: string; profile: string }[]>(
+          cacheKey,
+        );
       if (disposed) return;
       if (cached) setMatches(cached);
       if (!online) return;
@@ -134,9 +134,8 @@ export default function App() {
   const [archiveReady, setArchiveReady] = createSignal(false);
   const [menu, setMenu] = createSignal<Conversation>(),
     [folderName, setFolderName] = createSignal<string | null>(null);
-  const [activeConversation, setActiveConversation] = createSignal<
-    Conversation | null
-  >(null);
+  const [activeConversation, setActiveConversation] =
+    createSignal<Conversation | null>(null);
   createEffect(() => {
     const key = view();
     connected();
@@ -176,8 +175,8 @@ export default function App() {
     );
     onCleanup(stop);
   });
-  const [name, setName] = createSignal(""),
-    [code, setCode] = createSignal(""),
+  const [username, setUsername] = createSignal(""),
+    [password, setPassword] = createSignal(""),
     [busy, setBusy] = createSignal(false);
   onMount(() => {
     document.documentElement.dataset.theme =
@@ -285,8 +284,8 @@ export default function App() {
     );
   const selected = () =>
     chats().find((c) => c.key === view()) ??
-      archived().find((c) => c.key === view()) ??
-      activeConversation();
+    archived().find((c) => c.key === view()) ??
+    activeConversation();
   const unread = (conversation: Conversation) => {
     const state = workspace()?.reads?.find(
       (item) => item.key === conversation.key,
@@ -309,11 +308,11 @@ export default function App() {
     };
     document.addEventListener("visibilitychange", markVisible);
     onCleanup(() =>
-      document.removeEventListener("visibilitychange", markVisible)
+      document.removeEventListener("visibilitychange", markVisible),
     );
   });
   const viewedRevision = createMemo(() =>
-    selected() ? `${selected()!.key}:${selected()!.activityAt}` : ""
+    selected() ? `${selected()!.key}:${selected()!.activityAt}` : "",
   );
   createEffect(() => {
     viewedRevision();
@@ -398,31 +397,11 @@ export default function App() {
     );
     return items;
   };
-  const recentGroups = createMemo(() => {
-    const groups = new Map<string, Conversation[]>();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    for (
-      const chat of chats()
-        .filter((c) => c.section === "recent" && !c.backgroundSession)
-        .sort((a, b) => b.activityAt - a.activityAt)
-    ) {
-      const age = (today.getTime() - chat.activityAt) / 86400000;
-      const label = age < 0
-        ? "Today"
-        : age < 1
-        ? "Yesterday"
-        : age < 7
-        ? "Last week"
-        : age < 30
-        ? "Last month"
-        : "Older";
-      const items = groups.get(label) ?? [];
-      items.push(chat);
-      groups.set(label, items);
-    }
-    return [...groups.entries()];
-  });
+  const recentConversations = createMemo(() =>
+    chats()
+      .filter((c) => c.section === "recent" && !c.backgroundSession)
+      .sort((a, b) => b.activityAt - a.activityAt),
+  );
   const row = (c: Conversation) => (
     <div
       class="thread-row"
@@ -602,7 +581,7 @@ export default function App() {
                     const name = await ask("Folder name", folder.name);
                     if (name?.trim()) {
                       void run(() =>
-                        mutate("workspace.folder", { id: folder._id, name })
+                        mutate("workspace.folder", { id: folder._id, name }),
                       );
                     }
                   }}
@@ -616,8 +595,9 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: 1,
-                      })
-                    )}
+                      }),
+                    )
+                  }
                 />
                 <IconButton
                   icon="nav-arrow-down"
@@ -629,8 +609,9 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: -1,
-                      })
-                    )}
+                      }),
+                    )
+                  }
                 />
                 <button
                   type="button"
@@ -647,7 +628,7 @@ export default function App() {
                         mutate("workspace.folder", {
                           id: folder._id,
                           remove: true,
-                        })
+                        }),
                       );
                     }
                   }}
@@ -668,16 +649,7 @@ export default function App() {
         <div class="section-heading">
           <span>Sessions</span>
         </div>
-        <For each={recentGroups()}>
-          {([label, items], index) => (
-            <>
-              <Show when={index() > 0}>
-                <div class="session-date-group">{label}</div>
-              </Show>
-              <For each={items}>{row}</For>
-            </>
-          )}
-        </For>
+        <For each={recentConversations()}>{row}</For>
         <Show when={workspace()?.recentHasMore}>
           <button
             type="button"
@@ -730,8 +702,9 @@ export default function App() {
                         mutate("workspace.move", {
                           key: c.key,
                           section: "recent",
-                        })
-                      )}
+                        }),
+                      )
+                    }
                   />
                 </div>
               )}
@@ -781,7 +754,8 @@ export default function App() {
             }}
           >
             <i />
-            Gateway {workspace()?.connection?.online && connected()
+            Gateway{" "}
+            {workspace()?.connection?.online && connected()
               ? "connected"
               : "disconnected"}
           </span>
@@ -795,12 +769,20 @@ export default function App() {
       fallback={
         <main class="authorization">
           <form
+            action="/auth/login"
+            method="post"
             onSubmit={(e) => {
               e.preventDefault();
+              if (busy()) return;
+              const fields = new FormData(e.currentTarget);
               setBusy(true);
-              void run(() => login(name(), code())).finally(() =>
-                setBusy(false)
-              );
+              void run(async () => {
+                await login(
+                  String(fields.get("username") ?? ""),
+                  String(fields.get("password") ?? ""),
+                );
+                setPassword("");
+              }).finally(() => setBusy(false));
             }}
           >
             <img
@@ -811,30 +793,32 @@ export default function App() {
               height="26"
             />
             <h1>Your space for Hermes.</h1>
-            <p>Authorize this browser to access your conversations.</p>
-            <Field label="Device name">
+            <p>Sign in with your Hermes account.</p>
+            <Field label="Username">
               <input
-                autocomplete="nickname"
-                placeholder="My phone"
+                id="username"
+                name="username"
+                autocomplete="username"
+                autocapitalize="none"
+                spellcheck={false}
                 required
-                value={name()}
-                onInput={(e) => setName(e.currentTarget.value)}
+                value={username()}
+                onInput={(e) => setUsername(e.currentTarget.value)}
               />
             </Field>
-            <Field
-              label="Authorization code"
-              hint="Use a code from an authorized device, or your host's access key."
-            >
+            <Field label="Password">
               <input
+                id="password"
+                name="password"
                 type="password"
-                autocomplete="one-time-code"
+                autocomplete="current-password"
                 required
-                value={code()}
-                onInput={(e) => setCode(e.currentTarget.value)}
+                value={password()}
+                onInput={(e) => setPassword(e.currentTarget.value)}
               />
             </Field>
             <button type="submit" class="primary" disabled={busy()}>
-              {busy() ? "Authorizing…" : "Authorize this device"}
+              {busy() ? "Signing in…" : "Sign in"}
             </button>
             <p role="status">{notice()}</p>
           </form>
@@ -865,10 +849,12 @@ export default function App() {
               {selected() || view().startsWith("[")
                 ? ""
                 : view() === "capabilities"
-                ? "Capabilities"
-                : view()
-                  .replace(/^(resources|settings):/, "")
-                  .replace(/^./, (x) => x.toUpperCase())}
+                  ? "Capabilities"
+                  : view() === "resources:platforms"
+                    ? "Messaging"
+                    : view()
+                        .replace(/^(resources|settings):/, "")
+                        .replace(/^./, (x) => x.toUpperCase())}
             </span>
             <IconButton
               icon="plus"
@@ -886,20 +872,24 @@ export default function App() {
                 <>
                   <IconButton
                     icon="archive"
-                    label={c().section === "archived"
-                      ? "Unarchive conversation"
-                      : "Archive conversation"}
-                    disabled={c().section !== "archived" &&
-                      (c().running || c().pendingInput)}
+                    label={
+                      c().section === "archived"
+                        ? "Unarchive conversation"
+                        : "Archive conversation"
+                    }
+                    disabled={
+                      c().section !== "archived" &&
+                      (c().running || c().pendingInput)
+                    }
                     onClick={() =>
                       void run(() =>
                         mutate("workspace.move", {
                           key: c().key,
-                          section: c().section === "archived"
-                            ? "recent"
-                            : "archived",
-                        })
-                      )}
+                          section:
+                            c().section === "archived" ? "recent" : "archived",
+                        }),
+                      )
+                    }
                   />
                   <IconButton
                     icon="more-horiz"
@@ -1061,21 +1051,28 @@ export default function App() {
                     <Show
                       when={view() === "resources:artifacts"}
                       fallback={
-                        <Resources
-                          name={view().slice(10).split("?")[0]}
-                          initialPath={new URLSearchParams(
-                            view().split("?")[1] ?? "",
-                          ).get(
-                            "path",
-                          ) ?? ""}
-                          navigate={navigate}
-                          newChat={async (profile) => {
-                            const result = await command("openBot", "", {
-                              profile,
-                            });
-                            navigate(String(result.key));
-                          }}
-                        />
+                        <Show
+                          when={view() === "resources:platforms"}
+                          fallback={
+                            <Resources
+                              name={view().slice(10).split("?")[0]}
+                              initialPath={
+                                new URLSearchParams(
+                                  view().split("?")[1] ?? "",
+                                ).get("path") ?? ""
+                              }
+                              navigate={navigate}
+                              newChat={async (profile) => {
+                                const result = await command("openBot", "", {
+                                  profile,
+                                });
+                                navigate(String(result.key));
+                              }}
+                            />
+                          }
+                        >
+                          <Messaging />
+                        </Show>
                       }
                     >
                       <Artifacts navigate={navigate} />
@@ -1149,10 +1146,12 @@ export default function App() {
                     type="button"
                     aria-label={label}
                     title={label}
-                    aria-pressed={(workspace()?.conversations.find(
-                      (item) => item.key === conversation().key,
-                    )?.essentialIcon ??
-                      (conversation().bot ? "bot" : "chat-bubble")) === icon}
+                    aria-pressed={
+                      (workspace()?.conversations.find(
+                        (item) => item.key === conversation().key,
+                      )?.essentialIcon ??
+                        (conversation().bot ? "bot" : "chat-bubble")) === icon
+                    }
                     onClick={() =>
                       void run(async () => {
                         await mutate("workspace.setEssentialIcon", {
@@ -1160,7 +1159,8 @@ export default function App() {
                           icon,
                         });
                         setIconPicker(undefined);
-                      })}
+                      })
+                    }
                   >
                     <Icon name={icon} />
                   </button>
@@ -1171,11 +1171,13 @@ export default function App() {
         )}
       </Show>
       <Show
-        when={menu() &&
+        when={
+          menu() &&
           (workspace()?.conversations.find(
             (item) => item.key === menu()!.key,
           ) ??
-            menu())}
+            menu())
+        }
       >
         {(c) => (
           <Dialog
@@ -1194,7 +1196,8 @@ export default function App() {
                       unread: !unread(c()),
                     });
                     setMenu(undefined);
-                  })}
+                  })
+                }
               >
                 <Icon name="chat-bubble" />
                 {unread(c()) ? "Mark as read" : "Mark as unread"}
@@ -1206,7 +1209,8 @@ export default function App() {
                     await navigator.clipboard.writeText(c().sourceId);
                     setMenu(undefined);
                     inform("Session ID copied");
-                  })}
+                  })
+                }
               >
                 <Icon name="page" />
                 Copy session ID
@@ -1236,7 +1240,8 @@ export default function App() {
                             direction,
                           });
                           setMenu(undefined);
-                        })}
+                        })
+                      }
                     >
                       Move {direction === -1 ? "up" : "down"}
                     </button>
@@ -1260,7 +1265,8 @@ export default function App() {
                           section: c().section === section ? "recent" : section,
                         });
                         setMenu(undefined);
-                      })}
+                      })
+                    }
                   >
                     <Icon name={section === "essential" ? "star" : "pin"} />
                     {label}
@@ -1279,7 +1285,8 @@ export default function App() {
                           folderId: f._id,
                         });
                         setMenu(undefined);
-                      })}
+                      })
+                    }
                   >
                     <Icon name="folder" />
                     Move to {f.name}
@@ -1302,11 +1309,9 @@ export default function App() {
                 </button>
               </Show>
               <a
-                href={`/api/download?type=conversation&id=${
-                  encodeURIComponent(
-                    c().sourceId,
-                  )
-                }&profile=${encodeURIComponent(c().profile)}`}
+                href={`/api/download?type=conversation&id=${encodeURIComponent(
+                  c().sourceId,
+                )}&profile=${encodeURIComponent(c().profile)}`}
                 download=""
               >
                 <Icon name="download" />

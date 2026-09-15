@@ -1,3 +1,4 @@
+import { signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { Buffer } from "node:buffer";
 import { chromium, expect } from "@playwright/test";
@@ -14,15 +15,7 @@ Deno.test({
     const url = Deno.env.get("ARURA_TEST_URL")!;
     try {
       await page.goto(url);
-      await page
-        .getByLabel("Device name", { exact: true })
-        .fill("Provider test");
-      await page
-        .getByLabel("Authorization code", { exact: true })
-        .fill(Deno.env.get("ARURA_TEST_ACCESS_KEY")!);
-      await page
-        .getByRole("button", { name: "Authorize this device", exact: true })
-        .click();
+      await signIn(page, "Provider test");
       await page.getByRole("button", { name: "Settings", exact: true }).click();
       await page
         .getByRole("button", { name: "Models & providers", exact: true })
@@ -220,8 +213,7 @@ Deno.test({
         .getByRole("button", { name: "Export map snapshot", exact: true })
         .click();
       const download = await downloaded;
-      const snapshotPath =
-        `/var/tmp/arura-memory-map-${crypto.randomUUID()}.json`;
+      const snapshotPath = `/var/tmp/arura-memory-map-${crypto.randomUUID()}.json`;
       await download.saveAs(snapshotPath);
       const snapshot = JSON.parse(await Deno.readTextFile(snapshotPath));
       expect(snapshot.graph.memory).toBeUndefined();
@@ -272,22 +264,18 @@ Deno.test({
         expect(
           (
             await anonymous.request.get(
-              `${url}/api/mcp/oauth/callback/fixture?state=${
-                encodeURIComponent(
-                  state,
-                )
-              }&code=fixture-code`,
+              `${url}/api/mcp/oauth/callback/fixture?state=${encodeURIComponent(
+                state,
+              )}&code=fixture-code`,
             )
           ).status(),
         ).toBe(200);
         expect(
           (
             await anonymous.request.get(
-              `${url}/api/mcp/oauth/callback/fixture?state=${
-                encodeURIComponent(
-                  state,
-                )
-              }&code=fixture-code`,
+              `${url}/api/mcp/oauth/callback/fixture?state=${encodeURIComponent(
+                state,
+              )}&code=fixture-code`,
             )
           ).status(),
         ).toBe(404);
@@ -392,7 +380,7 @@ Deno.test({
         page.getByLabel("Message Hermes", { exact: true }),
       ).toBeVisible();
       const canonical = await page.evaluate(() =>
-        localStorage.getItem("arura.view")
+        localStorage.getItem("arura.view"),
       );
       const roster = await (
         await page.request.get(`${url}/api/resource/profileRoster`)
@@ -424,8 +412,7 @@ Deno.test({
 });
 
 Deno.test({
-  name:
-    "desktop and mobile browsers: stream, archive, offline reopen, and revoke",
+  name: "desktop and mobile browsers: stream, archive, offline reopen, and revoke",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -448,22 +435,12 @@ Deno.test({
     const url = Deno.env.get("ARURA_TEST_URL")!;
     const suffix = crypto.randomUUID().slice(0, 8);
     try {
-      for (
-        const [page, name] of [
-          [a, "Desktop"],
-          [b, "Phone"],
-        ] as const
-      ) {
+      for (const [page, name] of [
+        [a, "Desktop"],
+        [b, "Phone"],
+      ] as const) {
         await page.goto(url);
-        await page
-          .getByLabel("Device name", { exact: true })
-          .fill(`${name} ${suffix}`);
-        await page
-          .getByLabel("Authorization code", { exact: true })
-          .fill(Deno.env.get("ARURA_TEST_ACCESS_KEY")!);
-        await page
-          .getByRole("button", { name: "Authorize this device", exact: true })
-          .click();
+        await signIn(page, `${name} ${suffix}`);
         await expect(page.locator(".app-shell")).toBeVisible({
           timeout: 15000,
         });
@@ -512,6 +489,13 @@ Deno.test({
         "PRIVATE REASONING",
       );
       await expect(b.locator(".work-summary[open]")).toHaveCount(0);
+      await expect(b.locator(".history-work").last()).toBeVisible();
+      await expect(b.locator(".live-message .work-summary")).toHaveCount(0);
+      await b.locator(".work-summary > summary").last().click();
+      await expect(
+        b.locator(".work-summary").last().locator(".past-tool"),
+      ).toHaveCount(1);
+      await b.locator(".work-summary > summary").last().click();
       await a.getByRole("button", { name: "Model", exact: true }).click();
       await a
         .getByRole("button", { name: "Customize model list", exact: true })
@@ -751,7 +735,7 @@ Deno.test({
       void onceActionDialog(a, (dialog) => dialog.accept());
       await phone.getByRole("button", { name: "Revoke", exact: true }).click();
       await expect(
-        b.getByRole("button", { name: "Authorize this device", exact: true }),
+        b.getByRole("button", { name: "Sign in", exact: true }),
       ).toBeVisible({ timeout: 10000 });
       expect((await b.request.get(`${url}/auth/token`)).status()).toBe(401);
       expect(errors).toEqual([]);
@@ -789,15 +773,7 @@ Deno.test({
     page.on("pageerror", (error) => errors.push(error.message));
     try {
       await page.goto(Deno.env.get("ARURA_TEST_URL")!);
-      await page
-        .getByLabel("Device name", { exact: true })
-        .fill("Storage-disabled browser");
-      await page
-        .getByLabel("Authorization code", { exact: true })
-        .fill(Deno.env.get("ARURA_TEST_ACCESS_KEY")!);
-      await page
-        .getByRole("button", { name: "Authorize this device", exact: true })
-        .click();
+      await signIn(page, "Storage-disabled browser");
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .first()

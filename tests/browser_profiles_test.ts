@@ -1,11 +1,11 @@
+import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
 import { identity } from "../server/identity.ts";
 
 Deno.test({
-  name:
-    "profile rename preserves folders, open conversations and drafts; clones and deletion remain independent",
+  name: "profile rename preserves folders, open conversations and drafts; clones and deletion remain independent",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -19,15 +19,7 @@ Deno.test({
         b = await browser.newPage();
       for (const page of [a, b]) {
         await page.goto(url);
-        await page
-          .getByLabel("Device name", { exact: true })
-          .fill("Profile lifecycle");
-        await page
-          .getByLabel("Authorization code", { exact: true })
-          .fill(Deno.env.get("ARURA_TEST_ACCESS_KEY")!);
-        await page
-          .getByRole("button", { name: "Authorize this device", exact: true })
-          .click();
+        await signIn(page, "Profile lifecycle");
       }
       const write = async (
         op: string,

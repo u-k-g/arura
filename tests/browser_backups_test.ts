@@ -1,8 +1,8 @@
+import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
-  name:
-    "backup progress is shared and completed archives download using the returned path",
+  name: "backup progress is shared and completed archives download using the returned path",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -14,13 +14,7 @@ Deno.test({
       const device = async function (name: string) {
         const page = await browser.newPage();
         await page.goto(url);
-        await page.getByLabel("Device name", { exact: true }).fill(name);
-        await page
-          .getByLabel("Authorization code", { exact: true })
-          .fill(Deno.env.get("ARURA_TEST_ACCESS_KEY")!);
-        await page
-          .getByRole("button", { name: "Authorize this device", exact: true })
-          .click();
+        await signIn(page, name);
         await page
           .getByRole("button", { name: "Settings", exact: true })
           .click();

@@ -1,3 +1,4 @@
+import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
@@ -37,15 +38,7 @@ Deno.test({
     try {
       await metadata({ pinned: true, archived: false });
       await page.goto(Deno.env.get("ARURA_TEST_URL")!);
-      await page
-        .getByLabel("Device name", { exact: true })
-        .fill("Hermes layout review");
-      await page
-        .getByLabel("Authorization code", { exact: true })
-        .fill(Deno.env.get("ARURA_TEST_ACCESS_KEY")!);
-      await page
-        .getByRole("button", { name: "Authorize this device", exact: true })
-        .click();
+      await signIn(page, "Hermes layout review");
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .click();
