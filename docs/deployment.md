@@ -39,10 +39,10 @@ Create a stable random Convex instance name and 32-byte hexadecimal secret, and
 store them as `CONVEX_INSTANCE_NAME` and `CONVEX_INSTANCE_SECRET` in the private
 Convex environment file. Preserve them with the database across upgrades.
 
-Arura's environment file needs either
-`HERMES_USERNAME`/`HERMES_PASSWORD` or a supported `HERMES_TOKEN`.
-`HERMES_AUTH_PROVIDER` is optional when Hermes advertises a single password
-provider. The adapter discovers that provider before logging in.
+Arura's environment file needs either `HERMES_USERNAME`/`HERMES_PASSWORD` or a
+supported `HERMES_TOKEN`. `HERMES_AUTH_PROVIDER` is optional when Hermes
+advertises a single password provider. The adapter discovers that provider
+before logging in.
 
 Browsers sign in with the existing Hermes dashboard username and password.
 Hermes must have a password authentication provider configured. Arura validates

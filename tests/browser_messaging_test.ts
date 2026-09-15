@@ -3,7 +3,8 @@ import { signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 
 Deno.test({
-  name: "messaging matches Hermes platform navigation and keeps credential and access actions scoped",
+  name:
+    "messaging matches Hermes platform navigation and keeps credential and access actions scoped",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -67,7 +68,9 @@ Deno.test({
         page.getByLabel("Bot token", { exact: true }),
       ).toHaveAttribute("placeholder", "");
       await page.screenshot({
-        path: `${Deno.env.get("ARURA_TEST_ARTIFACTS") ?? "/var/tmp"}/messaging-desktop.png`,
+        path: `${
+          Deno.env.get("ARURA_TEST_ARTIFACTS") ?? "/var/tmp"
+        }/messaging-desktop.png`,
       });
       await page.setViewportSize({ width: 390, height: 844 });
       await page.getByRole("button", { name: /Choose platform/ }).click();
@@ -80,7 +83,9 @@ Deno.test({
         await page.evaluate(() => document.documentElement.scrollWidth),
       ).toBeLessThanOrEqual(390);
       await page.screenshot({
-        path: `${Deno.env.get("ARURA_TEST_ARTIFACTS") ?? "/var/tmp"}/messaging-mobile.png`,
+        path: `${
+          Deno.env.get("ARURA_TEST_ARTIFACTS") ?? "/var/tmp"
+        }/messaging-mobile.png`,
       });
     } catch (error) {
       await page.screenshot({ path: "/var/tmp/messaging-failure.png" });

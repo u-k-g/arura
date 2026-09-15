@@ -1,7 +1,8 @@
 import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 Deno.test({
-  name: "Command Enter queues multiple messages and sends the first now only with an empty composer",
+  name:
+    "Command Enter queues multiple messages and sends the first now only with an empty composer",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({

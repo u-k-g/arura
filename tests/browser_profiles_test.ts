@@ -1,11 +1,12 @@
-import { signIn } from "./sign_in.ts";
+import { openSettings, signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
 import { identity } from "../server/identity.ts";
 
 Deno.test({
-  name: "profile rename preserves folders, open conversations and drafts; clones and deletion remain independent",
+  name:
+    "profile rename preserves folders, open conversations and drafts; clones and deletion remain independent",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -53,12 +54,13 @@ Deno.test({
       });
       const soul = await a.request.get(`${url}/api/resource/soul?id=${clone}`);
       expect((await soul.json()).content).toBe("Prefer concise garden advice.");
-      await a
-        .getByRole("button", { name: "Settings", exact: true })
-        .first()
-        .click();
+      await openSettings(a);
       await a
         .getByRole("button", { name: "Profiles & bots", exact: true })
+        .click();
+      await a
+        .getByRole("navigation", { name: "Profiles & bots list" })
+        .getByRole("button", { name: original, exact: true })
         .click();
       await a
         .locator(".resource-card")

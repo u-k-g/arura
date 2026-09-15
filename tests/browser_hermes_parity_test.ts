@@ -1,4 +1,4 @@
-import { signIn } from "./sign_in.ts";
+import { openSettings, signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
@@ -120,13 +120,17 @@ Deno.test({
       await page.screenshot({
         path: `${Deno.env.get("TMPDIR")}/hermes-desktop.png`,
       });
-      await page.getByRole("button", { name: "Settings", exact: true }).click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Capabilities", exact: true })
         .click();
       await expect(
-        page.getByRole("heading", { name: "Capabilities", exact: true }),
+        page.getByRole("navigation", { name: "Capabilities", exact: true }),
       ).toBeVisible();
+      await page
+        .locator(".settings-dialog")
+        .getByRole("button", { name: "Close", exact: true })
+        .click();
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .click();
@@ -143,7 +147,10 @@ Deno.test({
       await page.screenshot({
         path: `${Deno.env.get("TMPDIR")}/hermes-mobile-sheet.png`,
       });
-      await page.getByRole("button", { name: "Close", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
+        .click();
       const rawConfig = await (await fetch(`${hermes}/api/config`)).json();
       await fetch(`${hermes}/api/config`, {
         method: "PUT",
@@ -155,7 +162,7 @@ Deno.test({
           },
         }),
       });
-      await page.getByRole("button", { name: "Settings", exact: true }).click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Conversations & archive", exact: true })
         .click();

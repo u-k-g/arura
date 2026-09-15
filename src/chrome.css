@@ -558,23 +558,28 @@ dialog.conversation-menu {
 .markdown table {
   width: 100%;
   display: table;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  border-collapse: separate;
-  border-spacing: 0;
+  border: 0;
+  border-radius: 0;
+  border-collapse: collapse;
   margin: 12px 0;
-  overflow: hidden;
 }
 .markdown th,
 .markdown td {
   border: 0;
-  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+  padding: 10px 12px;
   text-align: left;
   font-weight: 400;
 }
 .markdown th {
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
+  font-weight: 600;
+  color: var(--ink);
+}
+.markdown [align="right"] {
+  text-align: right;
+}
+.markdown [align="center"] {
+  text-align: center;
 }
 .markdown p {
   line-height: 1.55;

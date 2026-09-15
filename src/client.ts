@@ -32,12 +32,10 @@ export async function request(
   const response = await fetch(path, {
     method,
     credentials: "same-origin",
-    ...(body === undefined
-      ? {}
-      : {
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify(body),
-        }),
+    ...(body === undefined ? {} : {
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }),
   });
   const data = await response.json();
   if (!response.ok) {
@@ -82,7 +80,7 @@ export async function start() {
     if (generation !== sessionGeneration) return;
     client = new ConvexClient(config.convexUrl);
     client.setAuth(async () =>
-      generation === sessionGeneration ? await token(generation) : null,
+      generation === sessionGeneration ? await token(generation) : null
     );
     stopConnection = client.subscribeToConnectionState((state) => {
       if (generation === sessionGeneration) {
@@ -221,8 +219,11 @@ export function subscribe<T>(
   callback: (value: T) => void,
 ) {
   if (!client) return () => {};
-  return client.onUpdate(anyApi[module][name], args, callback, (error) =>
-    inform(error.message),
+  return client.onUpdate(
+    anyApi[module][name],
+    args,
+    callback,
+    (error) => inform(error.message),
   );
 }
 export async function enqueueCommand(

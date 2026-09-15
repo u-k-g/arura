@@ -1,0 +1,525 @@
+@font-face {
+  font-family: "Hermes Display";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/hermes-display.woff2") format("woff2");
+}
+/* Retained desktop surfaces: quiet rows, a stable list, and one detail view. */
+.new-session-welcome {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: var(--muted);
+  padding: 32px;
+}
+.new-session-welcome h1 {
+  font-size: clamp(24px, 4vw, 48px);
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  margin: 0;
+}
+.new-session-welcome p {
+  margin: 0;
+  font-size: 13px;
+}
+.settings-dialog {
+  width: calc(100vw - 96px);
+  max-width: none;
+  height: calc(100dvh - 96px);
+  max-height: none;
+  border-radius: 3px;
+  padding: 0;
+}
+.settings-dialog > .dialog-inner {
+  padding: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.settings-dialog > .dialog-inner > header {
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  flex: none;
+}
+.settings-dialog > .dialog-inner > header h2 {
+  font-size: 13px;
+}
+.settings-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.settings-desktop-rail {
+  width: 208px;
+  flex: 0 0 208px;
+  overflow: auto;
+  background: var(--sidebar);
+  border-right: 1px solid var(--line);
+}
+.settings-rail {
+  padding: 8px;
+}
+.settings-rail-group + .settings-rail-group {
+  margin-top: 12px;
+}
+.settings-rail button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  border-radius: 3px;
+  text-align: left;
+  font-size: 12px;
+  min-height: 28px;
+}
+.settings-rail button.selected,
+.resource-rail button.selected {
+  background: var(--hover);
+}
+.settings-rail .icon {
+  width: 13px;
+  height: 13px;
+  color: var(--muted);
+}
+.settings-content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow: auto;
+}
+.settings-content > .resource-page,
+.settings-content > .settings-page {
+  width: 100%;
+  max-width: 1100px;
+  padding: 20px 32px;
+}
+.settings-content h1 {
+  font-size: 15px;
+}
+.resource-page.resource-master-detail {
+  width: 100%;
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.resource-master-detail > .page-heading {
+  margin-bottom: 8px;
+}
+.resource-master-detail > .filter {
+  margin-bottom: 8px;
+}
+.resource-browser {
+  min-height: 0;
+}
+.resource-master-detail .resource-browser {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  gap: 20px;
+}
+.resource-desktop-rail {
+  flex: 0 0 208px;
+  overflow: auto;
+}
+.resource-rail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.resource-rail button {
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  min-height: 28px;
+  width: 100%;
+}
+.resource-rail strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.resource-rail button > span:not(.resource-state-dot) {
+  min-width: 0;
+}
+.resource-rail small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+}
+.resource-state-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex: none;
+}
+.resource-state-dot.enabled {
+  background: var(--accent);
+}
+.resource-master-detail .resource-list {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  display: block;
+}
+.resource-master-detail .resource-card {
+  border: 0;
+  padding: 4px 8px 16px;
+}
+.resource-master-detail .resource-card h3 {
+  font-size: 14px;
+}
+.resource-master-detail .resource-card h4 {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 400;
+  margin: 20px 0 6px;
+}
+.resource-master-detail .resource-card p {
+  font-size: 12px;
+}
+.resource-document {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 360px;
+  overflow: auto;
+  background: var(--hover);
+  border: 1px solid var(--line);
+  padding: 12px;
+  font: 11px / 1.7 var(--mono);
+  border-radius: 3px;
+}
+.job-metadata {
+  font-size: 11px;
+}
+.job-metadata > div {
+  display: flex;
+  gap: 12px;
+  margin: 4px 0;
+}
+.job-metadata dt {
+  width: 76px;
+  color: var(--muted);
+  flex: none;
+}
+.job-metadata dd {
+  margin: 0;
+}
+.capabilities-browser {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.capabilities-navigation {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  border-bottom: 1px solid var(--line);
+  padding: 6px 12px;
+}
+.capabilities-navigation button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 6px 0;
+  border-radius: 0;
+}
+.capabilities-navigation button.selected {
+  color: var(--ink);
+  box-shadow: inset 0 -1px var(--accent);
+}
+.artifacts-page {
+  padding: 0 12px 12px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.artifact-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  font-size: 12px;
+}
+.artifact-toolbar input {
+  width: min(45%, 360px);
+  background: transparent;
+  border: 0;
+}
+.artifact-toolbar small {
+  color: var(--muted);
+}
+.artifact-table-scroll {
+  overflow: auto;
+  min-height: 0;
+}
+.artifact-table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+  font-size: 12px;
+}
+.artifact-table th {
+  text-align: left;
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 400;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  padding: 8px;
+}
+.artifact-table th:nth-child(1) {
+  width: 34%;
+}
+.artifact-table th:nth-child(2) {
+  width: 36%;
+}
+.artifact-table th:last-child {
+  width: 32px;
+}
+.artifact-table tr.resource-card {
+  border: 0;
+  background: transparent;
+}
+.artifact-table td {
+  padding: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.artifact-table tbody tr:hover {
+  background: var(--hover);
+}
+.artifact-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.artifact-location {
+  font: 10px var(--mono);
+  color: var(--muted);
+}
+.artifact-session {
+  display: block;
+  text-align: left;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 12px;
+}
+.artifact-download {
+  color: var(--muted);
+}
+@media (max-width: 700px) {
+  .settings-dialog {
+    width: 100vw;
+    height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+  .settings-desktop-rail,
+  .resource-desktop-rail {
+    display: none;
+  }
+  .settings-content > .resource-page,
+  .settings-content > .settings-page {
+    padding: 12px;
+  }
+  .settings-section-picker {
+    margin: 4px 8px;
+  }
+  .resource-master-detail .resource-browser {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .resource-picker {
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+  .artifact-table th:nth-child(2),
+  .artifact-table td:nth-child(2) {
+    display: none;
+  }
+  .artifact-table th:nth-child(1) {
+    width: 52%;
+  }
+  .resource-rail button,
+  .settings-rail button {
+    min-height: 40px;
+  }
+}
+
+.settings-rail button,
+.resource-rail button {
+  justify-content: flex-start;
+}
+.job-history button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 5px 8px;
+  background: transparent;
+  border: 0;
+  font-size: 12px;
+  text-align: left;
+}
+.job-history button > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.job-history time {
+  color: var(--muted);
+  font-size: 10px;
+  flex: none;
+}
+.artifact-table th {
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 12px;
+}
+.artifact-table td {
+  border-bottom: 1px solid var(--line);
+}
+
+.resource-profile {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  margin: 0 0 12px;
+}
+.resource-profile select {
+  width: min(240px, 70%);
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.resource-rail-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 3px;
+  padding-right: 4px;
+}
+.resource-rail-row.selected {
+  background: var(--hover);
+}
+.resource-rail-row > button {
+  flex: 1;
+  min-width: 0;
+}
+.resource-rail-row em {
+  font-style: normal;
+  color: var(--accent);
+}
+.resource-usage {
+  color: var(--muted);
+  font-size: 10px;
+}
+.resource-rail > select {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 4px;
+}
+.resource-toggle {
+  appearance: none;
+  width: 28px;
+  height: 16px;
+  min-height: 0;
+  flex: 0 0 28px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--hover);
+  cursor: pointer;
+}
+.resource-toggle::before {
+  content: "";
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: 2px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.resource-toggle:checked {
+  background: var(--accent);
+}
+.resource-toggle:checked::before {
+  transform: translateX(12px);
+  background: var(--canvas);
+}
+
+.new-session-welcome h1 {
+  font-family: "Hermes Display", var(--sans);
+  font-weight: 700;
+  font-size: clamp(44px, 9vw, 120px);
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.artifact-toolbar > span {
+  margin-inline: auto;
+  white-space: nowrap;
+}
+.artifact-toolbar .text-button {
+  flex: none;
+  white-space: nowrap;
+}
+.settings-section-picker {
+  align-self: flex-start;
+}

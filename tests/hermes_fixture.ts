@@ -37,12 +37,14 @@ export function hermesFixture(
   ]);
   const uploadedBytes = new Map<string, Uint8Array<ArrayBuffer>>();
   function storeUpload(path: string, dataUrl: string) {
-    const bytes = Uint8Array.from(atob(dataUrl.split(",")[1]), (character) =>
-      character.charCodeAt(0),
+    const bytes = Uint8Array.from(
+      atob(dataUrl.split(",")[1]),
+      (character) => character.charCodeAt(0),
     );
     uploadedBytes.set(path, bytes);
     files.set(path, new TextDecoder().decode(bytes));
   }
+  let gardeningEnabled = true;
   const jobs: {
     id: string;
     name: string;
@@ -118,10 +120,9 @@ export function hermesFixture(
   const create = (id: string = crypto.randomUUID()) => {
     const s = {
       id,
-      title:
-        id === "fixture-chat"
-          ? "Fixture conversation"
-          : `Test conversation ${id.slice(0, 8)}`,
+      title: id === "fixture-chat"
+        ? "Fixture conversation"
+        : `Test conversation ${id.slice(0, 8)}`,
       started_at: Date.now() / 1000,
       last_active: Date.now() / 1000,
       messages: [] as Row[],
@@ -374,8 +375,9 @@ export function hermesFixture(
                   ...profile,
                   display_name: "",
                   ui_meta: {
-                    "hermes-bots":
-                      profile.name === "default" ? botMetadata : {},
+                    "hermes-bots": profile.name === "default"
+                      ? botMetadata
+                      : {},
                   },
                   ui_meta_revisions: { "hermes-bots": botRevision },
                   has_avatar: profile.name === "default" && Boolean(avatarData),
@@ -429,10 +431,10 @@ export function hermesFixture(
               session_key: params.session_id,
               ...(live.pendingPersistence
                 ? {
-                    stored_session_id: live.id,
-                    info: { lazy: true },
-                    messages: live.messages,
-                  }
+                  stored_session_id: live.id,
+                  info: { lazy: true },
+                  messages: live.messages,
+                }
                 : {}),
               running: false,
               ...hooks.resume?.(params.session_id),
@@ -582,10 +584,9 @@ export function hermesFixture(
               }
             }
             const settings = sessionSettings.get(params.session_id) ?? {};
-            settings[params.key] =
-              params.key === "model"
-                ? String(params.value).split(/\s+/)[0]
-                : params.value;
+            settings[params.key] = params.key === "model"
+              ? String(params.value).split(/\s+/)[0]
+              : params.value;
             sessionSettings.set(params.session_id, settings);
             event("sessions.changed", "", {});
             result = { ok: true };
@@ -617,8 +618,7 @@ export function hermesFixture(
               state[params.name] = {
                 prompt: match[3],
                 status: "active",
-                interval_seconds:
-                  Number(match[1]) *
+                interval_seconds: Number(match[1]) *
                   ({ s: 1, m: 60, h: 3600, d: 86400 }[match[2]] ?? 1),
                 ...(params.name === "loop"
                   ? { ticks_fired: 0 }
@@ -657,30 +657,28 @@ export function hermesFixture(
               context_used: 2000,
               context_max: 100000,
               context_percent: 2,
-              model:
-                sessionSettings.get(params.session_id)?.model ??
+              model: sessionSettings.get(params.session_id)?.model ??
                 "fixture-model",
               categories: [],
             };
           } else if (method === "subagent.list") {
             result = {
-              subagents: stoppedSubagents.has(params.session_id)
-                ? []
-                : [
-                    {
-                      subagent_id: "garden-research",
-                      goal: "Compare native plants",
-                      model: "fixture-model",
-                      status: "running",
-                      tool_count: 2,
-                      last_tool: "web_search",
-                    },
-                  ],
+              subagents: stoppedSubagents.has(params.session_id) ? [] : [
+                {
+                  subagent_id: "garden-research",
+                  goal: "Compare native plants",
+                  model: "fixture-model",
+                  status: "running",
+                  tool_count: 2,
+                  last_tool: "web_search",
+                },
+              ],
             };
           } else if (method === "subagent.tail") {
             result = {
               available: !stoppedSubagents.has(params.session_id),
-              text: "12:00:00 thinking | NEVER_EXPOSE_DELEGATED_REASONING\n12:00:01 tool | web_search(secret-query)\n12:00:02 assistant | Comparing native plant options\n12:00:03 final | Prefer drought-tolerant native plants",
+              text:
+                "12:00:00 thinking | NEVER_EXPOSE_DELEGATED_REASONING\n12:00:01 tool | web_search(secret-query)\n12:00:02 assistant | Comparing native plant options\n12:00:03 final | Prefer drought-tolerant native plants",
               truncated: false,
             };
           } else if (method === "subagent.interrupt") {
@@ -730,7 +728,7 @@ export function hermesFixture(
             .filter(
               (session) =>
                 session.profile ===
-                (url.searchParams.get("profile") ?? "default"),
+                  (url.searchParams.get("profile") ?? "default"),
             )
             .slice(
               Number(url.searchParams.get("offset") ?? 0),
@@ -751,14 +749,14 @@ export function hermesFixture(
             .filter(
               (session) =>
                 session.profile ===
-                (url.searchParams.get("profile") ?? "default"),
+                  (url.searchParams.get("profile") ?? "default"),
             )
             .filter((session) =>
               session.messages.some((message) =>
                 String(message.content ?? "")
                   .toLowerCase()
-                  .includes(query),
-              ),
+                  .includes(query)
+              )
             )
             .map((session) => ({
               session_id: session.id,
@@ -917,12 +915,22 @@ export function hermesFixture(
           { headers: { "content-type": "text/plain" } },
         );
       }
+      if (path === "/api/skills/toggle" && request.method === "PUT") {
+        gardeningEnabled = Boolean((await request.json()).enabled);
+        return json({ ok: true });
+      }
+      if (path === "/api/skills/content") {
+        return json({
+          content:
+            "# Gardening\n\nPlan a garden with seasonally appropriate plants.",
+        });
+      }
       if (path === "/api/skills") {
         return json([
           {
             name: "gardening",
             description: "Plan flower gardens and perennial planting",
-            enabled: true,
+            enabled: gardeningEnabled,
           },
         ]);
       }
@@ -955,13 +963,13 @@ export function hermesFixture(
           return json({
             runs: job.last_run_at
               ? [
-                  {
-                    id: `cron_${job.id}_1`,
-                    title: job.name,
-                    started_at: Date.now() / 1000,
-                    profile: "default",
-                  },
-                ]
+                {
+                  id: `cron_${job.id}_1`,
+                  title: job.name,
+                  started_at: Date.now() / 1000,
+                  profile: "default",
+                },
+              ]
               : [],
           });
         }
@@ -1265,41 +1273,46 @@ export function hermesFixture(
       ) {
         const body = await request.json();
         const profile = body.profile ?? "default";
-        if (profile !== url.searchParams.get("profile"))
+        if (profile !== url.searchParams.get("profile")) {
           return new Response("Missing profile scope", { status: 400 });
+        }
         const state = messaging.get(profile) ?? {
           enabled: false,
           token: "saved-token",
         };
         if (body.enabled !== undefined) state.enabled = body.enabled;
-        if (body.env?.TELEGRAM_BOT_TOKEN)
+        if (body.env?.TELEGRAM_BOT_TOKEN) {
           state.token = body.env.TELEGRAM_BOT_TOKEN;
+        }
         if (body.clear_env?.includes("TELEGRAM_BOT_TOKEN")) state.token = "";
         messaging.set(profile, state);
         return json({ ok: true });
       }
-      if (path === "/api/pairing")
+      if (path === "/api/pairing") {
         return json({
           pending: pendingMessaging
             ? [
-                {
-                  platform: "telegram",
-                  user_id: "7",
-                  user_name: "Alex",
-                  request_id: "request-7",
-                },
-              ]
+              {
+                platform: "telegram",
+                user_id: "7",
+                user_name: "Alex",
+                request_id: "request-7",
+              },
+            ]
             : [],
           approved: approvedMessaging
             ? [{ platform: "telegram", user_id: "7", user_name: "Alex" }]
             : [],
         });
+      }
       if (path === "/api/pairing/approve" || path === "/api/pairing/revoke") {
         const body = await request.json();
-        if (body.profile !== url.searchParams.get("profile"))
+        if (body.profile !== url.searchParams.get("profile")) {
           return new Response("Missing profile scope", { status: 400 });
-        if (path.endsWith("approve") && body.request_id !== "request-7")
+        }
+        if (path.endsWith("approve") && body.request_id !== "request-7") {
           return new Response("Wrong request", { status: 400 });
+        }
         pendingMessaging = false;
         approvedMessaging = path.endsWith("approve");
         return json({ ok: true });

@@ -3,7 +3,8 @@ import { Buffer } from "node:buffer";
 import { chromium, expect, type Page } from "@playwright/test";
 
 Deno.test({
-  name: "uploads round-trip through the host and concurrent file edits preserve the losing draft",
+  name:
+    "uploads round-trip through the host and concurrent file edits preserve the losing draft",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -50,8 +51,9 @@ Deno.test({
         clipboardData.items.add(
           new File(
             [
-              Uint8Array.from(atob(data), (character) =>
-                character.charCodeAt(0),
+              Uint8Array.from(
+                atob(data),
+                (character) => character.charCodeAt(0),
               ),
             ],
             "pasted.png",
@@ -135,7 +137,8 @@ Deno.test({
         save(b, "Concurrent B"),
       ]);
       expect(responses.map((response) => response.status()).sort()).toEqual([
-        200, 409,
+        200,
+        409,
       ]);
       const stored = await (
         await a.request.get(

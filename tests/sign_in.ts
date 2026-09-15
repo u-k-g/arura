@@ -15,3 +15,17 @@ export async function signIn(page: Page, name: string) {
   await page.getByLabel("Password", { exact: true }).fill("fixture-only");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
 }
+
+export async function openSettings(page: Page) {
+  if (!(await page.locator(".settings-dialog").isVisible())) {
+    await page
+      .getByRole("button", { name: "Settings", exact: true })
+      .first()
+      .click();
+  }
+  const picker = page.getByRole("button", {
+    name: "Settings sections",
+    exact: true,
+  });
+  if (await picker.isVisible()) await picker.click();
+}

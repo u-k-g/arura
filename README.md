@@ -24,8 +24,8 @@ deno task dev
 ```
 
 Open the Vite address printed by the command and sign in with your Hermes
-dashboard username and password. Each browser gets its own session; use
-Settings → Access to rename or revoke devices.
+dashboard username and password. Each browser gets its own session; use Settings
+→ Access to rename or revoke devices.
 
 On x86-64 Linux the development task starts the pinned Convex backend, preserves
 its database in `.state/convex`, deploys the functions, and starts the Deno

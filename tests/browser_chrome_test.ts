@@ -17,7 +17,7 @@ Deno.test({
       await signIn(page, "Navigation review");
       await expect(
         page.getByRole("heading", {
-          name: "Recent conversations",
+          name: "HERMES AGENT",
           exact: true,
         }),
       ).toBeVisible();
@@ -54,6 +54,10 @@ Deno.test({
       await expect(
         page.getByRole("button", { name: "Access & devices", exact: true }),
       ).toBeVisible();
+      await page
+        .locator(".settings-dialog")
+        .getByRole("button", { name: "Close", exact: true })
+        .click();
       await page
         .getByRole("button", { name: "Expand sidebar", exact: true })
         .click();

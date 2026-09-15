@@ -154,8 +154,8 @@ from the discussion, not claims about existing Hermes behavior.
 
 Sign-in uses the Hermes dashboard username and password, with standard browser
 and password-manager autofill fields. Device names are assigned automatically
-and can be changed in Settings → Access, where each browser can be revoked.
-The sign-in page does not ask for a device name or authorization code.
+and can be changed in Settings → Access, where each browser can be revoked. The
+sign-in page does not ask for a device name or authorization code.
 
 The first slice covers device authorization, conversation
 list/history/send/stream, the navigation contract, cached reopening, reconnect,

@@ -110,22 +110,20 @@ export default function Settings(props: {
   });
   const route = (id: string) =>
     props.navigate(
-      id === "capabilities"
-        ? "capabilities"
-        : [
-              "devices",
-              "storage",
-              "navigation",
-              "notifications",
-              "appearance",
-              "maintenance",
-            ].includes(id)
-          ? "settings:" + id
-          : "resources:" + id,
+      id === "capabilities" ? "capabilities" : [
+          "devices",
+          "storage",
+          "navigation",
+          "notifications",
+          "appearance",
+          "maintenance",
+        ].includes(id)
+        ? "settings:" + id
+        : "resources:" + id,
     );
   const title = () =>
     groups.flatMap((g) => g.items).find((x) => x[0] === props.section)?.[1] ??
-    "Settings";
+      "Settings";
   return (
     <div class="settings-page">
       <Show
@@ -141,7 +139,10 @@ export default function Settings(props: {
                   <div class="settings-grid">
                     <For each={group.items}>
                       {([id, label, icon]) => (
-                        <button type="button" onClick={() => route(id)}>
+                        <button
+                          type="button"
+                          onClick={() => route(id)}
+                        >
                           <Icon name={icon} />
                           <span>{label}</span>
                           <span aria-hidden="true">›</span>
@@ -155,14 +156,6 @@ export default function Settings(props: {
           </>
         }
       >
-        <button
-          type="button"
-          class="text-button"
-          onClick={() => props.navigate("settings")}
-        >
-          <Icon name="arrow-left" />
-          All settings
-        </button>
         <h1>{title()}</h1>
         <Show when={props.section === "devices"}>
           <p class="subtitle">
@@ -173,11 +166,9 @@ export default function Settings(props: {
             {(d) => (
               <div class="device-card">
                 <Icon
-                  name={
-                    /phone|mobile/i.test(d.name)
-                      ? "smartphone-device"
-                      : "computer"
-                  }
+                  name={/phone|mobile/i.test(d.name)
+                    ? "smartphone-device"
+                    : "computer"}
                 />
                 <div>
                   <h3>
@@ -203,7 +194,7 @@ export default function Settings(props: {
                       const name = await ask("Device name", d.name);
                       if (name) {
                         void run(() =>
-                          mutate("devices.rename", { id: d.id, name }),
+                          mutate("devices.rename", { id: d.id, name })
                         );
                       }
                     }}
@@ -260,8 +251,8 @@ export default function Settings(props: {
             />
           </Field>
           <p>
-            {((storage().usage ?? 0) / 1024 / 1024).toFixed(1)} MB stored on
-            this device
+            {((storage().usage ?? 0) / 1024 / 1024).toFixed(1)}{" "}
+            MB stored on this device
           </p>
           <button
             type="button"
@@ -272,8 +263,7 @@ export default function Settings(props: {
                 inform(
                   "Saved conversations and drafts cleared from this device",
                 );
-              })
-            }
+              })}
           >
             Clear local data
           </button>
@@ -288,9 +278,8 @@ export default function Settings(props: {
                   saveArchivePolicy(
                     Number(workspace()?.settings?.archiveDays ?? 7),
                     e.currentTarget.checked,
-                  ),
-                )
-              }
+                  )
+                )}
             />
           </Field>
           <Field
@@ -308,9 +297,8 @@ export default function Settings(props: {
                     saveArchivePolicy(
                       Number(e.currentTarget.value),
                       workspace()?.settings?.archiveEnabled !== false,
-                    ),
-                  )
-                }
+                    )
+                  )}
               />
               <span>days</span>
             </div>
@@ -429,8 +417,7 @@ export default function Settings(props: {
                   });
                 });
                 download("arura-workspace.json", result);
-              })
-            }
+              })}
           >
             Download workspace backup
           </button>

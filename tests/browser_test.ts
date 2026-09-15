@@ -1,4 +1,4 @@
-import { signIn } from "./sign_in.ts";
+import { openSettings, signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { Buffer } from "node:buffer";
 import { chromium, expect } from "@playwright/test";
@@ -16,7 +16,7 @@ Deno.test({
     try {
       await page.goto(url);
       await signIn(page, "Provider test");
-      await page.getByRole("button", { name: "Settings", exact: true }).click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Models & providers", exact: true })
         .click();
@@ -44,16 +44,13 @@ Deno.test({
       });
       await page.getByRole("button", { name: "Save", exact: true }).click();
       await confirmation;
-      await expect(page.getByRole("dialog")).toHaveCount(0);
+      await expect(page.locator("dialog:not(.settings-dialog)")).toHaveCount(0);
       expect(confirmed).toBe(true);
       const aux = await (
         await page.request.get(`${url}/api/resource/auxiliary`)
       ).json();
       expect(aux.tasks[0].model).toBe("larger-helper");
-      await page
-        .getByRole("button", { name: "Settings", exact: true })
-        .first()
-        .click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Models & providers", exact: true })
         .click();
@@ -120,10 +117,7 @@ Deno.test({
       ).json();
       expect(disabled.config.fallback_providers).toEqual([]);
       expect(disabled.config.fallback_model).toBeNull();
-      await page
-        .getByRole("button", { name: "Settings", exact: true })
-        .first()
-        .click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Models & providers", exact: true })
         .click();
@@ -192,10 +186,7 @@ Deno.test({
           exact: true,
         }),
       ).toBeDisabled();
-      await page
-        .getByRole("button", { name: "Settings", exact: true })
-        .first()
-        .click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Memory graph", exact: true })
         .click();
@@ -207,13 +198,16 @@ Deno.test({
         .getByLabel("Content", { exact: true })
         .fill("Prefers native perennial flowers.");
       await page.getByRole("button", { name: "Save", exact: true }).click();
-      await expect(page.getByRole("dialog")).not.toBeVisible();
+      await expect(
+        page.locator("dialog:not(.settings-dialog)"),
+      ).not.toBeVisible();
       const downloaded = page.waitForEvent("download");
       await page
         .getByRole("button", { name: "Export map snapshot", exact: true })
         .click();
       const download = await downloaded;
-      const snapshotPath = `/var/tmp/arura-memory-map-${crypto.randomUUID()}.json`;
+      const snapshotPath =
+        `/var/tmp/arura-memory-map-${crypto.randomUUID()}.json`;
       await download.saveAs(snapshotPath);
       const snapshot = JSON.parse(await Deno.readTextFile(snapshotPath));
       expect(snapshot.graph.memory).toBeUndefined();
@@ -236,14 +230,13 @@ Deno.test({
       await page
         .getByRole("dialog")
         .getByRole("button", { name: "Close", exact: true })
+        .last()
         .click();
+      await openSettings(page);
       await page
-        .getByRole("button", { name: "Settings", exact: true })
-        .first()
+        .getByRole("button", { name: "Capabilities", exact: true })
         .click();
-      await page
-        .getByRole("button", { name: "MCP servers", exact: true })
-        .click();
+      await page.getByRole("button", { name: "MCP", exact: true }).click();
       await page
         .getByRole("button", { name: "Authorize", exact: true })
         .click();
@@ -264,18 +257,22 @@ Deno.test({
         expect(
           (
             await anonymous.request.get(
-              `${url}/api/mcp/oauth/callback/fixture?state=${encodeURIComponent(
-                state,
-              )}&code=fixture-code`,
+              `${url}/api/mcp/oauth/callback/fixture?state=${
+                encodeURIComponent(
+                  state,
+                )
+              }&code=fixture-code`,
             )
           ).status(),
         ).toBe(200);
         expect(
           (
             await anonymous.request.get(
-              `${url}/api/mcp/oauth/callback/fixture?state=${encodeURIComponent(
-                state,
-              )}&code=fixture-code`,
+              `${url}/api/mcp/oauth/callback/fixture?state=${
+                encodeURIComponent(
+                  state,
+                )
+              }&code=fixture-code`,
             )
           ).status(),
         ).toBe(404);
@@ -289,17 +286,11 @@ Deno.test({
         .getByRole("button", { name: "Close", exact: true })
         .last()
         .click();
-      await page
-        .getByRole("button", { name: "Settings", exact: true })
-        .first()
-        .click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Profiles & bots", exact: true })
         .click();
-      await page
-        .getByRole("button", { name: "Settings", exact: true })
-        .first()
-        .click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Backend resources", exact: true })
         .click();
@@ -319,10 +310,7 @@ Deno.test({
         await page.request.get(`${url}/api/resource/config`)
       ).json();
       expect(runtime.config.agent.agent_cache).toEqual({ idle_ttl_secs: 7200 });
-      await page
-        .getByRole("button", { name: "Settings", exact: true })
-        .first()
-        .click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Delegated work", exact: true })
         .click();
@@ -342,10 +330,7 @@ Deno.test({
       expect(delegation.config.delegation).toEqual({
         max_concurrent_children: 3,
       });
-      await page
-        .getByRole("button", { name: "Settings", exact: true })
-        .first()
-        .click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Profiles & bots", exact: true })
         .click();
@@ -374,13 +359,14 @@ Deno.test({
       await page
         .getByRole("dialog")
         .getByRole("button", { name: "Close", exact: true })
+        .last()
         .click();
       await page.getByRole("button", { name: "Chat", exact: true }).click();
       await expect(
         page.getByLabel("Message Hermes", { exact: true }),
       ).toBeVisible();
       const canonical = await page.evaluate(() =>
-        localStorage.getItem("arura.view"),
+        localStorage.getItem("arura.view")
       );
       const roster = await (
         await page.request.get(`${url}/api/resource/profileRoster`)
@@ -397,7 +383,7 @@ Deno.test({
       await expect
         .poll(() => page.evaluate(() => localStorage.getItem("arura.view")))
         .not.toBe(canonical);
-      await page.getByRole("button", { name: "Settings", exact: true }).click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Profiles & bots", exact: true })
         .click();
@@ -412,7 +398,8 @@ Deno.test({
 });
 
 Deno.test({
-  name: "desktop and mobile browsers: stream, archive, offline reopen, and revoke",
+  name:
+    "desktop and mobile browsers: stream, archive, offline reopen, and revoke",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -435,10 +422,12 @@ Deno.test({
     const url = Deno.env.get("ARURA_TEST_URL")!;
     const suffix = crypto.randomUUID().slice(0, 8);
     try {
-      for (const [page, name] of [
-        [a, "Desktop"],
-        [b, "Phone"],
-      ] as const) {
+      for (
+        const [page, name] of [
+          [a, "Desktop"],
+          [b, "Phone"],
+        ] as const
+      ) {
         await page.goto(url);
         await signIn(page, `${name} ${suffix}`);
         await expect(page.locator(".app-shell")).toBeVisible({
@@ -534,7 +523,10 @@ Deno.test({
           exact: true,
         }),
       ).toBeChecked();
-      await b.getByRole("button", { name: "Close", exact: true }).click();
+      await b
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
+        .click();
       await a
         .getByRole("button", { name: "Done customizing", exact: true })
         .click();
@@ -554,7 +546,10 @@ Deno.test({
       await a
         .getByLabel("Reasoning effort", { exact: true })
         .selectOption("high");
-      await a.getByRole("button", { name: "Close", exact: true }).click();
+      await a
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
+        .click();
       await expect(
         b.getByRole("button", { name: "Model", exact: true }),
       ).toContainText("high", { timeout: 15000 });
@@ -563,7 +558,10 @@ Deno.test({
       await expect(
         a.getByRole("dialog", { name: "Context usage" }),
       ).toContainText("2,000");
-      await a.getByRole("button", { name: "Close", exact: true }).click();
+      await a
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
+        .click();
       await a.getByLabel("Message Hermes", { exact: true }).fill("/res");
       await expect(
         a.getByRole("listbox", { name: "Commands and skills" }),
@@ -591,7 +589,10 @@ Deno.test({
           .locator("dialog .essentials")
           .getByRole("button", { name: "Fixture conversation", exact: true }),
       ).toBeVisible();
-      await b.getByRole("button", { name: "Close", exact: true }).click();
+      await b
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
+        .click();
       await a
         .getByRole("button", { name: "Archive conversation", exact: true })
         .click();
@@ -626,7 +627,10 @@ Deno.test({
           exact: true,
         }),
       ).toBeVisible();
-      await b.getByRole("button", { name: "Close", exact: true }).click();
+      await b
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
+        .click();
       await a.screenshot({ path: "/var/tmp/arura-desktop-conversation.png" });
       await b.screenshot({ path: "/var/tmp/arura-mobile-conversation.png" });
       await b.setViewportSize({ width: 844, height: 390 });
@@ -664,7 +668,10 @@ Deno.test({
       await expect(
         a.getByRole("button", { name: "Save", exact: true }),
       ).toBeDisabled();
-      await a.getByRole("button", { name: "Close", exact: true }).click();
+      await a
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
+        .click();
       await a
         .locator(".resource-card")
         .filter({ hasText: "notes.md" })
@@ -679,7 +686,10 @@ Deno.test({
       await expect(
         a.getByRole("status").filter({ hasText: "File saved" }),
       ).toBeVisible();
-      await a.getByRole("button", { name: "Close", exact: true }).click();
+      await a
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
+        .click();
       await a
         .locator(".resource-card")
         .filter({ hasText: "notes.md" })
@@ -706,7 +716,7 @@ Deno.test({
       await expect(
         a.locator(".resource-card").filter({ hasText: "notes.md" }).first(),
       ).toBeVisible({ timeout: 15000 });
-      await a.getByRole("button", { name: "Settings", exact: true }).click();
+      await openSettings(a);
       await a.getByRole("button", { name: "Schedules", exact: true }).click();
       await a
         .getByRole("button", { name: "Automation blueprints", exact: true })
@@ -722,10 +732,7 @@ Deno.test({
       await expect(
         a.locator(".resource-card").filter({ hasText: "Daily note" }),
       ).toBeVisible();
-      await a
-        .getByRole("button", { name: "Settings", exact: true })
-        .first()
-        .click();
+      await openSettings(a);
       await a
         .getByRole("button", { name: "Access & devices", exact: false })
         .click();
@@ -781,7 +788,7 @@ Deno.test({
       await page
         .getByLabel("Message Hermes", { exact: true })
         .fill("Keep this draft in memory");
-      await page.getByRole("button", { name: "Settings", exact: true }).click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Storage & offline", exact: false })
         .click();
@@ -791,8 +798,8 @@ Deno.test({
         }),
       ).toBeVisible();
       await page
-        .getByRole("button", { name: "Fixture conversation", exact: true })
-        .first()
+        .locator(".settings-dialog")
+        .getByRole("button", { name: "Close", exact: true })
         .click();
       await expect(
         page.getByLabel("Message Hermes", { exact: true }),

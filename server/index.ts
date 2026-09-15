@@ -206,8 +206,8 @@ async function reconcile() {
         {},
       );
       for (const item of pendingOrganization) {
-        const pinned =
-          item.section === "pinned" || item.section === "essential";
+        const pinned = item.section === "pinned" ||
+          item.section === "essential";
         const archived = item.section === "archived";
         try {
           await hermes.setOrganization(item.key, pinned, archived);
@@ -338,8 +338,9 @@ hermes.on("complete", (key: string, turn: Turn) => {
       notice: {
         id: `${key}:${turn.startedAt}`,
         conversation: key,
-        title:
-          turn.state === "complete" ? "Reply ready" : "Hermes needs attention",
+        title: turn.state === "complete"
+          ? "Reply ready"
+          : "Hermes needs attention",
       },
     })
     .catch(report);
@@ -481,10 +482,10 @@ async function processCommands() {
                 text: prompt,
                 ...(payload.edit
                   ? {
-                      truncate_before_row_id: payload.edit,
-                      confirm_truncate: true,
-                      confirm_empty_truncate: true,
-                    }
+                    truncate_before_row_id: payload.edit,
+                    confirm_truncate: true,
+                    confirm_empty_truncate: true,
+                  }
                   : {}),
                 profile: JSON.parse(key)[0],
               },
@@ -591,7 +592,7 @@ async function processCommands() {
           id: command._id,
           status:
             (kind === "send" || (kind === "sendNow" && !alreadyRunning)) &&
-            activeCommands.has(key)
+              activeCommands.has(key)
               ? "accepted"
               : "complete",
           result: withoutReasoning(result),
@@ -748,10 +749,9 @@ async function handle(request: Request, ip: string): Promise<Response> {
         await response.body?.cancel();
         return json(
           {
-            error:
-              response.status === 401 || response.status === 403
-                ? "Incorrect username or password"
-                : "Hermes sign-in is unavailable. Try again shortly.",
+            error: response.status === 401 || response.status === 403
+              ? "Incorrect username or password"
+              : "Hermes sign-in is unavailable. Try again shortly.",
           },
           response.status === 401 || response.status === 403 ? 401 : 502,
         );
@@ -768,30 +768,29 @@ async function handle(request: Request, ip: string): Promise<Response> {
       const platform = /iPhone/i.test(agent)
         ? "iPhone"
         : /iPad/i.test(agent)
-          ? "iPad"
-          : /Android/i.test(agent)
-            ? "Android"
-            : /Macintosh/i.test(agent)
-              ? "Mac"
-              : /Windows/i.test(agent)
-                ? "Windows"
-                : /Linux/i.test(agent)
-                  ? "Linux"
-                  : "Device";
+        ? "iPad"
+        : /Android/i.test(agent)
+        ? "Android"
+        : /Macintosh/i.test(agent)
+        ? "Mac"
+        : /Windows/i.test(agent)
+        ? "Windows"
+        : /Linux/i.test(agent)
+        ? "Linux"
+        : "Device";
       const browser = /Edg\//.test(agent)
         ? "Edge"
         : /Firefox\//.test(agent)
-          ? "Firefox"
-          : /Chrome\//.test(agent)
-            ? "Chrome"
-            : /Safari\//.test(agent)
-              ? "Safari"
-              : "Browser";
+        ? "Firefox"
+        : /Chrome\//.test(agent)
+        ? "Chrome"
+        : /Safari\//.test(agent)
+        ? "Safari"
+        : "Browser";
       name ||= `${browser} on ${platform}`;
     } else if (typeof body.code === "string" && name) {
       // Keep already-loaded clients compatible while they update.
-      bootstrap =
-        Boolean(process.env.ARURA_ACCESS_KEY) &&
+      bootstrap = Boolean(process.env.ARURA_ACCESS_KEY) &&
         equal(body.code, process.env.ARURA_ACCESS_KEY!);
     } else {
       return json({ error: "Enter your Hermes username and password" }, 400);
@@ -1019,20 +1018,22 @@ async function handle(request: Request, ip: string): Promise<Response> {
       if (!id) return json({ error: "Conversation ID is required" }, 400);
       return exportConversation(id, profile, (offset) =>
         hermes.rest(
-          `/api/sessions/${encodeURIComponent(
-            id,
-          )}/messages?${new URLSearchParams({
+          `/api/sessions/${
+            encodeURIComponent(
+              id,
+            )
+          }/messages?${new URLSearchParams({
             profile,
             offset: String(offset),
             limit: "500",
             order: "oldest",
             include_compacted: "true",
           })}`,
-        ),
-      );
+        ));
     }
-    const allowed =
-      type === "backup" ? "/api/ops/backup/download" : "/api/fs/download";
+    const allowed = type === "backup"
+      ? "/api/ops/backup/download"
+      : "/api/fs/download";
     const query = new URLSearchParams(url.searchParams);
     query.delete("type");
     query.delete("id");
@@ -1104,9 +1105,11 @@ async function handle(request: Request, ip: string): Promise<Response> {
     }
     const file = data.get("file");
     if (!(file instanceof File)) return json({ error: "Choose a file" }, 400);
-    const data_url = `data:${file.type || "application/octet-stream"};base64,${Buffer.from(
-      await file.arrayBuffer(),
-    ).toString("base64")}`;
+    const data_url = `data:${file.type || "application/octet-stream"};base64,${
+      Buffer.from(
+        await file.arrayBuffer(),
+      ).toString("base64")
+    }`;
     if (file.type.startsWith("image/")) {
       const profile = url.searchParams.get("profile") ?? "default";
       return json(
@@ -1117,16 +1120,18 @@ async function handle(request: Request, ip: string): Promise<Response> {
         ),
       );
     }
-    const root =
-      process.env.ARURA_UPLOAD_DIR ?? (await hermes.rest("/api/files")).path;
+    const root = process.env.ARURA_UPLOAD_DIR ??
+      (await hermes.rest("/api/files")).path;
     if (typeof root !== "string") {
       return json({ error: "Configure a host upload directory" }, 503);
     }
     const name = file.name.replace(/[^a-zA-Z0-9._-]/g, "_") || "attachment";
-    const target = `${root.replace(
-      /\/$/,
-      "",
-    )}/arura-uploads/${crypto.randomUUID()}-${name}`;
+    const target = `${
+      root.replace(
+        /\/$/,
+        "",
+      )
+    }/arura-uploads/${crypto.randomUUID()}-${name}`;
     return json(
       await hermes.rest("/api/files/upload", "POST", {
         path: target,
@@ -1192,14 +1197,12 @@ async function handle(request: Request, ip: string): Promise<Response> {
       if (request.method !== "GET") {
         await convex.mutation(anyApi.workspace.ingest, { changed: true });
       }
-      const visible =
-        op === "profileRoster"
-          ? JSON.parse(
-              JSON.stringify(result, (key, value) =>
-                key === "preview" ? undefined : value,
-              ),
-            )
-          : result;
+      const visible = op === "profileRoster"
+        ? JSON.parse(
+          JSON.stringify(result, (key, value) =>
+            key === "preview" ? undefined : value),
+        )
+        : result;
       return json(withoutReasoning(visible));
     }
     if (op === "saveFile") {
@@ -1373,14 +1376,16 @@ const server = Deno.serve(
 );
 void hermes.connect().catch(report);
 Deno.addSignalListener("SIGTERM", () => {
-  for (const timer of [
-    authTimer,
-    flushTimer,
-    commandTimer,
-    reconcileTimer,
-    backupTimer,
-    artifactTimer,
-  ]) {
+  for (
+    const timer of [
+      authTimer,
+      flushTimer,
+      commandTimer,
+      reconcileTimer,
+      backupTimer,
+      artifactTimer,
+    ]
+  ) {
     clearInterval(timer);
   }
   hermes.close();

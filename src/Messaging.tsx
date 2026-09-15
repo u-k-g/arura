@@ -60,8 +60,7 @@ function PlatformMark(props: { platform: Platform }) {
       class="platform-mark"
       aria-hidden="true"
       style={{
-        "--platform-brand":
-          brands[props.platform.id] ??
+        "--platform-brand": brands[props.platform.id] ??
           (props.platform.id === "slack" ? "#4A154B" : "var(--muted)"),
       }}
     >
@@ -83,10 +82,10 @@ function tone(p: Platform) {
   return !p.enabled
     ? "muted"
     : p.state === "connected"
-      ? "good"
-      : ["fatal", "startup_failed"].includes(p.state ?? "")
-        ? "bad"
-        : "waiting";
+    ? "good"
+    : ["fatal", "startup_failed"].includes(p.state ?? "")
+    ? "bad"
+    : "waiting";
 }
 
 export default function Messaging() {
@@ -110,11 +109,11 @@ export default function Messaging() {
     platforms().filter((p) =>
       `${p.name} ${p.description ?? ""}`
         .toLowerCase()
-        .includes(filter().toLowerCase()),
-    ),
+        .includes(filter().toLowerCase())
+    )
   );
   const current = createMemo(() =>
-    platforms().find((p) => p.id === selected()),
+    platforms().find((p) => p.id === selected())
   );
   const draft = (id: string) => edits()[id] ?? {};
   async function refresh() {
@@ -133,12 +132,14 @@ export default function Messaging() {
       setPending(people.pending ?? []);
       setApproved(people.approved ?? []);
       setProfiles((roster.profiles ?? []).map((p: { name: string }) => p.name));
-      if (!list.some((p) => p.id === selected()))
+      if (!list.some((p) => p.id === selected())) {
         setSelected(list[0]?.id ?? "");
+      }
       setError("");
     } catch (e) {
-      if (version === generation)
+      if (version === generation) {
         setError(e instanceof Error ? e.message : "Could not load messaging");
+      }
     } finally {
       if (version === generation) setLoading(false);
     }
@@ -162,12 +163,13 @@ export default function Messaging() {
         { ...params, profile: scope },
         { ...(body as Record<string, unknown>), profile: scope },
       );
-      if (result.ok === false)
+      if (result.ok === false) {
         throw new Error(
           result.error ??
             result.message ??
             "Hermes could not apply this change",
         );
+      }
       await refresh();
       inform(
         operation === "savePlatform" || result.restart_required
@@ -187,8 +189,8 @@ export default function Messaging() {
       group === "required"
         ? f.required
         : group === "advanced"
-          ? !f.required && f.advanced
-          : !f.required && !f.advanced,
+        ? !f.required && f.advanced
+        : !f.required && !f.advanced
     );
   const credential = (p: Platform, field: Credential) => (
     <Field label={field.prompt || field.key} hint={field.description}>
@@ -203,8 +205,7 @@ export default function Messaging() {
             setEdits((all) => ({
               ...all,
               [p.id]: { ...all[p.id], [field.key]: e.currentTarget.value },
-            }))
-          }
+            }))}
         />
         <Show when={field.is_set}>
           <IconButton
@@ -217,20 +218,21 @@ export default function Messaging() {
                   await confirmAction(
                     `Remove saved ${field.prompt || field.key}?`,
                   )
-                )
+                ) {
                   if (
                     await update(
                       "savePlatform",
                       { id: p.id },
                       { clear_env: [field.key] },
                     )
-                  )
+                  ) {
                     setEdits((all) => ({
                       ...all,
                       [p.id]: { ...all[p.id], [field.key]: "" },
                     }));
-              })()
-            }
+                  }
+                }
+              })()}
           />
         </Show>
         <Show when={field.url && /^https?:\/\//.test(field.url)}>
@@ -319,9 +321,8 @@ export default function Messaging() {
                 type="button"
                 class="platform-row"
                 aria-label={p.name}
-                aria-description={
-                  p.state || (p.enabled ? "Enabled" : "Disabled")
-                }
+                aria-description={p.state ||
+                  (p.enabled ? "Enabled" : "Disabled")}
                 classList={{ active: selected() === p.id }}
                 aria-pressed={selected() === p.id}
                 onClick={() => select(p.id)}
@@ -334,6 +335,7 @@ export default function Messaging() {
                   {(n) => (
                     <span
                       class="platform-pending"
+                      role="img"
                       aria-label={`${n()} pending requests`}
                     >
                       {n()}
@@ -424,10 +426,13 @@ export default function Messaging() {
                                       if (
                                         !group.pending &&
                                         !(await confirmAction(
-                                          `Revoke access for ${user.user_name || user.user_id}?`,
+                                          `Revoke access for ${
+                                            user.user_name || user.user_id
+                                          }?`,
                                         ))
-                                      )
+                                      ) {
                                         return;
+                                      }
                                       await update(
                                         group.pending
                                           ? "approvePairing"
@@ -440,8 +445,7 @@ export default function Messaging() {
                                             : { user_id: user.user_id }),
                                         },
                                       );
-                                    })()
-                                  }
+                                    })()}
                                 >
                                   {group.pending ? "Approve" : "Revoke"}
                                 </button>
@@ -497,7 +501,10 @@ export default function Messaging() {
                     <input
                       type="checkbox"
                       role="switch"
-                      aria-label={`${p().enabled ? "Disable" : "Enable"} ${p().name}`}
+                      aria-checked={p().enabled}
+                      aria-label={`${
+                        p().enabled ? "Disable" : "Enable"
+                      } ${p().name}`}
                       checked={p().enabled}
                       disabled={busy()}
                       onChange={(e) =>
@@ -505,28 +512,25 @@ export default function Messaging() {
                           "savePlatform",
                           { id: p().id },
                           { enabled: e.currentTarget.checked },
-                        )
-                      }
+                        )}
                     />
                     Enabled
                   </label>
                   <button
                     type="button"
                     class="primary"
-                    disabled={
-                      busy() ||
-                      !Object.values(draft(p().id)).some((v) => v.trim())
-                    }
+                    disabled={busy() ||
+                      !Object.values(draft(p().id)).some((v) => v.trim())}
                     onClick={() =>
                       void (async () => {
                         const id = p().id;
                         const env = Object.fromEntries(
                           Object.entries(draft(id)).filter(([, v]) => v.trim()),
                         );
-                        if (await update("savePlatform", { id }, { env }))
+                        if (await update("savePlatform", { id }, { env })) {
                           setEdits((all) => ({ ...all, [id]: {} }));
-                      })()
-                    }
+                        }
+                      })()}
                   >
                     {busy() ? "Saving…" : "Save changes"}
                   </button>

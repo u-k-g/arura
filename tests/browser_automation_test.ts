@@ -3,7 +3,8 @@ import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
-  name: "contextual skill and schedule suggestions lead to editable schedules with lifecycle controls",
+  name:
+    "contextual skill and schedule suggestions lead to editable schedules with lifecycle controls",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -57,15 +58,18 @@ Deno.test({
         );
       await card.getByRole("button", { name: "Pause", exact: true }).click();
       await expect.poll(async () => (await state()).enabled).toBe(false);
-      await page.getByRole("button", { name: "Close", exact: true }).click();
+      await page.getByRole("button", { name: "Close", exact: true }).last()
+        .click();
       await card.getByRole("button", { name: "Resume", exact: true }).click();
       await expect.poll(async () => (await state()).enabled).toBe(true);
-      await page.getByRole("button", { name: "Close", exact: true }).click();
+      await page.getByRole("button", { name: "Close", exact: true }).last()
+        .click();
       await card.getByRole("button", { name: "Run now", exact: true }).click();
       await expect
         .poll(async () => Boolean((await state()).last_run_at))
         .toBe(true);
-      await page.getByRole("button", { name: "Close", exact: true }).click();
+      await page.getByRole("button", { name: "Close", exact: true }).last()
+        .click();
       void onceActionDialog(page, (dialog) => dialog.accept());
       await card.getByRole("button", { name: "Delete", exact: true }).click();
       await expect(card).toHaveCount(0);
@@ -99,17 +103,20 @@ Deno.test({
       await expect(goal).toContainText("paused");
       await goal.getByRole("button", { name: "Resume", exact: true }).click();
       await expect(goal).toContainText("active");
-      void onceActionDialog(page, (dialog) =>
-        dialog.accept("Choose native plants"),
+      void onceActionDialog(
+        page,
+        (dialog) => dialog.accept("Choose native plants"),
       );
       await goal.getByRole("button", { name: "Add step", exact: true }).click();
       await expect(goal).toContainText("Choose native plants");
       await goal.getByRole("button", { name: "Clear", exact: true }).click();
       await expect(goal).toHaveCount(0);
-      for (const [kind, title] of [
-        ["loop", "Repeated prompt"],
-        ["heartbeat", "Heartbeat"],
-      ]) {
+      for (
+        const [kind, title] of [
+          ["loop", "Repeated prompt"],
+          ["heartbeat", "Heartbeat"],
+        ]
+      ) {
         await controls
           .getByLabel("Automation", { exact: true })
           .selectOption(kind);

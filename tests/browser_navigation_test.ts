@@ -1,9 +1,10 @@
-import { signIn } from "./sign_in.ts";
+import { openSettings, signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect, type Page } from "@playwright/test";
 
 Deno.test({
-  name: "conversation rename, context, independent views, notices and deletion work across devices",
+  name:
+    "conversation rename, context, independent views, notices and deletion work across devices",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -19,7 +20,7 @@ Deno.test({
     }
     async function newChat(page: Page) {
       const before = await page.evaluate(() =>
-        localStorage.getItem("arura.view"),
+        localStorage.getItem("arura.view")
       );
       await page
         .locator(".topbar")
@@ -134,12 +135,17 @@ Deno.test({
       await expect(delegated).toContainText("No delegated work is active");
       await delegated
         .getByRole("button", { name: "Close", exact: true })
+        .last()
         .click();
-      await a.getByRole("button", { name: "Settings", exact: true }).click();
+      await openSettings(a);
       await a.getByRole("button", { name: "Appearance", exact: true }).click();
       await expect(
         a.getByRole("heading", { name: "Keyboard shortcuts", exact: true }),
       ).toHaveCount(0);
+      await a
+        .locator(".settings-dialog")
+        .getByRole("button", { name: "Close", exact: true })
+        .click();
       await a.getByRole("button", { name: title, exact: true }).click();
       await a
         .getByRole("button", { name: "Conversation actions", exact: true })

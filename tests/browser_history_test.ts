@@ -2,7 +2,8 @@ import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
-  name: "bot history loads older compacted turns without duplicates or losing the reading position",
+  name:
+    "bot history loads older compacted turns without duplicates or losing the reading position",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({

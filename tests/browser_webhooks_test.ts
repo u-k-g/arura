@@ -1,9 +1,10 @@
-import { signIn } from "./sign_in.ts";
+import { openSettings, signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
-  name: "webhook creation reveals its secret once while shared listings and caches omit it",
+  name:
+    "webhook creation reveals its secret once while shared listings and caches omit it",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -15,7 +16,7 @@ Deno.test({
       const page = await browser.newPage();
       await page.goto(url);
       await signIn(page, "Webhook test");
-      await page.getByRole("button", { name: "Settings", exact: true }).click();
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Incoming triggers", exact: true })
         .click();
@@ -36,7 +37,8 @@ Deno.test({
         await page.request.get(`${url}/api/resource/webhooks`)
       ).json();
       expect(JSON.stringify(listing)).not.toContain("ONE_TIME_WEBHOOK_SECRET");
-      await created.getByRole("button", { name: "Close", exact: true }).click();
+      await created.getByRole("button", { name: "Close", exact: true }).last()
+        .click();
       const card = page
         .locator(".resource-card")
         .filter({ hasText: "garden-trigger" });

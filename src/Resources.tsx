@@ -82,6 +82,7 @@ import {
   pairingRows,
   platformBody,
 } from "../shared/resource-forms.ts";
+const JobHistory = lazy(() => import("./JobHistory.tsx"));
 const ProfileAvatar = lazy(() => import("./ProfileAvatar.tsx"));
 const RuntimeSettings = lazy(() => import("./RuntimeSettings.tsx"));
 const MixtureModels = lazy(() => import("./MixtureModels.tsx"));
@@ -285,7 +286,7 @@ const dataRows = (data: unknown, keys: string[] = []): ResourceRow[] => {
     return Object.entries(data).map(([name, value]) =>
       typeof value === "object" && value !== null
         ? { name, ...value }
-        : { name, value },
+        : { name, value }
     );
   }
   return [];
@@ -321,11 +322,10 @@ function Value(props: { value: unknown }) {
         <For each={Object.entries(props.value ?? {})}>
           {([key, value]) => (
             <Show
-              when={
-                !/^(?:token|access_token|refresh_token|secret|password|api_key|reasoning(?:_text|_content|_delta)?|thinking)$/i.test(
+              when={!/^(?:token|access_token|refresh_token|secret|password|api_key|reasoning(?:_text|_content|_delta)?|thinking)$/i
+                .test(
                   key,
-                )
-              }
+                )}
             >
               <div>
                 <dt>{human(key)}</dt>
@@ -389,11 +389,9 @@ function Editor(props: {
           return (
             <Show when={!hidden}>
               <Show
-                when={
-                  value() !== null &&
+                when={value() !== null &&
                   typeof value() === "object" &&
-                  !Array.isArray(value())
-                }
+                  !Array.isArray(value())}
                 fallback={
                   <Field label={human(key)}>
                     <Show
@@ -403,21 +401,18 @@ function Editor(props: {
                           when={typeof value() === "boolean"}
                           fallback={
                             <input
-                              type={
-                                /key|secret|password|token/i.test(key)
-                                  ? "password"
-                                  : typeof value() === "number"
-                                    ? "number"
-                                    : "text"
-                              }
+                              type={/key|secret|password|token/i.test(key)
+                                ? "password"
+                                : typeof value() === "number"
+                                ? "number"
+                                : "text"}
                               value={String(value() ?? "")}
                               onInput={(e) =>
                                 update(
                                   typeof value() === "number"
                                     ? Number(e.currentTarget.value)
                                     : e.currentTarget.value,
-                                )
-                              }
+                                )}
                             />
                           }
                         >
@@ -440,32 +435,27 @@ function Editor(props: {
                                     aria-label={`${human(key)} item ${
                                       index() + 1
                                     }`}
-                                    type={
-                                      typeof item === "number"
-                                        ? "number"
-                                        : "text"
-                                    }
+                                    type={typeof item === "number"
+                                      ? "number"
+                                      : "text"}
                                     value={String(item ?? "")}
                                     onChange={(event) => {
                                       const next = [...(value() as unknown[])];
-                                      next[index()] =
-                                        typeof item === "number"
-                                          ? Number(event.currentTarget.value)
-                                          : typeof item === "boolean"
-                                            ? event.currentTarget.value ===
-                                              "true"
-                                            : event.currentTarget.value;
+                                      next[index()] = typeof item === "number"
+                                        ? Number(event.currentTarget.value)
+                                        : typeof item === "boolean"
+                                        ? event.currentTarget.value ===
+                                          "true"
+                                        : event.currentTarget.value;
                                       update(next);
                                     }}
                                   />
                                 }
                               >
                                 <Editor
-                                  value={
-                                    Array.isArray(item)
-                                      ? { items: item }
-                                      : record(item)
-                                  }
+                                  value={Array.isArray(item)
+                                    ? { items: item }
+                                    : record(item)}
                                   change={(entry) => {
                                     const next = [...(value() as unknown[])];
                                     next[index()] = Array.isArray(item)
@@ -482,8 +472,7 @@ function Editor(props: {
                                     (value() as unknown[]).filter(
                                       (_, i) => i !== index(),
                                     ),
-                                  )
-                                }
+                                  )}
                               >
                                 Remove item
                               </button>
@@ -499,16 +488,16 @@ function Editor(props: {
                               Array.isArray(item)
                                 ? []
                                 : item !== null && typeof item === "object"
-                                  ? Object.fromEntries(
-                                      Object.entries(item).map(
-                                        ([key, value]) => [key, empty(value)],
-                                      ),
-                                    )
-                                  : typeof item === "number"
-                                    ? 0
-                                    : typeof item === "boolean"
-                                      ? false
-                                      : "";
+                                ? Object.fromEntries(
+                                  Object.entries(item).map(
+                                    ([key, value]) => [key, empty(value)],
+                                  ),
+                                )
+                                : typeof item === "number"
+                                ? 0
+                                : typeof item === "boolean"
+                                ? false
+                                : "";
                             const entry = empty(first);
                             update([...rows, entry]);
                           }}
@@ -542,6 +531,28 @@ export default function Resources(props: {
   navigate: (view: string) => void;
   newChat: (profile?: string) => Promise<void>;
 }) {
+  const scoped = () =>
+    ["skills", "toolsets", "mcp", "jobs"].includes(props.name);
+  const [resourceProfile, setResourceProfile] = createSignal("default");
+  const [profiles, setProfiles] = createSignal<string[]>(["default"]);
+  createEffect(() => {
+    if (!scoped()) return;
+    let disposed = false;
+    void resource("profileRoster")
+      .then((value) => {
+        if (!disposed) {
+          setProfiles(
+            (value.profiles ?? []).map((p: { name: string }) => p.name),
+          );
+        }
+      })
+      .catch(() => {
+        /* The default profile remains usable if the roster is unavailable. */
+      });
+    onCleanup(() => {
+      disposed = true;
+    });
+  });
   const [blueprints, setBlueprints] = createSignal<Blueprint[] | undefined>();
   const [blueprint, setBlueprint] = createSignal<Blueprint>();
   const [blueprintValues, setBlueprintValues] = createSignal<
@@ -558,11 +569,13 @@ export default function Resources(props: {
     preferences.getItem("arura.lastConversation") ?? "",
   );
   const [path, setPath] = createSignal(props.initialPath ?? ""),
-    [file, setFile] = createSignal<{
-      path: string;
-      content: string;
-      readOnly?: boolean;
-    } | null>(null),
+    [file, setFile] = createSignal<
+      {
+        path: string;
+        content: string;
+        readOnly?: boolean;
+      } | null
+    >(null),
     [dirty, setDirty] = createSignal(false);
   const [original, setOriginal] = createSignal("");
   const [webhookSecret, setWebhookSecret] = createSignal<{
@@ -703,14 +716,16 @@ export default function Resources(props: {
   }
   const [selection, setSelection] = createSignal({ text: "", from: 1, to: 1 });
   const [attachSelection, setAttachSelection] = createSignal(false);
-  const [form, setForm] = createSignal<{
-      operation: string;
-      params: Record<string, unknown>;
-      values: Record<string, unknown>;
-      original?: Record<string, unknown>;
-      fields?: FormField[];
-      title: string;
-    } | null>(null),
+  const [form, setForm] = createSignal<
+      {
+        operation: string;
+        params: Record<string, unknown>;
+        values: Record<string, unknown>;
+        original?: Record<string, unknown>;
+        fields?: FormField[];
+        title: string;
+      } | null
+    >(null),
     [detail, setDetail] = createSignal<unknown>();
   let refreshVersion = 0;
   onCleanup(() => {
@@ -739,8 +754,10 @@ export default function Resources(props: {
         props.name === "files"
           ? { path: path() }
           : props.name === "connectors"
-            ? { conversation: connectionConversation() }
-            : {},
+          ? { conversation: connectionConversation() }
+          : scoped()
+          ? { profile: resourceProfile() }
+          : {},
       );
       if (version === refreshVersion) setData(value);
     } catch (e) {
@@ -751,8 +768,9 @@ export default function Resources(props: {
   }
   let previousSurface = "";
   createEffect(() => {
-    if (props.name !== previousSurface) {
-      previousSurface = props.name;
+    const surfaceKey = `${props.name}:${resourceProfile()}`;
+    if (surfaceKey !== previousSurface) {
+      previousSurface = surfaceKey;
       setData(undefined);
       setForm(null);
       setDetail(undefined);
@@ -777,11 +795,11 @@ export default function Resources(props: {
     path();
     void refresh();
   });
+  const [skillSort, setSkillSort] = createSignal("usage");
   const rows = (): ResourceRow[] =>
     (props.name === "pairing"
       ? (pairingRows(data() ?? {}) as ResourceRow[])
-      : dataRows(data(), surface().list)
-    )
+      : dataRows(data(), surface().list))
       .filter(
         (r) =>
           !(
@@ -794,8 +812,158 @@ export default function Resources(props: {
       .filter((r) =>
         String(r.name ?? r.title ?? r.id ?? "")
           .toLowerCase()
-          .includes(filter().toLowerCase()),
+          .includes(filter().toLowerCase())
+      )
+      .sort((a, b) =>
+        props.name !== "skills"
+          ? 0
+          : (skillSort() === "usage"
+            ? Number(b.usage ?? 0) - Number(a.usage ?? 0)
+            : 0) || String(a.name).localeCompare(String(b.name))
       );
+  const masterDetail = () =>
+    [
+      "profiles",
+      "jobs",
+      "skills",
+      "toolsets",
+      "mcp",
+      "webhooks",
+      "connectors",
+      "agentPlugins",
+      "memory",
+    ].includes(props.name);
+  const [selectedId, setSelectedId] = createSignal("");
+  const [picker, setPicker] = createSignal(false);
+  const rowId = (item: ResourceRow) =>
+    String(item.id ?? item.name ?? item.key ?? "");
+  const rowTitle = (item: ResourceRow) =>
+    item.ui_meta?.["hermes-bots"]?.title ||
+    item.display_name ||
+    item.name ||
+    item.title ||
+    item.id ||
+    "Item";
+  const selectedRow = createMemo(
+    () => rows().find((item) => rowId(item) === selectedId()) ?? rows()[0],
+  );
+  const [preview, setPreview] = createSignal("");
+  const [previewError, setPreviewError] = createSignal("");
+  const [previewLoading, setPreviewLoading] = createSignal(false);
+  createEffect(() => {
+    const name = props.name,
+      item = selectedRow();
+    setPreview("");
+    setPreviewError("");
+    setPreviewLoading(false);
+    if (!item || !["profiles", "skills"].includes(name)) return;
+    let disposed = false;
+    setPreviewLoading(true);
+    void resource(name === "profiles" ? "soul" : "skill", {
+      id: rowId(item),
+      name: rowId(item),
+      ...(scoped() ? { profile: resourceProfile() } : {}),
+    })
+      .then((value) => {
+        if (!disposed) setPreview(String(value.content ?? value.soul ?? ""));
+      })
+      .catch((error) => {
+        if (!disposed) setPreviewError(error.message);
+      })
+      .finally(() => {
+        if (!disposed) setPreviewLoading(false);
+      });
+    onCleanup(() => {
+      disposed = true;
+    });
+  });
+  const [changingRows, setChangingRows] = createSignal<Set<string>>(new Set());
+  const rowToggle = () =>
+    ({ skills: "toggleSkill", toolsets: "toggleToolset", mcp: "toggleMcp" })[
+      props.name as "skills" | "toolsets" | "mcp"
+    ];
+  const itemList = () => (
+    <nav class="resource-rail" aria-label={`${surface().title} list`}>
+      <Show when={props.name === "skills"}>
+        <select
+          aria-label="Sort skills"
+          value={skillSort()}
+          onChange={(e) =>
+            setSkillSort(e.currentTarget.value)}
+        >
+          <option value="usage">↓ Most used</option>
+          <option value="name">Name</option>
+        </select>
+      </Show>
+      <For each={rows()}>
+        {(item) => (
+          <div
+            class="resource-rail-row"
+            classList={{ selected: rowId(item) === rowId(selectedRow() ?? {}) }}
+          >
+            <button
+              type="button"
+              aria-label={rowTitle(item)}
+              onClick={() => {
+                setSelectedId(rowId(item));
+                setPicker(false);
+              }}
+            >
+              <Show when={!rowToggle() && item.enabled !== undefined}>
+                <span
+                  class="resource-state-dot"
+                  classList={{ enabled: item.enabled }}
+                />
+              </Show>
+              <span>
+                <strong>{rowTitle(item)}</strong>
+                <Show when={item.category}>
+                  <small>
+                    {String(item.category)}{" "}
+                    <Show
+                      when={item.provenance && item.provenance !== "bundled"}
+                    >
+                      <em>{String(item.provenance)}</em>
+                    </Show>
+                  </small>
+                </Show>
+              </span>
+            </button>
+            <Show when={Number(item.usage) > 0}>
+              <small class="resource-usage">×{Number(item.usage)}</small>
+            </Show>
+            <Show when={rowToggle() && item.enabled !== undefined}>
+              <input
+                class="resource-toggle"
+                type="checkbox"
+                role="switch"
+                aria-checked={Boolean(item.enabled)}
+                aria-label={`${item.enabled ? "Disable" : "Enable"} ${
+                  rowTitle(item)
+                }`}
+                checked={Boolean(item.enabled)}
+                disabled={changingRows().has(rowId(item))}
+                onChange={() =>
+                  void run(async () => {
+                    const id = rowId(item);
+                    setChangingRows((rows) => new Set([...rows, id]));
+                    try {
+                      await action(rowToggle(), item);
+                    } finally {
+                      setChangingRows((rows) => {
+                        const next = new Set(rows);
+                        next.delete(id);
+                        return next;
+                      });
+                    }
+                  })}
+              />
+            </Show>
+          </div>
+        )}
+      </For>
+    </nav>
+  );
   async function action(operation: string, item: ResourceRow = {}) {
     const id = String(
       (props.name === "webhooks" ? item.name : item.id) ??
@@ -805,6 +973,7 @@ export default function Resources(props: {
     );
     const params = {
       id,
+      ...(scoped() ? { profile: resourceProfile() } : {}),
       ...(props.name === "skills" ? { name: id } : {}),
       ...(props.name === "connectors"
         ? { conversation: connectionConversation() }
@@ -857,10 +1026,9 @@ export default function Resources(props: {
         fields: [
           {
             key: "content",
-            label:
-              operation === "soul"
-                ? "Personality & instructions"
-                : "Skill content",
+            label: operation === "soul"
+              ? "Personality & instructions"
+              : "Skill content",
             type: "textarea",
           },
         ],
@@ -876,8 +1044,8 @@ export default function Resources(props: {
         operation === "deleteEnv"
           ? { key: item.name }
           : operation === "revokePairing"
-            ? { platform: item.platform, user_id: item.user_id }
-            : { ...item },
+          ? { platform: item.platform, user_id: item.user_id }
+          : { ...item },
       );
       await refresh();
       return;
@@ -947,14 +1115,13 @@ export default function Resources(props: {
               ? " (saved; blank keeps current)"
               : ""
           }`,
-          type:
-            field.kind === "secret"
-              ? "password"
-              : field.kind === "boolean"
-                ? "boolean"
-                : ["integer", "number"].includes(field.kind ?? "")
-                  ? "number"
-                  : "text",
+          type: field.kind === "secret"
+            ? "password"
+            : field.kind === "boolean"
+            ? "boolean"
+            : ["integer", "number"].includes(field.kind ?? "")
+            ? "number"
+            : "text",
           required: field.required && !field.is_set,
         })),
       });
@@ -1003,53 +1170,53 @@ export default function Resources(props: {
   async function save() {
     const f = form();
     if (!f) return;
-    const currentConfig =
-      f.operation === "saveConfig" ? await resource("config") : undefined;
-    const body =
-      f.operation === "profileAppearance"
-        ? {
-            name: f.params.name,
-            ui_meta: {
-              "hermes-bots": {
-                ...((f.original?.metadata as Record<string, unknown>) ?? {}),
-                ...f.values,
-              },
-            },
-            ui_meta_expected_revisions: {
-              "hermes-bots": f.original?.revision ?? 0,
-            },
-          }
-        : f.operation === "saveConfig"
-          ? {
-              config: configPatch(
-                f.values,
-                f.original ?? {},
-                currentConfig?.config ?? currentConfig ?? {},
-              ),
-            }
-          : f.operation === "saveJob"
-            ? { updates: jobPatch(f.values, f.original ?? {}) }
-            : f.operation === "saveEndpoint"
-              ? endpointBody(f.values)
-              : f.operation === "savePlatform"
-                ? platformBody(f.values)
-                : f.operation === "addMcp"
-                  ? mcpBody(f.values)
-                  : f.operation === "saveMemoryConfig"
-                    ? { values: f.values }
-                    : f.operation === "toolsetEnv"
-                      ? {
-                          env: Object.fromEntries(
-                            Object.entries(f.values).filter(
-                              ([, value]) => value !== "",
-                            ),
-                          ),
-                        }
-                      : f.operation === "setAuxModel"
-                        ? { scope: "auxiliary", ...f.values }
-                        : f.operation === "setModel"
-                          ? { scope: "main", ...f.values }
-                          : f.values;
+    const currentConfig = f.operation === "saveConfig"
+      ? await resource("config")
+      : undefined;
+    const body = f.operation === "profileAppearance"
+      ? {
+        name: f.params.name,
+        ui_meta: {
+          "hermes-bots": {
+            ...((f.original?.metadata as Record<string, unknown>) ?? {}),
+            ...f.values,
+          },
+        },
+        ui_meta_expected_revisions: {
+          "hermes-bots": f.original?.revision ?? 0,
+        },
+      }
+      : f.operation === "saveConfig"
+      ? {
+        config: configPatch(
+          f.values,
+          f.original ?? {},
+          currentConfig?.config ?? currentConfig ?? {},
+        ),
+      }
+      : f.operation === "saveJob"
+      ? { updates: jobPatch(f.values, f.original ?? {}) }
+      : f.operation === "saveEndpoint"
+      ? endpointBody(f.values)
+      : f.operation === "savePlatform"
+      ? platformBody(f.values)
+      : f.operation === "addMcp"
+      ? mcpBody(f.values)
+      : f.operation === "saveMemoryConfig"
+      ? { values: f.values }
+      : f.operation === "toolsetEnv"
+      ? {
+        env: Object.fromEntries(
+          Object.entries(f.values).filter(
+            ([, value]) => value !== "",
+          ),
+        ),
+      }
+      : f.operation === "setAuxModel"
+      ? { scope: "auxiliary", ...f.values }
+      : f.operation === "setModel"
+      ? { scope: "main", ...f.values }
+      : f.values;
     let result = await resource(f.operation, f.params, body);
     if (result?.confirm_required) {
       if (
@@ -1080,6 +1247,18 @@ export default function Resources(props: {
     }
     inform("Saved");
     await refresh();
+    if (
+      ["createJob", "createProfile", "createWebhook", "addMcp"].includes(
+        f.operation,
+      )
+    ) {
+      const created = rows().find(
+        (item) =>
+          rowId(item) === String(result.id ?? result.name ?? "") ||
+          item.name === f.values.name,
+      );
+      if (created) setSelectedId(rowId(created));
+    }
   }
   async function saveTextFile() {
     const current = file();
@@ -1141,15 +1320,10 @@ export default function Resources(props: {
   }
   const download = (p: string) => `/api/download?path=${encodeURIComponent(p)}`;
   return (
-    <div class="resource-page">
-      <button
-        type="button"
-        class="text-button"
-        onClick={() => props.navigate("settings")}
-      >
-        <Icon name="arrow-left" />
-        Settings
-      </button>
+    <div
+      class="resource-page"
+      classList={{ "resource-master-detail": masterDetail() }}
+    >
       <Show when={props.name === "webhooks" && data()?.enabled === false}>
         <button
           type="button"
@@ -1157,8 +1331,7 @@ export default function Resources(props: {
             void run(async () => {
               await resource("enableWebhooks", {}, {});
               await refresh();
-            })
-          }
+            })}
         >
           Enable incoming webhooks
         </button>
@@ -1196,6 +1369,24 @@ export default function Resources(props: {
           </Show>
         </div>
       </div>
+      <Show when={scoped()}>
+        <label class="resource-profile">
+          Configuring:
+          <select
+            aria-label="Configuring profile"
+            value={resourceProfile()}
+            onChange={(e) => setResourceProfile(e.currentTarget.value)}
+          >
+            <For each={profiles()}>
+              {(name) => (
+                <option value={name}>
+                  {name === "default" ? "Hermes (default)" : name}
+                </option>
+              )}
+            </For>
+          </select>
+        </label>
+      </Show>
       <Show when={error()}>
         <div class="error" role="alert">
           {error()}
@@ -1243,10 +1434,8 @@ export default function Resources(props: {
       </Show>
       <Show
         keyed
-        when={
-          ["computer", "delegation", "resources"].includes(props.name) &&
-          props.name
-        }
+        when={["computer", "delegation", "resources"].includes(props.name) &&
+          props.name}
       >
         {(kind) => <RuntimeSettings kind={kind} />}
       </Show>
@@ -1267,8 +1456,7 @@ export default function Resources(props: {
               values: structuredClone(data()?.config ?? data() ?? {}),
               original: structuredClone(data()?.config ?? data() ?? {}),
               title: "Hermes settings",
-            })
-          }
+            })}
         >
           Edit settings
         </button>
@@ -1307,8 +1495,7 @@ export default function Resources(props: {
             void run(async () => {
               await resource("pauseCurator", {}, { paused: !data()?.paused });
               await refresh();
-            })
-          }
+            })}
         >
           {data()?.paused ? "Resume" : "Pause"}
         </button>
@@ -1317,8 +1504,7 @@ export default function Resources(props: {
           onClick={() =>
             void run(async () => {
               setDetail(await resource("runCurator", {}, {}));
-            })
-          }
+            })}
         >
           Review skills now
         </button>
@@ -1328,17 +1514,15 @@ export default function Resources(props: {
           type="button"
           onClick={() =>
             void run(async () =>
-              setDetail(await resource("logs", { lines: 200 })),
-            )
-          }
+              setDetail(await resource("logs", { lines: 200 }))
+            )}
         >
           Open logs
         </button>
         <button
           type="button"
           onClick={() =>
-            void run(async () => setDetail(await resource("stats")))
-          }
+            void run(async () => setDetail(await resource("stats")))}
         >
           Host resources
         </button>
@@ -1348,9 +1532,8 @@ export default function Resources(props: {
           type="button"
           onClick={() =>
             void run(async () =>
-              setBlueprints((await resource("blueprints")).blueprints ?? []),
-            )
-          }
+              setBlueprints((await resource("blueprints")).blueprints ?? [])
+            )}
         >
           Automation blueprints
         </button>
@@ -1383,22 +1566,18 @@ export default function Resources(props: {
         </div>
       </Show>
       <Show
-        when={
-          ![
-            "graph",
-            "fallbacks",
-            "moa",
-            "computer",
-            "delegation",
-            "resources",
-          ].includes(props.name)
-        }
+        when={![
+          "graph",
+          "fallbacks",
+          "moa",
+          "computer",
+          "delegation",
+          "resources",
+        ].includes(props.name)}
       >
         <Show
-          when={
-            surface().list ||
-            ["files", "artifacts", "env", "graph"].includes(props.name)
-          }
+          when={surface().list ||
+            ["files", "artifacts", "env", "graph"].includes(props.name)}
           fallback={<Value value={data()} />}
         >
           <input
@@ -1409,132 +1588,222 @@ export default function Resources(props: {
             value={filter()}
             onInput={(e) => setFilter(e.currentTarget.value)}
           />
-          <div class="resource-list">
-            <For
-              each={
-                props.name === "files"
+          <div class="resource-browser">
+            <Show when={masterDetail()}>
+              <div class="resource-desktop-rail">{itemList()}</div>
+              <button
+                type="button"
+                class="mobile-only resource-picker"
+                onClick={() => setPicker(true)}
+              >
+                {selectedRow() ? rowTitle(selectedRow()!) : surface().title}
+                <Icon name="nav-arrow-down" />
+              </button>
+            </Show>
+            <div class="resource-list">
+              <For
+                each={props.name === "files"
                   ? dataRows(data(), ["entries", "files"]).filter((item) =>
-                      String(item.name ?? "")
-                        .toLowerCase()
-                        .includes(filter().toLowerCase()),
-                    )
-                  : rows()
-              }
-            >
-              {(item) => (
-                <article class="resource-card">
-                  <div class="resource-card-heading">
-                    <Show
-                      when={
-                        props.name === "profiles" &&
-                        item.has_avatar &&
-                        item.ui_meta?.["hermes-bots"]?.imageKind !== "shape"
-                      }
-                    >
-                      <ProfileAvatar
-                        name={item.name ?? ""}
-                        version={item.ui_meta_revisions?.["hermes-bots"] ?? 0}
-                      />
-                    </Show>
-                    <Show
-                      when={
-                        props.name === "files" || props.name === "artifacts"
-                      }
-                    >
-                      <Icon
-                        name={
-                          item.is_dir || item.type === "directory"
+                    String(item.name ?? "")
+                      .toLowerCase()
+                      .includes(filter().toLowerCase())
+                  )
+                  : masterDetail()
+                  ? selectedRow() ? [selectedRow()!] : []
+                  : rows()}
+              >
+                {(item) => (
+                  <article class="resource-card">
+                    <div class="resource-card-heading">
+                      <Show
+                        when={props.name === "profiles" &&
+                          item.has_avatar &&
+                          item.ui_meta?.["hermes-bots"]?.imageKind !== "shape"}
+                      >
+                        <ProfileAvatar
+                          name={item.name ?? ""}
+                          version={item.ui_meta_revisions?.["hermes-bots"] ?? 0}
+                        />
+                      </Show>
+                      <Show
+                        when={props.name === "files" ||
+                          props.name === "artifacts"}
+                      >
+                        <Icon
+                          name={item.is_dir || item.type === "directory"
                             ? "folder"
-                            : "page"
-                        }
-                      />
-                    </Show>
-                    <div>
-                      <h3>
-                        {item.ui_meta?.["hermes-bots"]?.title ||
-                          item.display_name ||
-                          item.name ||
-                          item.title ||
-                          item.id ||
-                          "Item"}
-                      </h3>
-                      <Show when={item.description}>
-                        <p>{item.description}</p>
+                            : "page"}
+                        />
+                      </Show>
+                      <div>
+                        <h3>
+                          {item.ui_meta?.["hermes-bots"]?.title ||
+                            item.display_name ||
+                            item.name ||
+                            item.title ||
+                            item.id ||
+                            "Item"}
+                        </h3>
+                        <Show when={item.description}>
+                          <p>{item.description}</p>
+                        </Show>
+                      </div>
+                      <Show when={item.enabled !== undefined}>
+                        <span
+                          class="badge"
+                          classList={{ "is-disabled": !item.enabled }}
+                        >
+                          {item.enabled ? "Enabled" : "Disabled"}
+                        </span>
                       </Show>
                     </div>
-                    <Show when={item.enabled !== undefined}>
-                      <span
-                        class="badge"
-                        classList={{ "is-disabled": !item.enabled }}
-                      >
-                        {item.enabled ? "Enabled" : "Disabled"}
-                      </span>
+                    <Show when={props.name === "jobs"}>
+                      <dl class="job-metadata">
+                        <div>
+                          <dt>Frequency</dt>
+                          <dd>
+                            {String(
+                              item.scheduleHuman ??
+                                item.schedule_display ??
+                                item.schedule ??
+                                "—",
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Last</dt>
+                          <dd>
+                            {String(
+                              item.last_run_at ??
+                                item.last_run ??
+                                "Not run yet",
+                            )}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Next</dt>
+                          <dd>
+                            {String(item.next_run_at ?? item.next_run ?? "—")}
+                          </dd>
+                        </div>
+                        <div>
+                          <dt>Deliver to</dt>
+                          <dd>
+                            {String(item.deliver ?? item.delivery ?? "origin")}
+                          </dd>
+                        </div>
+                      </dl>
+                      <Show when={item.last_error}>
+                        <p class="error">{String(item.last_error)}</p>
+                      </Show>
+                      <h4>Prompt</h4>
+                      <pre class="resource-document">
+                        {String(item.prompt ?? "")}
+                      </pre>
                     </Show>
-                  </div>
-                  <div class="resource-actions">
-                    <Show when={props.name === "profiles"}>
-                      <button
-                        type="button"
-                        class="primary"
-                        onClick={() => void props.newChat(item.name ?? item.id)}
-                      >
-                        Chat
-                      </button>
+                    <Show when={["profiles", "skills"].includes(props.name)}>
+                      <h4>
+                        {props.name === "profiles" ? "SOUL.md" : "Instructions"}
+                      </h4>
+                      <Show when={previewLoading()}>
+                        <p role="status">Loading instructions…</p>
+                      </Show>
+                      <Show when={previewError()}>
+                        <p role="alert" class="error">
+                          {previewError()}
+                        </p>
+                      </Show>
+                      <Show when={!previewLoading() && !previewError()}>
+                        <pre class="resource-document">
+                          {preview() || "No instructions yet."}
+                        </pre>
+                      </Show>
                     </Show>
-                    <Show
-                      when={
-                        props.name === "files" || props.name === "artifacts"
-                      }
-                    >
-                      <button
-                        type="button"
-                        onClick={() => void run(() => openFile(item))}
-                      >
-                        Open
-                      </button>
-                      <a
-                        href={download(item.path ?? item.name ?? "")}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        Open with browser
-                      </a>
-                      <a
-                        href={download(item.path ?? item.name ?? "")}
-                        download=""
-                      >
-                        Download
-                      </a>
-                    </Show>
-                    <For
-                      each={(surface().actions ?? []).filter(
-                        ([, op]) =>
-                          props.name !== "pairing" ||
-                          (op === "approvePairing"
-                            ? item.accessStatus === "pending"
-                            : item.accessStatus === "approved"),
-                      )}
-                    >
-                      {([label, op]) => (
+                    <div class="resource-actions">
+                      <Show when={props.name === "profiles"}>
                         <button
                           type="button"
-                          onClick={() => void run(() => action(op, item))}
+                          class="primary"
+                          onClick={() =>
+                            void props.newChat(item.name ?? item.id)}
                         >
-                          {label}
+                          Chat
                         </button>
-                      )}
-                    </For>
-                    <button type="button" onClick={() => setDetail(item)}>
-                      Details
-                    </button>
-                  </div>
-                </article>
-              )}
-            </For>
-            <Show when={!rows().length && !loading() && !error()}>
-              <Empty title="Nothing here yet" />
-            </Show>
+                      </Show>
+                      <Show
+                        when={props.name === "files" ||
+                          props.name === "artifacts"}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => void run(() => openFile(item))}
+                        >
+                          Open
+                        </button>
+                        <a
+                          href={download(item.path ?? item.name ?? "")}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          Open with browser
+                        </a>
+                        <a
+                          href={download(item.path ?? item.name ?? "")}
+                          download=""
+                        >
+                          Download
+                        </a>
+                      </Show>
+                      <For
+                        each={(surface().actions ?? []).filter(
+                          ([, op]) =>
+                            (props.name !== "jobs" ||
+                              ((op !== "pauseJob" || item.enabled !== false) &&
+                                (op !== "resumeJob" ||
+                                  item.enabled === false))) &&
+                            (props.name !== "pairing" ||
+                              (op === "approvePairing"
+                                ? item.accessStatus === "pending"
+                                : item.accessStatus === "approved")),
+                        )}
+                      >
+                        {([label, op]) => (
+                          <button
+                            type="button"
+                            onClick={() => void run(() => action(op, item))}
+                          >
+                            {label}
+                          </button>
+                        )}
+                      </For>
+                      <button type="button" onClick={() => setDetail(item)}>
+                        Details
+                      </button>
+                    </div>
+                    <Show when={props.name === "jobs"}>
+                      <JobHistory
+                        id={rowId(item)}
+                        profile={resourceProfile()}
+                        navigate={props.navigate}
+                      />
+                    </Show>
+                  </article>
+                )}
+              </For>
+              <Show when={!rows().length && !loading() && !error()}>
+                <Empty title="Nothing here yet" />
+              </Show>
+            </div>
           </div>
+          <Show when={picker()}>
+            <Dialog
+              title={surface().title}
+              class="navigation-sheet"
+              close={() => setPicker(false)}
+            >
+              {itemList()}
+            </Dialog>
+          </Show>
         </Show>
       </Show>
       <Show when={form()}>
@@ -1575,31 +1844,25 @@ export default function Resources(props: {
                         fallback={
                           <input
                             required={field.required}
-                            type={
-                              field.type === "boolean"
-                                ? "checkbox"
-                                : (field.type ?? "text")
-                            }
-                            checked={
-                              field.type === "boolean"
-                                ? Boolean(f().values[field.key])
-                                : undefined
-                            }
+                            type={field.type === "boolean"
+                              ? "checkbox"
+                              : (field.type ?? "text")}
+                            checked={field.type === "boolean"
+                              ? Boolean(f().values[field.key])
+                              : undefined}
                             value={String(f().values[field.key] ?? "")}
                             onInput={(e) =>
                               setForm({
                                 ...f(),
                                 values: {
                                   ...f().values,
-                                  [field.key]:
-                                    field.type === "boolean"
-                                      ? e.currentTarget.checked
-                                      : field.type === "number"
-                                        ? Number(e.currentTarget.value)
-                                        : e.currentTarget.value,
+                                  [field.key]: field.type === "boolean"
+                                    ? e.currentTarget.checked
+                                    : field.type === "number"
+                                    ? Number(e.currentTarget.value)
+                                    : e.currentTarget.value,
                                 },
-                              })
-                            }
+                              })}
                           />
                         }
                       >
@@ -1613,8 +1876,7 @@ export default function Resources(props: {
                                 ...f().values,
                                 [field.key]: e.currentTarget.value,
                               },
-                            })
-                          }
+                            })}
                         />
                       </Show>
                     </Field>
@@ -1650,8 +1912,7 @@ export default function Resources(props: {
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={(event) =>
-                  void run(() => avatarUpload(event.currentTarget.files?.[0]))
-                }
+                  void run(() => avatarUpload(event.currentTarget.files?.[0]))}
               />
             </Field>
             <Show when={profile().data}>
@@ -1671,8 +1932,7 @@ export default function Resources(props: {
                     await avatarKind(name, "shape");
                     setAvatarEditor({ name });
                     await refresh();
-                  })
-                }
+                  })}
               >
                 Remove avatar
               </button>
@@ -1693,10 +1953,8 @@ export default function Resources(props: {
                   : "Waiting for authorization…")}
             </p>
             <Show
-              when={
-                flow().status === "authorization_required" &&
-                /^https?:\/\//i.test(flow().authorization_url ?? "")
-              }
+              when={flow().status === "authorization_required" &&
+                /^https?:\/\//i.test(flow().authorization_url ?? "")}
             >
               <a
                 href={flow().authorization_url}
@@ -1734,11 +1992,9 @@ export default function Resources(props: {
                   <p>{provider.is_active ? "Active" : provider.status}</p>
                   <div class="row-actions">
                     <For
-                      each={
-                        config().name === "web"
-                          ? (provider.capabilities ?? ["search", "extract"])
-                          : [undefined]
-                      }
+                      each={config().name === "web"
+                        ? (provider.capabilities ?? ["search", "extract"])
+                        : [undefined]}
                     >
                       {(capability) => (
                         <button
@@ -1760,8 +2016,7 @@ export default function Resources(props: {
                                 id: config().id,
                               });
                               inform("Provider selected");
-                            })
-                          }
+                            })}
                         >
                           Use{capability ? ` for ${capability}` : " provider"}
                         </button>
@@ -1790,8 +2045,7 @@ export default function Resources(props: {
                               }`,
                               type: "password",
                             })),
-                          })
-                        }
+                          })}
                       >
                         Credentials
                       </button>
@@ -1828,8 +2082,7 @@ export default function Resources(props: {
                 void run(async () => {
                   await navigator.clipboard.writeText(hook().secret);
                   inform("Secret copied");
-                })
-              }
+                })}
             >
               Copy secret
             </button>
@@ -1939,8 +2192,7 @@ export default function Resources(props: {
                       `${old}\n[${file()?.path}, lines ${selection().from}–${selection().to}]\n${selection().text}\n`,
                     );
                     props.navigate(c.key);
-                  })
-                }
+                  })}
               >
                 {c.title}
               </button>
@@ -1981,7 +2233,10 @@ export default function Resources(props: {
       </Show>
       <Show when={blueprint()}>
         {(item) => (
-          <Dialog title={item().title} close={() => setBlueprint(undefined)}>
+          <Dialog
+            title={item().title}
+            close={() => setBlueprint(undefined)}
+          >
             <p>{item().description}</p>
             <form
               onSubmit={(event) => {
@@ -1990,7 +2245,7 @@ export default function Resources(props: {
                 void run(async () => {
                   await resource(
                     "useBlueprint",
-                    {},
+                    { profile: resourceProfile() },
                     { blueprint: item().key, values: blueprintValues() },
                   );
                   setBlueprint(undefined);
@@ -2013,8 +2268,7 @@ export default function Resources(props: {
                             setBlueprintValues((value) => ({
                               ...value,
                               [field.name]: event.currentTarget.value,
-                            }))
-                          }
+                            }))}
                         />
                       }
                     >
@@ -2025,8 +2279,7 @@ export default function Resources(props: {
                           setBlueprintValues((value) => ({
                             ...value,
                             [field.name]: event.currentTarget.value,
-                          }))
-                        }
+                          }))}
                       >
                         <option value="">Choose…</option>
                         <For each={field.options}>

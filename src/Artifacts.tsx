@@ -39,27 +39,33 @@ export default function Artifacts(props: { navigate: (view: string) => void }) {
     });
   });
   return (
-    <div class="resource-page">
-      <button
-        type="button"
-        class="text-button"
-        onClick={() => props.navigate("resources:files")}
-      >
-        <Icon name="arrow-left" />
-        Host files
-      </button>
-      <h1>Generated files</h1>
-      <p>Files shared by Hermes across your conversations.</p>
-      <input
-        type="search"
-        aria-label="Search generated files"
-        placeholder="Search files…"
-        value={search()}
-        onInput={(e) => {
-          setSearch(e.currentTarget.value);
-          setLimit(30);
-        }}
-      />
+    <div class="artifacts-page">
+      <header class="artifact-toolbar">
+        <input
+          type="search"
+          aria-label="Search generated files"
+          placeholder="Search files…"
+          value={search()}
+          onInput={(e) => {
+            setSearch(e.currentTarget.value);
+            setLimit(30);
+          }}
+        />
+        <span>
+          Files{" "}
+          <small>
+            {data().items.length}
+            {data().hasMore ? "+" : ""}
+          </small>
+        </span>
+        <button
+          type="button"
+          class="text-button"
+          onClick={() => props.navigate("resources:files")}
+        >
+          Host files
+        </button>
+      </header>
       <Show when={data().pending}>
         <p role="status">
           Indexing {data().pending} conversations…
@@ -71,42 +77,67 @@ export default function Artifacts(props: { navigate: (view: string) => void }) {
       <Show when={!connected()}>
         <p>Showing files saved on this device. Reconnect to open host files.</p>
       </Show>
-      <div class="resource-list">
-        <For each={data().items}>
-          {(file) => (
-            <article class="resource-card">
-              <div class="resource-card-heading">
-                <Icon name="page" />
-                <div>
-                  <h3>{file.name}</h3>
-                  <p>{file.title}</p>
-                  <small>{file.path}</small>
-                </div>
-              </div>
-              <div class="resource-actions">
-                <a
-                  href={`/api/download?path=${encodeURIComponent(file.path)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Open with browser
-                </a>
-                <a
-                  href={`/api/download?path=${encodeURIComponent(file.path)}`}
-                  download=""
-                >
-                  Download
-                </a>
-                <button
-                  type="button"
-                  onClick={() => props.navigate(file.conversation)}
-                >
-                  Conversation
-                </button>
-              </div>
-            </article>
-          )}
-        </For>
+      <div class="artifact-table-scroll">
+        <table class="artifact-table">
+          <thead>
+            <tr>
+              <th>Title / name</th>
+              <th>Location</th>
+              <th>Session</th>
+              <th>
+                <span class="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <For each={data().items}>
+              {(file) => (
+                <tr class="resource-card">
+                  <td>
+                    <a
+                      class="artifact-name"
+                      href={`/api/download?path=${
+                        encodeURIComponent(file.path)
+                      }`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Icon name="page" />
+                      {file.name}
+                    </a>
+                  </td>
+                  <td class="artifact-location" title={file.path}>
+                    {file.path}
+                  </td>
+                  <td>
+                    <button
+                      class="artifact-session"
+                      type="button"
+                      onClick={() => props.navigate(file.conversation)}
+                    >
+                      {file.title}
+                      <span class="sr-only">Conversation</span>
+                    </button>
+                  </td>
+                  <td>
+                    <a
+                      class="artifact-download"
+                      aria-label={`Download ${file.name}`}
+                      title="Download"
+                      href={`/api/download?path=${
+                        encodeURIComponent(file.path)
+                      }`}
+                      download=""
+                    >
+                      <Icon name="download" />
+                      <span class="sr-only">Download</span>
+                    </a>
+                  </td>
+                </tr>
+              )}
+            </For>
+          </tbody>
+        </table>
       </div>
       <Show when={!data().items.length && !data().pending}>
         <Empty title="No files found" />

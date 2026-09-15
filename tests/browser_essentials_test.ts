@@ -2,7 +2,8 @@ import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
-  name: "Essentials icons sync, fill the sidebar, and toggle placement with top-bar archive",
+  name:
+    "Essentials icons sync, fill the sidebar, and toggle placement with top-bar archive",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -12,10 +13,12 @@ Deno.test({
     const a = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     const b = await browser.newPage({ viewport: { width: 1100, height: 800 } });
     try {
-      for (const [page, name] of [
-        [a, "Essentials desktop"],
-        [b, "Essentials second device"],
-      ] as const) {
+      for (
+        const [page, name] of [
+          [a, "Essentials desktop"],
+          [b, "Essentials second device"],
+        ] as const
+      ) {
         await page.goto(Deno.env.get("ARURA_TEST_URL")!);
         await signIn(page, name);
         await page
@@ -63,7 +66,8 @@ Deno.test({
           .getByRole("dialog")
           .getByRole("button", { name: "Star", exact: true }),
       ).toHaveAttribute("aria-pressed", "true");
-      await b.getByRole("button", { name: "Close", exact: true }).click();
+      await b.getByRole("button", { name: "Close", exact: true }).last()
+        .click();
       await expect(
         a.locator(".topbar").getByRole("button", {
           name: "Toggle conversation pin",
@@ -117,7 +121,8 @@ Deno.test({
       await a.screenshot({
         path: `${Deno.env.get("TMPDIR")}/essentials-mobile.png`,
       });
-      await a.getByRole("button", { name: "Close", exact: true }).click();
+      await a.getByRole("button", { name: "Close", exact: true }).last()
+        .click();
       await actions();
       await a
         .getByRole("button", { name: "Toggle Essentials", exact: true })
