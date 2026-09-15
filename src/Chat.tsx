@@ -122,6 +122,12 @@ export default function Chat(props: {
         value,
       );
   let scroller!: HTMLDivElement;
+  const [awayFromBottom, setAwayFromBottom] = createSignal(false);
+  let needsInitialScroll = true;
+  const scrollToLatest = () => {
+    scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "instant" });
+    setAwayFromBottom(false);
+  };
   let input!: ComposerHandle;
   let fileInput!: HTMLInputElement;
   const messages = () =>
@@ -150,6 +156,8 @@ export default function Chat(props: {
   createEffect(() => {
     const key = props.conversation;
     const revision = ++transcriptRevision;
+    needsInitialScroll = true;
+    setAwayFromBottom(false);
     setData({ pages: [], commands: [], turn: null });
     setText("");
     setPages(1);
@@ -182,6 +190,12 @@ export default function Chat(props: {
         transcriptRevision === revision
       ) {
         setData(value);
+        requestAnimationFrame(() => {
+          if (props.conversation === key && needsInitialScroll) {
+            scrollToLatest();
+            needsInitialScroll = false;
+          }
+        });
       }
     });
   });
@@ -196,10 +210,14 @@ export default function Chat(props: {
       { conversation: key, pages: count },
       (value) => {
         transcriptRevision++;
-        const nearBottom = !scroller ||
+        const nearBottom = needsInitialScroll ||
+          !scroller ||
           scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <
             180;
         setData(value);
+        if (value.pages.some((page) => page.messages.length)) {
+          needsInitialScroll = false;
+        }
         const head = value.pages.find((page) => page.offset === 0);
         for (let offset = 100; head && offset < count * 100; offset += 100) {
           const preceding = value.pages.find(
@@ -220,12 +238,9 @@ export default function Chat(props: {
         }
         void saveCache("chat:" + key, value);
         if (nearBottom) {
-          requestAnimationFrame(() =>
-            scroller?.scrollTo({
-              top: scroller.scrollHeight,
-              behavior: "instant",
-            })
-          );
+          requestAnimationFrame(() => {
+            if (props.conversation === key) scrollToLatest();
+          });
         }
       },
     );
@@ -414,7 +429,15 @@ export default function Chat(props: {
         void run(() => upload(e.dataTransfer?.files ?? null));
       }}
     >
-      <div class="transcript" ref={scroller}>
+      <div
+        class="transcript"
+        ref={scroller}
+        onScroll={() =>
+          setAwayFromBottom(
+            scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight >
+              180,
+          )}
+      >
         <div class="transcript-inner">
           <Show when={data().pages.at(-1)?.hasMore}>
             <button
@@ -426,15 +449,33 @@ export default function Chat(props: {
             </button>
           </Show>
           <For each={groups()}>
-            {(group) => (
+            {(group, index) => (
               <>
                 <Show when={group.prompt}>
                   {(message) => renderMessage(message())}
                 </Show>
+                <Show
+                  when={turn()?.state === "running" &&
+                    index() === groups().length - 1}
+                >
+                  <For
+                    each={group.work.filter(
+                      (message) => message.role === "assistant",
+                    )}
+                  >
+                    {renderMessage}
+                  </For>
+                </Show>
                 <Show when={group.answer}>
                   {(message) => renderMessage(message())}
                 </Show>
-                <Show when={group.work.length}>
+                <Show
+                  when={group.work.length &&
+                    !(
+                      turn()?.state === "running" &&
+                      index() === groups().length - 1
+                    )}
+                >
                   <details class="work-summary history-work">
                     <summary>
                       Worked
@@ -463,14 +504,6 @@ export default function Chat(props: {
                   "settled-work": t().state !== "running" && turnIsInHistory(),
                 }}
               >
-                <Show when={t().state === "running" || !turnIsInHistory()}>
-                  <div class="message-label">
-                    Hermes{" "}
-                    <Show when={t().state === "running"}>
-                      <span class="working">Working</span>
-                    </Show>
-                  </div>
-                </Show>
                 <Show when={t().text && !turnIsInHistory()}>
                   <Markdown text={t().text} />
                 </Show>
@@ -480,22 +513,42 @@ export default function Chat(props: {
                   </p>
                 </Show>
                 <Show when={t().activity.length}>
-                  <details class="work-summary" open={t().state === "running"}>
+                  <details class="work-summary">
                     <summary>
                       {t().state === "running" ? "Working" : "Worked"} for{" "}
                       {elapsed(t().startedAt, t().finishedAt ?? clock())}
+                      <span class="activity-count">
+                        {" "}
+                        · {t().activity.length} tool{" "}
+                        {t().activity.length === 1 ? "call" : "calls"}
+                      </span>
                     </summary>
                     <For each={t().activity}>
                       {(a) => (
                         <div class="activity">
                           <Icon
-                            name={a.state === "complete" ? "check" : "clock"}
+                            name={a.state === "complete"
+                              ? "check"
+                              : a.state === "error"
+                              ? "xmark"
+                              : "clock"}
                           />
                           {a.label}
                         </div>
                       )}
                     </For>
                   </details>
+                </Show>
+                <Show
+                  when={t().state === "running" &&
+                    t().activity.findLast((a) => a.state === "running")}
+                >
+                  {(activity) => (
+                    <div class="current-activity" role="status">
+                      <Icon name="clock" />
+                      {activity().label}
+                    </div>
+                  )}
                 </Show>
                 <Show when={t().error}>
                   <p class="error" role="alert">
@@ -628,6 +681,11 @@ export default function Chat(props: {
         </div>
       </div>
       <div class="compose-area">
+        <Show when={awayFromBottom()}>
+          <button type="button" class="jump-to-latest" onClick={scrollToLatest}>
+            <Icon name="nav-arrow-down" /> Latest messages
+          </button>
+        </Show>
         <Show when={completions().length}>
           <div
             class="completion-list"

@@ -27,6 +27,7 @@ Deno.test({
       const a = await device("Files desktop"),
         b = await device("Files second device");
       await a
+        .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();

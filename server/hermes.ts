@@ -688,8 +688,6 @@ export class Hermes extends EventEmitter {
         );
       }
     }
-    const roster = await this.call("profiles.list", { include_sessions: true });
-    const bot = roster.profiles?.find((item) => item.name === profile);
     const sourceId = String(row.resolved_id ?? row.id ?? row.session_id);
     if (!sourceId || sourceId === "undefined") {
       throw new Error("Hermes did not return a stored bot conversation ID");
@@ -699,8 +697,7 @@ export class Hermes extends EventEmitter {
       profile,
       sourceId,
       bot: true,
-      title: bot?.ui_meta?.["hermes-bots"]?.title || bot?.display_name ||
-        profile,
+      title: row.title || "Bot Chat",
       activityAt:
         Number(row.last_active ?? row.started_at ?? Date.now() / 1000) * 1000,
     };
@@ -729,6 +726,7 @@ export class Hermes extends EventEmitter {
         key: string;
         profile: string;
         sourceId: string;
+        source?: string;
         title: string;
         activityAt: number;
         bot?: boolean;
@@ -754,6 +752,9 @@ export class Hermes extends EventEmitter {
             key,
             profile,
             sourceId,
+            source: String(row.source ?? "")
+              .trim()
+              .toLowerCase(),
             title: row.title || "Untitled conversation",
             ...(row.pinned !== undefined
               ? { pinned: Boolean(row.pinned) }
@@ -790,9 +791,7 @@ export class Hermes extends EventEmitter {
         profile: profile.name,
         sourceId,
         bot: true,
-        title: profile.ui_meta?.["hermes-bots"]?.title ||
-          profile.display_name ||
-          profile.name,
+        title: all.get(key)?.title || "Bot Chat",
         activityAt:
           Number(canonical?.last_active ?? canonical?.started_at ?? 0) * 1000,
       });

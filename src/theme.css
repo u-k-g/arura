@@ -40,7 +40,7 @@
   --accent-soft: color-mix(in oklch, var(--accent) 8%, transparent);
   --hover: color-mix(in oklch, var(--ink) 3%, transparent);
   --active: color-mix(in oklch, var(--ink) 6%, transparent);
-  --message-size: 14px;
+  --message-size: 13px;
   --hairline: 1px;
   color: var(--ink);
   background: var(--canvas);

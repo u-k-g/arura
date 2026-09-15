@@ -25,6 +25,7 @@ Deno.test({
         .getByRole("button", { name: "Authorize this device", exact: true })
         .click();
       await page
+        .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
@@ -158,6 +159,7 @@ Deno.test({
         ).toHaveCount(0);
       }
       await a
+        .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
@@ -433,6 +435,7 @@ Deno.test({
         .getByRole("button", { name: "Authorize this device", exact: true })
         .click();
       await page
+        .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();

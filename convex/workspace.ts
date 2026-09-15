@@ -47,6 +47,7 @@ export const overview = query({
       .query("conversations")
       .withIndex("activity", (q) => q.eq("section", "recent"))
       .order("desc")
+      .filter((q) => q.neq(q.field("backgroundSession"), true))
       .filter((q) => q.neq(q.field("deleted"), true))
       .paginate({ cursor: null, numItems: 100 });
     const settings = Object.fromEntries(
@@ -81,6 +82,7 @@ export const recent = query({
       .query("conversations")
       .withIndex("activity", (q) => q.eq("section", "recent"))
       .order("desc")
+      .filter((q) => q.neq(q.field("backgroundSession"), true))
       .filter((q) => q.neq(q.field("deleted"), true))
       .paginate({ cursor: args.cursor, numItems: 100 });
   },
@@ -93,6 +95,7 @@ export const archived = query({
       .query("conversations")
       .withIndex("archive", (q) => q.eq("section", "archived"))
       .order("desc")
+      .filter((q) => q.neq(q.field("backgroundSession"), true))
       .filter((q) => q.neq(q.field("deleted"), true))
       .paginate({ cursor: args.cursor, numItems: 10 });
   },
@@ -399,6 +402,12 @@ export const ingest = mutation({
       const data = {
         key: String(input.key),
         sourceId: String(input.sourceId),
+        source: String(input.source ?? old?.source ?? ""),
+        backgroundSession: ["cron", "kanban", "subagent", "tool"].includes(
+          String(input.source ?? old?.source ?? "")
+            .trim()
+            .toLowerCase(),
+        ),
         pendingPersistence: input.pendingPersistence === true,
         profile: String(input.profile),
         bot: Boolean(input.bot),

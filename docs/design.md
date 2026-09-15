@@ -8,11 +8,32 @@ Hermes defines layout and placement. Macro's light/dark color scheme remains the
 default, alongside Grove, Jade, Black Rose, Gruvbox Dark Hard, and Rosé Pine in
 Settings → Appearance → Theme.
 
-The shell uses the desktop's 237px sidebar, 32px titlebar, tool navigation,
+The shell uses the desktop's 260px sidebar, 32px titlebar, tool navigation,
 bottom profile/gateway controls, full-width messages, and compact composer with
 its model picker beside the input. Colors follow
 [Macro's theme definitions](https://github.com/macro-inc/macro/tree/main/apps/web/src/features/theme/themes):
 neutral light surfaces, black/gray dark surfaces, and amber accents.
+
+Intentional layout differences: New conversation is a plus icon in the top bar,
+and Capabilities is reached through Settings, not the sidebar tools list. The
+profile name is clickable without a preceding icon. The sidebar search field
+filters loaded sessions; its search icon and top-bar search open full history
+search. These controls remain usable without app keyboard shortcuts.
+
+Default message text is 13px with 1.5 line spacing; the per-browser size control
+ranges from 12–20px. Sidebar rows are 27px high with 12px labels, date groups,
+and thin section dividers. Tool activity starts collapsed with a count and
+elapsed time; the current running action remains visible beneath it. Expanding
+the summary reveals the complete activity list. Reasoning remains excluded.
+Progress messages remain visible during a run and collapse when it finishes.
+Message size applies on mobile too. Opening a conversation starts at its latest
+messages; scrolling up pauses following updates and exposes a return-to-latest
+button above the composer.
+
+Hermes's `source` field identifies cron, kanban, subagent, and tool sessions.
+They remain in the synchronized history but are excluded from ordinary recents
+and archive navigation before pagination. Explicit pins remain visible.
+Scheduled-job run history stays accessible through Scheduled jobs.
 
 Additional palettes are bundled snapshots of the
 [nc presets](https://github.com/u-k-g/nc/blob/main/modules/theme/default.nix).

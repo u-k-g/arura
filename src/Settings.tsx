@@ -31,6 +31,7 @@ const groups = [
   {
     title: "Hermes",
     items: [
+      ["capabilities", "Capabilities", "capabilities"],
       ["models", "Models & providers", "chat-bubble"],
       ["profiles", "Profiles & bots", "chat-bubble"],
       ["jobs", "Schedules", "clock"],
@@ -109,7 +110,7 @@ export default function Settings(props: {
   });
   const route = (id: string) =>
     props.navigate(
-      [
+      id === "capabilities" ? "capabilities" : [
           "devices",
           "storage",
           "navigation",
@@ -377,9 +378,9 @@ export default function Settings(props: {
           <Field label="Message text size">
             <input
               type="range"
-              min="14"
+              min="12"
               max="20"
-              value={preferences.getItem("arura.textSize") ?? 14}
+              value={preferences.getItem("arura.textSize") ?? 13}
               onInput={(e) => {
                 preferences.setItem("arura.textSize", e.currentTarget.value);
                 document.documentElement.style.setProperty(

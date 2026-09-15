@@ -7,7 +7,7 @@ body {
   margin: 0;
   background: var(--canvas);
   color: var(--ink);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
 }
 button,
@@ -170,7 +170,7 @@ small {
 .app-shell {
   height: 100dvh;
   display: grid;
-  grid-template-columns: 237px minmax(0, 1fr);
+  grid-template-columns: 260px minmax(0, 1fr);
 }
 .desktop-navigation {
   border-right: 0;
@@ -347,8 +347,7 @@ small {
   opacity: 1;
 }
 .archive {
-  margin-top: 25px;
-  border-top: var(--hairline) solid var(--line);
+  margin-top: 12px;
 }
 .archive .section-heading {
   justify-content: flex-start;
@@ -479,11 +478,11 @@ small {
 }
 .transcript-inner {
   width: 100%;
-  padding: 8px 20px;
+  padding: 8px 24px;
   margin: 0 auto;
 }
 .message {
-  margin: 0 0 24px;
+  margin: 0 0 16px;
   position: relative;
   content-visibility: auto;
   contain-intrinsic-size: auto 150px;
@@ -497,6 +496,10 @@ small {
   align-items: center;
   gap: 10px;
 }
+.message.assistant {
+  padding-left: 12px;
+  padding-right: 12px;
+}
 .message.user {
   padding: 8px 12px;
   background: color-mix(in srgb, var(--surface) 40%, var(--canvas));
@@ -507,11 +510,14 @@ small {
 }
 .markdown {
   font-size: var(--message-size);
-  line-height: 1.625;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 .markdown p:last-child {
   margin: 0;
+}
+.markdown li {
+  margin: 4px 0;
 }
 .markdown pre {
   font: 13px / 1.6 var(--mono);
@@ -571,11 +577,10 @@ small {
   font-weight: 400;
 }
 .work-summary {
-  margin-top: 18px;
+  margin-top: 6px;
   color: var(--muted);
-  font-size: 12px;
-  border-top: var(--hairline) solid var(--line);
-  padding: 11px 0;
+  font-size: 11px;
+  padding: 4px 0;
 }
 .work-summary summary {
   cursor: pointer;
@@ -583,8 +588,8 @@ small {
 .activity {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 6px;
+  gap: 6px;
+  padding: 2px 0;
 }
 .activity .icon {
   width: 14px;
@@ -601,7 +606,7 @@ small {
 }
 .compose-area {
   width: 100%;
-  padding: 8px 12px max(12px, env(safe-area-inset-bottom));
+  padding: 8px 16px max(12px, env(safe-area-inset-bottom));
   margin: 0 auto;
   flex: none;
 }
@@ -714,8 +719,10 @@ small {
 }
 .load-earlier {
   display: block;
-  margin: 0 auto 30px;
+  margin: 0 auto 12px;
   background: transparent;
+  border: 0;
+  padding: 4px 8px;
   font-size: 11px;
   color: var(--muted);
 }
@@ -883,7 +890,7 @@ small {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  margin: 0 0 24px;
+  margin: 0 0 16px;
 }
 .page-heading > div {
   display: flex;
@@ -1200,8 +1207,8 @@ dialog::backdrop {
     padding: 10px 16px;
   }
   .markdown {
-    font-size: 17px;
-    line-height: 1.625;
+    font-size: var(--message-size);
+    line-height: 1.5;
   }
   .message-actions {
     opacity: 1;
@@ -1397,7 +1404,7 @@ progress {
   margin-top: -1rem;
 }
 .history-work {
-  margin: -0.5rem 0 1.5rem;
+  margin: 0 0 12px;
 }
 
 .completion-list {
@@ -1545,4 +1552,39 @@ progress {
 }
 .context-suggestions button {
   font-size: 0.85rem;
+}
+
+.current-activity {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 3px 0;
+}
+.current-activity .icon {
+  width: 12px;
+  height: 12px;
+}
+.work-summary:has(~ .current-activity)[open] ~ .current-activity {
+  display: none;
+}
+.compose-area {
+  position: relative;
+}
+.jump-to-latest {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  font-size: 11px;
+  padding: 4px 10px;
+}
+.jump-to-latest .icon {
+  width: 12px;
+  height: 12px;
 }

@@ -16,6 +16,13 @@ export default function Capabilities(props: {
 }) {
   return (
     <section class="capabilities-view">
+      <button
+        type="button"
+        class="text-button"
+        onClick={() => props.navigate("settings")}
+      >
+        <Icon name="arrow-left" /> All settings
+      </button>
       <h1>Capabilities</h1>
       <For each={items}>
         {([id, title, icon, description]) => (

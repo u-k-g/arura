@@ -56,6 +56,7 @@ Deno.test({
       await page.reload();
       await expect(
         page
+          .locator(".topbar")
           .getByRole("button", { name: "New conversation", exact: true })
           .first(),
       ).toBeVisible();
@@ -85,6 +86,7 @@ Deno.test({
         metadata: true,
       });
       await page
+        .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();

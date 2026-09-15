@@ -19,7 +19,7 @@ Deno.test({
     const source = rows.sessions.find(
       (row: { title: string }) => row.title === "Fixture conversation",
     );
-    const metadata = async (values: Record<string, boolean>) => {
+    const metadata = async (values: Record<string, boolean | string>) => {
       const response = await fetch(`${hermes}/api/sessions/${source.id}`, {
         method: "PATCH",
         body: JSON.stringify({ profile: "default", ...values }),
@@ -77,6 +77,11 @@ Deno.test({
         .click();
       await expect(
         page.getByRole("button", { name: "Capabilities", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page
+          .locator(".topbar")
+          .getByRole("button", { name: "New conversation", exact: true }),
       ).toBeVisible();
       await expect(
         page.getByRole("button", { name: "Model", exact: true }),
@@ -84,7 +89,7 @@ Deno.test({
       const composer = await page.locator(".composer").boundingBox();
       expect(composer!.height).toBeLessThan(65);
       const sidebar = await page.locator(".desktop-navigation").boundingBox();
-      expect(sidebar!.width).toBe(237);
+      expect(sidebar!.width).toBe(260);
       const prompt =
         "Compare the two options.\n\n| Option | Benefit |\n| --- | --- |\n| One | Less weight |\n| Two | More tread |\n\nThe choice depends on the course and conditions.";
       await page.getByLabel("Message Hermes", { exact: true }).fill(prompt);
@@ -99,9 +104,24 @@ Deno.test({
       await expect(
         page.getByRole("button", { name: "Stop", exact: true }),
       ).toHaveCount(0, { timeout: 15000 });
+      // Background history remains in Hermes, but doesn't flood local recents.
+      const sessionRow = page
+        .locator(".nav-scroll .thread-select")
+        .filter({ hasText: "Fixture conversation" });
+      for (const source of ["cron", "subagent", "tool", "kanban"]) {
+        await metadata({ source, pinned: false });
+        await expect(sessionRow).toHaveCount(0, { timeout: 15000 });
+        expect(await read()).toBeTruthy();
+      }
+      // An explicit pin is still honored, including for a background session.
+      await metadata({ pinned: true });
+      await expect(sessionRow).toBeVisible({ timeout: 15000 });
+      await metadata({ source: "desktop", pinned: false });
+      await expect(sessionRow).toBeVisible({ timeout: 15000 });
       await page.screenshot({
         path: `${Deno.env.get("TMPDIR")}/hermes-desktop.png`,
       });
+      await page.getByRole("button", { name: "Settings", exact: true }).click();
       await page
         .getByRole("button", { name: "Capabilities", exact: true })
         .click();

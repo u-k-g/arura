@@ -46,9 +46,9 @@
   justify-content: flex-start;
   border: 0;
   border-radius: 3px;
-  height: 29px;
+  height: 28px;
   padding: 4px 10px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 400;
   gap: 10px;
 }
@@ -90,11 +90,13 @@
 }
 .thread-row {
   border-radius: 3px;
+  min-height: 27px;
+  margin: 0;
 }
 .thread-select {
   height: 27px;
   padding: 3px 8px;
-  font-size: 13px;
+  font-size: 12px;
   gap: 10px;
 }
 .session-dot {
@@ -146,6 +148,9 @@
 .nav-footer .gateway-status {
   justify-content: flex-start;
   padding: 2px 6px;
+  font-size: 11px;
+}
+.nav-footer .connection {
   font-size: 11px;
 }
 .composer-bottom {
@@ -332,7 +337,7 @@
 }
 .home-list-heading h2 {
   margin: 0;
-  font-size: 14px;
+  font-size: 13px;
 }
 .home-list-heading .icon {
   transform: rotate(180deg);
@@ -374,14 +379,14 @@
   color: var(--muted);
 }
 dialog.conversation-menu {
-  width: 280px;
+  width: 224px;
   max-width: calc(100vw - 16px);
   max-height: calc(100dvh - 16px);
   margin: 0;
   inset: auto;
   left: var(--menu-x, 8px);
   top: var(--menu-y, 56px);
-  border-radius: 10px;
+  border-radius: 4px;
 }
 .conversation-menu::backdrop {
   background: transparent;
@@ -390,8 +395,7 @@ dialog.conversation-menu {
   padding: 6px;
 }
 .conversation-menu .dialog-inner > header {
-  padding: 4px 8px;
-  margin-bottom: 4px;
+  display: none;
 }
 .conversation-menu h2 {
   font-size: 12px;
@@ -399,10 +403,10 @@ dialog.conversation-menu {
 }
 .conversation-menu .action-list button,
 .conversation-menu .action-list a {
-  padding: 7px 10px;
-  gap: 10px;
-  font-size: 13px;
-  border-radius: 5px;
+  padding: 4px 8px;
+  gap: 8px;
+  font-size: 12px;
+  border-radius: 3px;
 }
 .conversation-menu .action-list .icon {
   width: 16px;
@@ -534,6 +538,9 @@ dialog.conversation-menu {
   .conversation-menu .dialog-inner {
     padding: 12px 12px max(16px, env(safe-area-inset-bottom));
   }
+  .conversation-menu .dialog-inner > header {
+    display: flex;
+  }
   .conversation-menu .action-list button,
   .conversation-menu .action-list a {
     min-height: 44px;
@@ -607,4 +614,57 @@ dialog.conversation-menu {
     display: block;
     overflow-x: auto;
   }
+}
+
+/* Separate navigation groups without adding more vertical space. */
+.navigation .section-heading::after,
+.session-date-group::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+  margin-left: 8px;
+}
+.navigation .section-heading > .icon-button {
+  order: 1;
+}
+.session-date-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 3px;
+  color: var(--subtle);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.profile-actions .profile-name {
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 0;
+  padding: 4px 6px;
+}
+.nav-search {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 6px;
+}
+.nav-search input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.nav-search .icon-button {
+  min-width: 20px;
+  min-height: 24px;
+  padding: 2px;
+  border: 0;
 }

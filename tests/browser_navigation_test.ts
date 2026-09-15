@@ -27,6 +27,7 @@ Deno.test({
         localStorage.getItem("arura.view")
       );
       await page
+        .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
@@ -116,7 +117,7 @@ Deno.test({
       const notification = a.locator(".notification-card.unread").first();
       await expect(notification).toBeVisible();
       const id = await notification.getAttribute("data-notice-id");
-      await notification.click();
+      await a.locator(`.notification-card[data-notice-id="${id}"]`).click();
       await expect(
         b.locator(`.notification-card[data-notice-id="${id}"]`),
       ).not.toHaveClass(/unread/);

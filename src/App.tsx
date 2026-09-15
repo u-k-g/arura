@@ -1,6 +1,7 @@
 import type { ConversationPage, Doc } from "../shared/contracts.ts";
 import {
   createEffect,
+  createMemo,
   createSignal,
   For,
   lazy,
@@ -52,6 +53,7 @@ export default function App() {
   const [view, setView] = createSignal(preferences.getItem("arura.view") ?? "");
   const [sheet, setSheet] = createSignal(false),
     [search, setSearch] = createSignal(""),
+    [sidebarFilter, setSidebarFilter] = createSignal(""),
     [palette, setPalette] = createSignal(false);
   const [matches, setMatches] = createSignal<
     { key: string; title: string; profile: string }[]
@@ -174,10 +176,10 @@ export default function App() {
   onMount(() => {
     document.documentElement.dataset.theme =
       preferences.getItem("arura.theme") ?? "system";
-    const size = Number(preferences.getItem("arura.textSize") ?? 14);
+    const size = Number(preferences.getItem("arura.textSize") ?? 13);
     document.documentElement.style.setProperty(
       "--message-size",
-      `${Math.min(20, Math.max(14, size))}px`,
+      `${Math.min(20, Math.max(12, size))}px`,
     );
     void start();
   });
@@ -268,8 +270,8 @@ export default function App() {
   const chats = () =>
     ((workspace()?.conversations ?? []) as Conversation[]).filter(
       (c) =>
-        !search().trim() ||
-        c.title.toLowerCase().includes(search().trim().toLowerCase()),
+        !sidebarFilter().trim() ||
+        c.title.toLowerCase().includes(sidebarFilter().trim().toLowerCase()),
     );
   const selected = () =>
     chats().find((c) => c.key === view()) ??
@@ -306,7 +308,7 @@ export default function App() {
         label: "New conversation",
         icon: "plus",
         group: "Actions",
-        run: () => void newChat(),
+        run: () => void newChat(selected()?.profile ?? "default"),
       },
       {
         id: "sidebar",
@@ -326,7 +328,12 @@ export default function App() {
     ].filter((item) => !query || item.label.toLowerCase().includes(query));
     const results = [
       ...new Map(
-        [...chats(), ...matches()].map((item) => [item.key, item]),
+        [
+          ...chats().filter(
+            (item) => !query || item.title.toLowerCase().includes(query),
+          ),
+          ...matches(),
+        ].map((item) => [item.key, item]),
       ).values(),
     ];
     items.push(
@@ -341,6 +348,31 @@ export default function App() {
     );
     return items;
   };
+  const recentGroups = createMemo(() => {
+    const groups = new Map<string, Conversation[]>();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (
+      const chat of chats()
+        .filter((c) => c.section === "recent" && !c.backgroundSession)
+        .sort((a, b) => b.activityAt - a.activityAt)
+    ) {
+      const age = (today.getTime() - chat.activityAt) / 86400000;
+      const label = age < 0
+        ? "Today"
+        : age < 1
+        ? "Yesterday"
+        : age < 7
+        ? "Last week"
+        : age < 30
+        ? "Last month"
+        : "Older";
+      const items = groups.get(label) ?? [];
+      items.push(chat);
+      groups.set(label, items);
+    }
+    return [...groups.entries()];
+  });
   const row = (c: Conversation) => (
     <div class="thread-row" classList={{ selected: view() === c.key }}>
       <button
@@ -404,22 +436,6 @@ export default function App() {
       <nav class="sidebar-actions" aria-label="Hermes tools">
         <button
           type="button"
-          aria-label="New conversation"
-          onClick={() => void newChat()}
-        >
-          <Icon name="bot" />
-          <span>New session</span>
-        </button>
-        <button
-          type="button"
-          classList={{ selected: view() === "capabilities" }}
-          onClick={() => navigate("capabilities")}
-        >
-          <Icon name="capabilities" />
-          <span>Capabilities</span>
-        </button>
-        <button
-          type="button"
           classList={{ selected: view() === "resources:platforms" }}
           onClick={() => navigate("resources:platforms")}
         >
@@ -443,15 +459,26 @@ export default function App() {
           <span>Scheduled jobs</span>
         </button>
       </nav>
-      <button
-        type="button"
-        class="nav-search"
-        aria-label="Find anything"
-        onClick={() => setPalette(true)}
-      >
-        <Icon name="search" />
-        <span>Search sessions…</span>
-      </button>
+      <div class="nav-search">
+        <IconButton
+          icon="search"
+          label="Find anything"
+          onClick={() => setPalette(true)}
+        />
+        <input
+          aria-label="Filter sessions"
+          placeholder="Search sessions…"
+          value={sidebarFilter()}
+          onInput={(event) => setSidebarFilter(event.currentTarget.value)}
+        />
+        <Show when={sidebarFilter()}>
+          <IconButton
+            icon="xmark"
+            label="Clear session filter"
+            onClick={() => setSidebarFilter("")}
+          />
+        </Show>
+      </div>
       <div class="nav-scroll">
         <Show when={chats().some((c) => c.section === "essential")}>
           <div class="section-heading">
@@ -588,12 +615,15 @@ export default function App() {
         <div class="section-heading">
           <span>Sessions</span>
         </div>
-        <For
-          each={chats()
-            .filter((c) => c.section === "recent")
-            .sort((a, b) => b.activityAt - a.activityAt)}
-        >
-          {row}
+        <For each={recentGroups()}>
+          {([label, items], index) => (
+            <>
+              <Show when={index() > 0}>
+                <div class="session-date-group">{label}</div>
+              </Show>
+              <For each={items}>{row}</For>
+            </>
+          )}
         </For>
         <Show when={workspace()?.recentHasMore}>
           <button
@@ -655,12 +685,14 @@ export default function App() {
       </div>
       <footer class="nav-footer">
         <div class="profile-actions">
-          <IconButton
-            icon="bot"
-            label="Profiles and bots"
+          <button
+            type="button"
+            class="profile-name"
+            aria-label="Profiles and bots"
             onClick={() => navigate("resources:profiles")}
-          />
-          <span>{selected()?.profile ?? "default"}</span>
+          >
+            {selected()?.profile ?? "default"}
+          </button>
           <IconButton
             icon="folder"
             label="Files"
@@ -773,6 +805,12 @@ export default function App() {
                   .replace(/^(resources|settings):/, "")
                   .replace(/^./, (x) => x.toUpperCase())}
             </span>
+            <IconButton
+              icon="plus"
+              label="New conversation"
+              disabled={!connected()}
+              onClick={() => void newChat(selected()?.profile ?? "default")}
+            />
             <IconButton
               icon="search"
               label="Search conversations"

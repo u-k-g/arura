@@ -23,6 +23,7 @@ Deno.test({
         .getByRole("button", { name: "Authorize this device", exact: true })
         .click();
       await page
+        .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
@@ -76,6 +77,7 @@ Deno.test({
       await card.getByRole("button", { name: "Delete", exact: true }).click();
       await expect(card).toHaveCount(0);
       await page
+        .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();

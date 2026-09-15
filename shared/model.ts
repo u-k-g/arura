@@ -5,6 +5,8 @@ export interface Conversation {
   profile: string;
   bot?: boolean;
   sourceId: string;
+  source?: string;
+  backgroundSession?: boolean;
   title: string;
   activityAt: number;
   section: Section;

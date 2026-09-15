@@ -400,6 +400,7 @@ Deno.test({
       );
       expect(roster.profiles[0].ui_meta["hermes-bots"].imageKind).toBe("photo");
       await page
+        .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
@@ -492,13 +493,15 @@ Deno.test({
       expect(searchBody.includes("PRIVATE_REASONING_SEARCH_SNIPPET")).toBe(
         false,
       );
-      await a.locator(".nav-search").click();
+      await a
+        .getByRole("button", { name: "Search conversations", exact: true })
+        .click();
       await a
         .getByPlaceholder("Search conversations and actions")
         .fill(message);
       await a
         .getByRole("dialog", { name: "Find anything" })
-        .getByRole("button", { name: "Fixture conversation", exact: true })
+        .getByRole("option", { name: /^Fixture conversation\b/ })
         .click();
       await expect(
         b.locator(".markdown").filter({ hasText: `Received: ${message}` }),
@@ -614,9 +617,11 @@ Deno.test({
           exact: true,
         })
         .click();
-      await expect(a.locator(".essentials")).not.toContainText(
-        "Fixture conversation",
-      );
+      await expect(
+        a
+          .locator(".essentials button")
+          .filter({ hasText: "Fixture conversation" }),
+      ).toHaveCount(0);
       await expect(
         a.getByRole("button", {
           name: "Actions for Fixture conversation",

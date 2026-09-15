@@ -49,6 +49,7 @@ Deno.test({
         .click();
       const newChat = () =>
         page
+          .locator(".topbar")
           .getByRole("button", { name: "New conversation", exact: true })
           .first()
           .click();
