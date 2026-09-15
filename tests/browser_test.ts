@@ -584,19 +584,20 @@ Deno.test({
         .first()
         .click();
       await a
-        .getByRole("button", { name: "Keep in Essentials", exact: true })
+        .getByRole("button", { name: "Toggle Essentials", exact: true })
         .click();
       await b
         .getByRole("button", { name: "Open conversations", exact: true })
         .click();
-      await expect(b.locator("dialog .essentials")).toContainText(
-        "Fixture conversation",
-      );
+      await expect(
+        b
+          .locator("dialog .essentials")
+          .getByRole("button", { name: "Fixture conversation", exact: true }),
+      ).toBeVisible();
       await b.getByRole("button", { name: "Close", exact: true }).click();
       await a
-        .getByRole("button", { name: "Conversation actions", exact: true })
+        .getByRole("button", { name: "Archive conversation", exact: true })
         .click();
-      await a.getByRole("button", { name: "Archive", exact: true }).click();
       await b
         .getByRole("button", { name: "Open conversations", exact: true })
         .click();

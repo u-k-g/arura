@@ -847,8 +847,14 @@ export class Hermes extends EventEmitter {
       limit: "100",
       offset: String(offset),
       order: "latest",
+      // Match desktop display history, including turns archived by compaction.
+      include_compacted: "true",
     });
-    let data: { messages?: Record<string, unknown>[]; session_id?: string };
+    let data: {
+      messages?: Record<string, unknown>[];
+      session_id?: string;
+      pagination?: { limit?: number; has_more?: boolean };
+    };
     try {
       data = await this.rest(
         `/api/sessions/${encodeURIComponent(id)}/messages?${q}`,
@@ -895,7 +901,9 @@ export class Hermes extends EventEmitter {
           }),
         )
         .digest("hex"),
-      hasMore: (data.messages?.length ?? 0) === 100,
+      hasMore: data.pagination?.has_more ??
+        (Number(data.pagination?.limit) > 0 &&
+          (data.messages?.length ?? 0) >= Number(data.pagination?.limit)),
     };
   }
   async branch(key: string, messageId: string) {

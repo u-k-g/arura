@@ -220,36 +220,44 @@ small {
   scrollbar-width: thin;
 }
 .essentials {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   padding: 16px 0;
   border-bottom: var(--hairline) solid var(--line);
-  min-height: 76px;
 }
 .essentials > button {
-  height: 56px;
+  flex: 1 0 48px;
+  min-width: 44px;
+  height: 44px;
   border: var(--hairline) solid var(--line);
   background: var(--panel);
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
   font-size: 12px;
   padding: 6px 4px;
   box-shadow: none;
 }
-.essentials > button span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
-  white-space: nowrap;
+.essentials .icon {
+  width: 20px;
+  height: 20px;
 }
-.essentials > .quiet {
-  grid-column: 1 / -1;
-  text-align: center;
-  font-size: 11px;
-  align-self: center;
-  margin: 0;
+.essential-icon-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(44px, 1fr));
+  gap: 8px;
+}
+.essential-icon-picker button {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.essential-icon-picker button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 .essentials > .selected {
   background: var(--accent-soft);
@@ -1335,9 +1343,6 @@ dialog::backdrop {
   .navigation-sheet .thread-row > .icon-button {
     opacity: 1;
     min-width: 40px;
-  }
-  .navigation-sheet .essentials {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .navigation-sheet .nav-footer button {
     font-size: 12px;

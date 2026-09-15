@@ -1,4 +1,5 @@
 import type { ConversationPage, Doc } from "../shared/contracts.ts";
+import { essentialIcons } from "../shared/essentialIcons.ts";
 import {
   createEffect,
   createMemo,
@@ -50,6 +51,7 @@ export default function App() {
       return !value;
     });
   const [menuAnchor, setMenuAnchor] = createSignal<{ x: number; y: number }>();
+  const [iconPicker, setIconPicker] = createSignal<Conversation>();
   const [view, setView] = createSignal(preferences.getItem("arura.view") ?? "");
   const [sheet, setSheet] = createSignal(false),
     [search, setSearch] = createSignal(""),
@@ -495,14 +497,16 @@ export default function App() {
                   type="button"
                   classList={{ selected: view() === c.key }}
                   title={c.title}
+                  aria-label={c.title}
                   onClick={() => navigate(c.key)}
                   onContextMenu={(e) => {
                     e.preventDefault();
                     openMenu(c, e);
                   }}
                 >
-                  <Icon name="chat-bubble" />
-                  <span>{c.title}</span>
+                  <Icon
+                    name={c.essentialIcon ?? (c.bot ? "bot" : "chat-bubble")}
+                  />
                 </button>
               )}
             </For>
@@ -819,29 +823,23 @@ export default function App() {
             <Show when={selected()}>
               {(c) => (
                 <>
-                  <button
-                    type="button"
-                    class="icon-button header-pin"
-                    title={c().section === "pinned" ||
-                        c().section === "essential"
-                      ? "Unpin conversation"
-                      : "Pin conversation"}
-                    aria-label="Toggle conversation pin"
-                    aria-pressed={c().section === "pinned" ||
-                      c().section === "essential"}
+                  <IconButton
+                    icon="archive"
+                    label={c().section === "archived"
+                      ? "Unarchive conversation"
+                      : "Archive conversation"}
+                    disabled={c().section !== "archived" &&
+                      (c().running || c().pendingInput)}
                     onClick={() =>
                       void run(() =>
                         mutate("workspace.move", {
                           key: c().key,
-                          section: c().section === "pinned" ||
-                              c().section === "essential"
+                          section: c().section === "archived"
                             ? "recent"
-                            : "pinned",
+                            : "archived",
                         })
                       )}
-                  >
-                    <Icon name="pin" />
-                  </button>
+                  />
                   <IconButton
                     icon="more-horiz"
                     label="Conversation actions"
@@ -1072,6 +1070,40 @@ export default function App() {
           </form>
         </Dialog>
       </Show>
+      <Show when={iconPicker()}>
+        {(conversation) => (
+          <Dialog
+            title="Choose an Essentials icon"
+            close={() => setIconPicker(undefined)}
+          >
+            <div class="essential-icon-picker">
+              <For each={essentialIcons}>
+                {([icon, label]) => (
+                  <button
+                    type="button"
+                    aria-label={label}
+                    title={label}
+                    aria-pressed={(workspace()?.conversations.find(
+                      (item) => item.key === conversation().key,
+                    )?.essentialIcon ??
+                      (conversation().bot ? "bot" : "chat-bubble")) === icon}
+                    onClick={() =>
+                      void run(async () => {
+                        await mutate("workspace.setEssentialIcon", {
+                          key: conversation().key,
+                          icon,
+                        });
+                        setIconPicker(undefined);
+                      })}
+                  >
+                    <Icon name={icon} />
+                  </button>
+                )}
+              </For>
+            </div>
+          </Dialog>
+        )}
+      </Show>
       <Show when={menu()}>
         {(c) => (
           <Dialog
@@ -1081,6 +1113,18 @@ export default function App() {
             close={() => setMenu(undefined)}
           >
             <div class="action-list">
+              <Show when={c().section === "essential"}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIconPicker(c());
+                    setMenu(undefined);
+                  }}
+                >
+                  <Icon name="edit-pencil" />
+                  Change icon
+                </button>
+              </Show>
               <Show when={["essential", "pinned"].includes(c().section)}>
                 <For each={[-1, 1]}>
                   {(direction) => (
@@ -1103,33 +1147,24 @@ export default function App() {
               </Show>
               <For
                 each={[
-                  ["essential", "Keep in Essentials"],
-                  ["pinned", "Pin conversation"],
-                  ["recent", "Move to conversations"],
-                  ["archived", "Archive"],
+                  ["essential", "Toggle Essentials"],
+                  ["pinned", "Toggle pinned"],
                 ]}
               >
                 {([section, label]) => (
                   <button
                     type="button"
+                    aria-pressed={c().section === section}
                     onClick={() =>
                       void run(async () => {
                         await mutate("workspace.move", {
                           key: c().key,
-                          section,
+                          section: c().section === section ? "recent" : section,
                         });
                         setMenu(undefined);
                       })}
                   >
-                    <Icon
-                      name={section === "essential"
-                        ? "star"
-                        : section === "pinned"
-                        ? "pin"
-                        : section === "archived"
-                        ? "archive"
-                        : "chat-bubble"}
-                    />
+                    <Icon name={section === "essential" ? "star" : "pin"} />
                     {label}
                   </button>
                 )}

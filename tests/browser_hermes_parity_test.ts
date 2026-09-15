@@ -48,8 +48,11 @@ Deno.test({
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .click();
+      await page
+        .getByRole("button", { name: "Conversation actions", exact: true })
+        .click();
       const pin = page.getByRole("button", {
-        name: "Toggle conversation pin",
+        name: "Toggle pinned",
         exact: true,
       });
       await expect(pin).toHaveAttribute("aria-pressed", "true");
@@ -58,9 +61,11 @@ Deno.test({
         .poll(async () => (await read()).pinned, { timeout: 15000 })
         .toBe(false);
       await metadata({ pinned: true });
-      await expect(pin).toHaveAttribute("aria-pressed", "true", {
-        timeout: 15000,
-      });
+      await expect(
+        page
+          .locator(".nav-scroll")
+          .getByRole("button", { name: "Fixture conversation", exact: true }),
+      ).toBeVisible();
       await metadata({ archived: true, pinned: false });
       await page.getByRole("button", { name: "Archived", exact: true }).click();
       const restore = page.getByRole("button", {

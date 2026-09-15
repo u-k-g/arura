@@ -7,9 +7,64 @@ import {
   normalizeMessages,
   shouldArchive,
   subagentTranscript,
+  userMessageText,
   visibleText,
   withoutReasoning,
 } from "../shared/model.ts";
+
+Deno.test("user message display hides expanded context and preserves unique references", () => {
+  const payload =
+    'Summarize @url:https://example.com\n\n--- Attached Context ---\n\n@url:https://example.com\nPAGE CONTENT\n@file:"notes with spaces.txt"\nFILE CONTENT\n@url:https://example.com';
+  equal(
+    userMessageText(payload),
+    '@file:"notes with spaces.txt"\n\nSummarize @url:https://example.com',
+  );
+  equal(
+    userMessageText("hello\n--- Context Warnings ---\nMissing file"),
+    "hello",
+  );
+  equal(
+    userMessageText(
+      "--- Attached Context ---\n@url:https://example.com\nPAGE CONTENT",
+    ),
+    "@url:https://example.com",
+  );
+  equal(
+    userMessageText("Ordinary --- Attached Context --- prose"),
+    "Ordinary --- Attached Context --- prose",
+  );
+  const rows = [
+    { id: 1, role: "user", content: payload },
+    { id: 2, role: "assistant", content: payload },
+  ];
+  equal(normalizeMessages(rows)[0].text, userMessageText(payload));
+  equal(normalizeMessages(rows)[1].text, payload);
+  equal(rows[0].content, payload);
+  equal(
+    normalizeMessages([
+      { role: "user", content: payload, display_content: "Native display" },
+    ])[0].text,
+    "Native display",
+  );
+});
+
+Deno.test("expanded skills display the original invocation instead of instructions", () => {
+  const header =
+    '[IMPORTANT: The user has invoked the "research" skill, indicating they want you to follow its instructions.\nThe full skill content is loaded below.]';
+  equal(userMessageText(`${header}\nSECRET SKILL BODY`), "/research");
+  equal(
+    userMessageText(
+      `${header}\nSECRET SKILL BODY\nThe user has provided the following instruction alongside the skill invocation: Compare bikes\n\n[Runtime note: internal]`,
+    ),
+    "/research Compare bikes",
+  );
+  equal(
+    userMessageText(
+      '[IMPORTANT: The user has invoked the "/research /summarize" stacked skill bundle, loading 2 skills together.]\n\nUser instruction: Compare bikes\n\n[Loaded as part of the stacked skill invocation "research".]\nBODY',
+    ),
+    "/research /summarize Compare bikes",
+  );
+});
 
 Deno.test("clarification projection keeps question IDs, choices and restored answers without reasoning", () => {
   const value = interactionFromEvent("clarify.request", {

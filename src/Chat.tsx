@@ -18,6 +18,7 @@ import {
   onMount,
   Show,
   Suspense,
+  untrack,
 } from "solid-js";
 import { fileReferences } from "../shared/artifacts.ts";
 import {
@@ -25,6 +26,7 @@ import {
   groupMessages,
   type Message,
   type Turn,
+  userMessageText,
 } from "../shared/model.ts";
 import { rpcQueries } from "../shared/resources.ts";
 import { draft, draftAttachments, loadCache, saveCache } from "./cache.ts";
@@ -87,6 +89,8 @@ export default function Chat(props: {
   const [text, setText] = createSignal(""),
     [sending, setSending] = createSignal(false),
     [pages, setPages] = createSignal(1);
+  const [historyLoading, setHistoryLoading] = createSignal(false);
+  const [historyRetry, setHistoryRetry] = createSignal(0);
   const [edit, setEdit] = createSignal<string>(),
     [controls, setControls] = createSignal<ControlView>();
   const [uploads, setUploads] = createSignal<
@@ -130,11 +134,22 @@ export default function Chat(props: {
   };
   let input!: ComposerHandle;
   let fileInput!: HTMLInputElement;
-  const messages = () =>
+  const historyRevision = createMemo(() =>
     data()
-      .pages.slice()
-      .sort((a, b) => b.offset - a.offset)
-      .flatMap((p) => p.messages) as Message[];
+      .pages.map((page) => `${page.offset}:${page.revision}`)
+      .join("|")
+  );
+  const messages = createMemo(() => {
+    historyRevision();
+    // Command/status updates must not remount unchanged message groups.
+    return untrack(
+      () =>
+        data()
+          .pages.slice()
+          .sort((a, b) => b.offset - a.offset)
+          .flatMap((page) => page.messages) as Message[],
+    );
+  });
   const turn = () => data().turn as Turn | null;
   const turnIsInHistory = () => {
     const last = turn()?.state === "running"
@@ -161,6 +176,7 @@ export default function Chat(props: {
     setData({ pages: [], commands: [], turn: null });
     setText("");
     setPages(1);
+    setHistoryLoading(false);
     setEdit(undefined);
     setCurrentModel("");
     void request("/api/query", {
@@ -202,6 +218,7 @@ export default function Chat(props: {
   createEffect(() => {
     const key = props.conversation;
     const count = pages();
+    historyRetry();
     connected();
     const requested = new Set<string>();
     const stop = subscribe<Transcript>(
@@ -210,11 +227,30 @@ export default function Chat(props: {
       { conversation: key, pages: count },
       (value) => {
         transcriptRevision++;
+        const previousOffset = data().pages.at(-1)?.offset ?? 0;
+        const prepended = (value.pages.at(-1)?.offset ?? 0) > previousOffset;
+        const viewportTop = scroller?.getBoundingClientRect().top ?? 0;
+        const anchor = prepended
+          ? Array.from(
+            scroller?.querySelectorAll<HTMLElement>("[data-message-id]") ??
+              [],
+          ).find(
+            (element) => element.getBoundingClientRect().bottom > viewportTop,
+          )
+          : undefined;
+        const anchorId = anchor?.dataset.messageId;
+        const anchorTop = anchor?.getBoundingClientRect().top ?? viewportTop;
         const nearBottom = needsInitialScroll ||
           !scroller ||
           scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <
             180;
         setData(value);
+        if (
+          value.pages.length >= count ||
+          value.pages.at(-1)?.hasMore === false
+        ) {
+          setHistoryLoading(false);
+        }
         if (value.pages.some((page) => page.messages.length)) {
           needsInitialScroll = false;
         }
@@ -231,13 +267,28 @@ export default function Chat(props: {
             connected()
           ) {
             requested.add(requestId);
-            void command("load", key, { offset }).catch((error) =>
-              inform(error.message)
-            );
+            void command("load", key, { offset }).catch((error) => {
+              if (props.conversation === key) setHistoryLoading(false);
+              inform(error.message);
+            });
           }
         }
         void saveCache("chat:" + key, value);
-        if (nearBottom) {
+        if (prepended) {
+          requestAnimationFrame(() => {
+            if (props.conversation === key && scroller) {
+              const target = Array.from(
+                scroller.querySelectorAll<HTMLElement>("[data-message-id]"),
+              ).find((element) => element.dataset.messageId === anchorId);
+              if (target) {
+                // Anchor to a message, not estimated content-visibility heights.
+                target.scrollIntoView({ block: "start", behavior: "instant" });
+                scroller.scrollTop += target.getBoundingClientRect().top -
+                  anchorTop;
+              }
+            }
+          });
+        } else if (nearBottom) {
           requestAnimationFrame(() => {
             if (props.conversation === key) scrollToLatest();
           });
@@ -366,7 +417,7 @@ export default function Chat(props: {
   }
   const groups = createMemo(() => groupMessages(messages()));
   const renderMessage = (message: Message) => (
-    <article class={`message ${message.role}`}>
+    <article class={`message ${message.role}`} data-message-id={message.id}>
       <Show
         when={message.role !== "tool"}
         fallback={
@@ -382,14 +433,22 @@ export default function Chat(props: {
           </details>
         }
       >
-        <Markdown text={message.text} />
+        <Markdown
+          text={message.role === "user"
+            ? userMessageText(message.text)
+            : message.text}
+        />
         <div class="message-actions">
           <IconButton
             icon="page"
             label="Copy message"
             onClick={() =>
               void run(() =>
-                navigator.clipboard.writeText(message.text)
+                navigator.clipboard.writeText(
+                  message.role === "user"
+                    ? userMessageText(message.text)
+                    : message.text,
+                )
               )}
           />
           <Show when={message.role === "user"}>
@@ -398,7 +457,7 @@ export default function Chat(props: {
               label="Edit and resubmit"
               onClick={() => {
                 setEdit(message.id);
-                changeText(message.text);
+                changeText(userMessageText(message.text));
                 input.focus();
               }}
             />
@@ -443,9 +502,17 @@ export default function Chat(props: {
             <button
               type="button"
               class="load-earlier"
-              onClick={() => setPages((x) => x + 1)}
+              disabled={historyLoading() || !connected()}
+              aria-busy={historyLoading()}
+              onClick={() => {
+                setHistoryLoading(true);
+                setPages(data().pages.length + 1);
+                setHistoryRetry((value) => value + 1);
+              }}
             >
-              Load earlier messages
+              {historyLoading()
+                ? "Loading earlier messages…"
+                : "Load earlier messages"}
             </button>
           </Show>
           <For each={groups()}>

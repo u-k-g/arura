@@ -69,21 +69,19 @@ Deno.test({
         exact: true,
       });
       await conversation.click();
+      await conversation.click({ button: "right" });
       await page
-        .getByRole("button", { name: "Toggle conversation pin", exact: true })
+        .getByRole("button", { name: "Toggle pinned", exact: true })
         .click();
-      await expect(
-        page.getByRole("button", {
-          name: "Toggle conversation pin",
-          exact: true,
-        }),
-      ).toHaveAttribute("aria-pressed", "true");
       await conversation.click({ button: "right" });
       const menu = page.getByRole("dialog", {
         name: "Fixture conversation",
         exact: true,
       });
       await expect(menu).toBeVisible();
+      await expect(
+        menu.getByRole("button", { name: "Toggle pinned", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
       const bounds = await menu.boundingBox();
       expect(bounds!.width).toBeLessThan(320);
       expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1280);
@@ -97,6 +95,9 @@ Deno.test({
         .getByRole("button", { name: "Conversation actions", exact: true })
         .click();
       await expect(menu).toBeVisible();
+      await expect(
+        menu.getByRole("button", { name: "Toggle pinned", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
       const mobile = await menu.boundingBox();
       expect(mobile!.x).toBe(0);
       expect(Math.round(mobile!.y + mobile!.height)).toBe(844);

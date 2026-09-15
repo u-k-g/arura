@@ -5,6 +5,7 @@ import { shouldArchive } from "../shared/model.ts";
 import { internalMutation, mutation, query } from "./_generated/server.ts";
 import { adapter, device } from "./access.ts";
 import { resolveKey } from "./conversationKeys.ts";
+import { essentialIcons } from "../shared/essentialIcons.ts";
 
 const section = v.union(
   v.literal("essential"),
@@ -188,6 +189,24 @@ export const move = mutation({
         ? Date.now()
         : c.unarchivedAt,
     });
+  },
+});
+export const setEssentialIcon = mutation({
+  args: { key: v.string(), icon: v.string() },
+  handler: async (ctx, args) => {
+    await device(ctx);
+    if (!essentialIcons.some(([icon]) => icon === args.icon)) {
+      throw new Error("Choose an icon from the picker");
+    }
+    const key = await resolveKey(ctx, args.key);
+    const conversation = await ctx.db
+      .query("conversations")
+      .withIndex("key", (q) => q.eq("key", key))
+      .unique();
+    if (!conversation || conversation.deleted) {
+      throw new Error("Conversation not found");
+    }
+    await ctx.db.patch(conversation._id, { essentialIcon: args.icon });
   },
 });
 export const folder = mutation({

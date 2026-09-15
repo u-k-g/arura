@@ -111,8 +111,15 @@ grace period.
 - Use Lexical for the chat composer, with selectable skill/command and context
   references. Keep drafts and Hermes messages as plain text. CodeMirror remains
   the text-file editor; a visual rich-text document editor is not required.
-- **Essentials:** compact, manually chosen chats/bots. No folders. Never
+- **Essentials:** icon-only, manually chosen chats/bots, with names available as
+  tooltips and accessible labels. Tiles flex and wrap to fill the available
+  width. Context-menu icon choices sync across devices. No folders. Never
   autoarchive.
+- The conversation top bar has Archive (Unarchive for archived chats), without a
+  pin button. Archive is not duplicated in the conversation action menu.
+- Essentials and Pinned are context-menu toggles. Toggling the current section
+  off returns the item to the ordinary list; either toggle clears folder
+  membership. There is no separate "Move to conversations" action.
 - **Pinned:** manually pinned entries and all folders. Folder contents count as
   pinned. Folders cannot live in any other section.
 - **Other entries:** below Pinned, no folders; autoarchive after seven days of

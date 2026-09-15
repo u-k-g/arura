@@ -4,6 +4,7 @@ export interface Conversation {
   key: string;
   profile: string;
   bot?: boolean;
+  essentialIcon?: string;
   sourceId: string;
   source?: string;
   backgroundSession?: boolean;
@@ -162,6 +163,54 @@ export function visibleText(value: unknown): string {
     .replace(/<[^>]*$/, "")
     .trim();
 }
+// Display protocol reference: NousResearch/hermes-agent, desktop
+// src/lib/chat-messages/hydration.ts and shared/src/skill-scaffold.ts.
+// Keep model-facing context in Hermes, not in the user's message bubble.
+export function userMessageText(value: unknown): string {
+  const text = visibleText(value);
+  const skill = text.match(/^\[IMPORTANT: The user has invoked the "([^"]+)"/);
+  if (skill) {
+    const bundle = text.includes(" skill bundle,");
+    const instructionMarker = bundle
+      ? "\nUser instruction: "
+      : "The user has provided the following instruction alongside the skill invocation: ";
+    const start = bundle
+      ? text.indexOf(instructionMarker)
+      : text.lastIndexOf(instructionMarker);
+    const instruction = start < 0 ? "" : text
+      .slice(start + instructionMarker.length)
+      .split(
+        bundle ? "\n\n[Loaded as part of the " : "\n\n[Runtime note:",
+      )[0]
+      .trim()
+      .replace(/\s+/g, " ");
+    const name = skill[1].trim();
+    if (name) {
+      return `${name.startsWith("/") ? name : `/${name}`}${
+        instruction ? ` ${instruction}` : ""
+      }`;
+    }
+  }
+  const marker = /(?:^|\n)--- Attached Context ---\s*\n/.exec(text);
+  const prompt = (marker ? text.slice(0, marker.index) : text)
+    .replace(/(?:^|\n)--- Context Warnings ---[\s\S]*$/, "")
+    .trim();
+  if (!marker) return prompt;
+  const context = text.slice(marker.index + marker[0].length);
+  const references = [
+    ...new Set(
+      Array.from(
+        context.matchAll(
+          /@(file|folder|url|image|tool|terminal):(?:"[^"\n]+"|'[^'\n]+'|`[^`\n]+`|\S+)/g,
+        ),
+        (match) => match[0],
+      ),
+    ),
+  ];
+  return [references.filter((ref) => !prompt.includes(ref)).join("\n"), prompt]
+    .filter(Boolean)
+    .join("\n\n");
+}
 export function withoutReasoning(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(withoutReasoning).filter((item) => item !== null);
@@ -208,7 +257,10 @@ export function normalizeMessages(rows: Record<string, unknown>[]): Message[] {
     ) {
       return [];
     }
-    const text = visibleText(row.display_content ?? row.content ?? row.text);
+    const content = row.display_content ?? row.content ?? row.text;
+    const text = row.role === "user"
+      ? userMessageText(content)
+      : visibleText(content);
     if (!text && row.role !== "tool") return [];
     return [
       {

@@ -1,0 +1,18 @@
+export const essentialIcons = [
+  ["chat-bubble", "Chat"],
+  ["bot", "Bot"],
+  ["star", "Star"],
+  ["page", "Document"],
+  ["folder", "Folder"],
+  ["clock", "Clock"],
+  ["bell", "Bell"],
+  ["search", "Search"],
+  ["computer", "Computer"],
+  ["smartphone-device", "Phone"],
+  ["key", "Key"],
+  ["capabilities", "Capabilities"],
+  ["edit-pencil", "Pencil"],
+  ["check", "Check"],
+  ["play", "Play"],
+  ["send", "Send"],
+] as const;

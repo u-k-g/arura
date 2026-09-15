@@ -1,5 +1,11 @@
 import { record } from "../shared/contracts.ts";
-type Row = { id: number; role: string; content: string; name?: string };
+type Row = {
+  id: number;
+  role: string;
+  content: string;
+  name?: string;
+  compacted?: boolean;
+};
 export function hermesFixture(
   port = 0,
   hooks: {
@@ -715,10 +721,22 @@ export function hermesFixture(
           );
         }
         if (match[2]) {
+          const limit = Number(url.searchParams.get("limit") ?? 500);
+          const offset = Number(url.searchParams.get("offset") ?? 0);
+          const rows = s.messages.filter(
+            (row) =>
+              !row.compacted ||
+              url.searchParams.get("include_compacted") === "true",
+          );
+          const latest = url.searchParams.get("order") === "latest";
+          const end = Math.max(0, rows.length - offset);
+          const messages = latest
+            ? rows.slice(Math.max(0, end - limit), end)
+            : rows.slice(offset, offset + limit);
           return json({
-            messages: s.messages,
+            messages,
             session_id: s.id,
-            pagination: { has_more: false },
+            pagination: { limit, offset, returned: messages.length },
           });
         }
         if (request.method === "PATCH") {

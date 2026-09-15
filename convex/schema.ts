@@ -40,6 +40,7 @@ export default defineSchema({
     key: v.string(),
     profile: v.string(),
     bot: v.optional(v.boolean()),
+    essentialIcon: v.optional(v.string()),
     sourceId: v.string(),
     source: v.optional(v.string()),
     backgroundSession: v.optional(v.boolean()),
