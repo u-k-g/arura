@@ -354,8 +354,9 @@ export default function Settings(props: {
           </Show>
         </Show>
         <Show when={props.section === "appearance"}>
-          <Field label="Color scheme">
+          <Field label="Theme">
             <select
+              aria-label="Theme"
               value={preferences.getItem("arura.theme") ?? "system"}
               onChange={(e) => {
                 const value = e.currentTarget.value;
@@ -363,9 +364,14 @@ export default function Settings(props: {
                 document.documentElement.dataset.theme = value;
               }}
             >
-              <option value="system">System</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
+              <option value="system">Macro · System</option>
+              <option value="light">Macro · Light</option>
+              <option value="dark">Macro · Dark</option>
+              <option value="grove">Grove</option>
+              <option value="jade">Jade</option>
+              <option value="black-rose">Black Rose</option>
+              <option value="gruvbox-dark-hard">Gruvbox Dark Hard</option>
+              <option value="rose-pine">Rosé Pine</option>
             </select>
           </Field>
           <Field label="Message text size">

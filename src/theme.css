@@ -47,7 +47,8 @@
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root:not([data-theme]),
+  :root[data-theme="system"] {
     --canvas: oklch(0 0 21deg);
     --panel: oklch(0.18 0 21deg);
     --surface: oklch(0.28 0 21deg);
@@ -72,5 +73,73 @@
   --line: oklch(0.28 0 21deg);
   --accent: oklch(0.75 0.2 59deg);
   --danger: oklch(0.75 0.2 25.331deg);
+  color-scheme: dark;
+}
+
+/* Standalone snapshots of nc theme presets; no host theme integration.
+   Palette sources: docs/design.md. */
+:root[data-theme="grove"] {
+  --canvas: #1b2821;
+  --panel: #21362b;
+  --surface: #36654c;
+  --dialog: #21362b;
+  --ink: #fffaff;
+  --muted: #a9abab;
+  --subtle: #919595;
+  --line: #36654c;
+  --accent: #69d69a;
+  --danger: #fb414a;
+  color-scheme: dark;
+}
+:root[data-theme="jade"] {
+  --canvas: #071c15;
+  --panel: #051910;
+  --surface: #162920;
+  --dialog: #051910;
+  --ink: #fbfbf7;
+  --muted: #718064;
+  --subtle: #53685b;
+  --line: #162920;
+  --accent: #6bc3bd;
+  --danger: #ff5345;
+  color-scheme: dark;
+}
+:root[data-theme="black-rose"] {
+  --canvas: #000000;
+  --panel: #121212;
+  --surface: #222222;
+  --dialog: #121212;
+  --ink: #c1c1c1;
+  --muted: #999999;
+  --subtle: #333333;
+  --line: #222222;
+  --accent: #888888;
+  --danger: #5f8787;
+  color-scheme: dark;
+}
+:root[data-theme="gruvbox-dark-hard"] {
+  --canvas: #1d2021;
+  --panel: #3c3836;
+  --surface: #504945;
+  --dialog: #3c3836;
+  --ink: #d5c4a1;
+  --muted: #bdae93;
+  --subtle: #665c54;
+  --line: #504945;
+  --accent: #83a598;
+  --danger: #fb4934;
+  color-scheme: dark;
+}
+:root[data-theme="rose-pine"] {
+  --canvas: #191724;
+  --panel: #1f1d2e;
+  --surface: #26233a;
+  --dialog: #1f1d2e;
+  --ink: #e0def4;
+  --muted: #908caa;
+  --subtle: #6e6a86;
+  --line: #26233a;
+  --accent: #c4a7e7;
+  --danger: #eb6f92;
   color-scheme: dark;
 }

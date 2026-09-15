@@ -14,10 +14,8 @@ Read [Product scope](docs/product-scope.md) when building or reviewing features.
 ## Reference repositories
 
 - [Hermes Agent](https://github.com/NousResearch/hermes-agent): runtime and
-  visual/interaction reference. Match desktop placement for the retained scope
-  with Iconoir equivalents, but keep Macro's color scheme. Keep supported data
-  authoritative in Hermes; Arura stores only synchronized copies and web-only
-  additions.
+  visual/interaction reference. Keep supported data authoritative in Hermes;
+  Arura stores only synchronized copies and web-only additions.
 - [nc](https://github.com/u-k-g/nc) contains the host deployment configuration.
 - [Macro](https://github.com/macro-inc/macro): SolidJS architecture, list
   performance, focus handling, and file-editor reference. Hermes defines the UI.

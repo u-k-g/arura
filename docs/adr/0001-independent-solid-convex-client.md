@@ -25,7 +25,8 @@ claim the old app has migrated.
 
 Use Hermes desktop as the visual and interaction reference, matching placement
 and sizing for the retained scope with Iconoir equivalents. Preserve the agreed
-mobile bottom sheets and exclusions. Keep Macro's light/dark color scheme.
+mobile bottom sheets and exclusions. Keep Macro's light/dark color scheme as the
+default alongside standalone theme presets described in the product scope.
 [Macro](https://github.com/macro-inc/macro) remains a SolidJS engineering and
 file-editor reference, not the shell design. Record provenance and honor
 licenses for literal source reuse.

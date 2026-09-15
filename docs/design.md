@@ -4,14 +4,27 @@ Arura follows
 [Hermes desktop](https://github.com/NousResearch/hermes-agent/tree/main/apps/desktop)
 for layout, sizing, placement, and interaction, while retaining Iconoir,
 Essentials/pinned folders, mobile bottom sheets, and the agreed exclusions.
-Macro's light/dark color scheme remains; Hermes defines layout and placement.
+Hermes defines layout and placement. Macro's light/dark color scheme remains the
+default, alongside Grove, Jade, Black Rose, Gruvbox Dark Hard, and Rosé Pine in
+Settings → Appearance → Theme.
 
 The shell uses the desktop's 237px sidebar, 32px titlebar, tool navigation,
 bottom profile/gateway controls, full-width messages, and compact composer with
 its model picker beside the input. Colors follow
 [Macro's theme definitions](https://github.com/macro-inc/macro/tree/main/apps/web/src/features/theme/themes):
-neutral light surfaces, black/gray dark surfaces, and amber accents. Do not copy
-the green host theme from the Hermes screenshot.
+neutral light surfaces, black/gray dark surfaces, and amber accents.
+
+Additional palettes are bundled snapshots of the
+[nc presets](https://github.com/u-k-g/nc/blob/main/modules/theme/default.nix).
+Grove (T3 Code), Jade (steez), and Black Rose (metalelf0) are defined there;
+Gruvbox Dark Hard and Rosé Pine come from its pinned
+[ThemeNix revision](https://github.com/RGBCube/ThemeNix/tree/3779a7ba289d88ea092063e8bc512cfe80f293ba).
+They use the same Base16 color mapping as the old client's theme adapter: base00
+canvas, base01 sidebar/dialog, base02 surfaces/borders, base05 text, base04
+secondary text, base03 subtle text, base0D accent, and base08 errors. These five
+presets are dark palettes regardless of the device's appearance. Selection is
+saved per browser. Arura does not read, follow, or update nc's active theme; no
+Nix dependency or runtime theme request is required.
 
 IBM Plex Sans is bundled from the
 [existing client's assets](https://github.com/u-k-g/hermes-agent-desktop-web/tree/main/apps/web/src)

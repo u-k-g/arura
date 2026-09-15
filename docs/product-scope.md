@@ -90,10 +90,12 @@ images.
 ## Navigation and activity contract
 
 Hermes desktop is the visual/interaction reference for retained features,
-including placement and sizing, with Iconoir equivalents and Macro's color
-scheme. Hermes owns supported state; Convex caches it for the UI. Pin/archive
-changes work in both directions with the old client. Essentials, folders and
-Arura ordering are web-only data.
+including placement and sizing, with Iconoir equivalents. Macro remains the
+default theme; Grove, Jade, Black Rose, Gruvbox Dark Hard, and Rosé Pine are
+bundled alternatives, selected per browser independently of nc. Hermes owns
+supported state; Convex caches it for the UI. Pin/archive changes work in both
+directions with the old client. Essentials, folders and Arura ordering are
+web-only data.
 
 Organization writes use the same profile-scoped session PATCH API as desktop.
 Convex keeps pending writes until the host acknowledges their revision; an older
