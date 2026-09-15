@@ -21,17 +21,27 @@ export interface Conversation {
 }
 export interface Message {
   id: string;
-  role: "user" | "assistant" | "tool";
+  role: "user" | "assistant" | "tool" | "event";
+  attachments?: { url: string; name: string; image: boolean }[];
   text: string;
   tool?: string;
+  toolCallId?: string;
   details?: unknown;
   createdAt?: number;
 }
 export function groupMessages(messages: Message[]) {
-  const groups: { prompt?: Message; answer?: Message; work: Message[] }[] = [];
+  const groups: {
+    prompt?: Message;
+    answer?: Message;
+    event?: Message;
+    work: Message[];
+  }[] = [];
   let group: (typeof groups)[number] | undefined;
   for (const message of messages) {
-    if (message.role === "user") {
+    if (message.role === "event") {
+      groups.push({ event: message, work: [] });
+      group = undefined;
+    } else if (message.role === "user") {
       group = { prompt: message, work: [] };
       groups.push(group);
     } else {
@@ -43,11 +53,35 @@ export function groupMessages(messages: Message[]) {
     }
   }
   for (const group of groups) {
-    if (group.work.at(-1)?.role === "assistant") {
-      group.answer = group.work.pop();
-    }
+    const answer = group.work.findLastIndex(
+      (message) => message.role === "assistant",
+    );
+    if (answer >= 0) group.answer = group.work.splice(answer, 1)[0];
   }
   return groups;
+}
+// A tool call and its result can fall on opposite history-page boundaries.
+export function mergeHistoryMessages(messages: Message[]): Message[] {
+  const merged: Message[] = [];
+  const calls = new Map<string, number>();
+  for (const message of messages) {
+    const index = message.toolCallId
+      ? calls.get(message.toolCallId)
+      : undefined;
+    if (index !== undefined) {
+      const previous = merged[index];
+      merged[index] = {
+        ...previous,
+        text: message.text,
+        tool: previous.tool === "Tool" ? message.tool : previous.tool,
+        details: { ...record(previous.details), ...record(message.details) },
+      };
+    } else {
+      if (message.toolCallId) calls.set(message.toolCallId, merged.length);
+      merged.push(message);
+    }
+  }
+  return merged;
 }
 export interface Activity {
   id: string;
@@ -250,31 +284,111 @@ export function subagentTranscript(text: string, details = false): string {
     .join("\n");
 }
 export function normalizeMessages(rows: Record<string, unknown>[]): Message[] {
-  return rows.flatMap((row, index) => {
+  const results = new Map(
+    rows
+      .filter((row) => row.role === "tool" && row.tool_call_id)
+      .map((row) => [String(row.tool_call_id), row]),
+  );
+  const calls = new Set(
+    rows.flatMap((row) =>
+      Array.isArray(row.tool_calls)
+        ? row.tool_calls.map((call) => String(record(call).id))
+        : []
+    ),
+  );
+  return rows.flatMap((row, index): Message[] => {
     if (
       row.display_kind === "hidden" ||
       !["user", "assistant", "tool"].includes(String(row.role))
     ) {
       return [];
     }
+    if (row.role === "tool" && calls.has(String(row.tool_call_id))) return [];
     const content = row.display_content ?? row.content ?? row.text;
     const text = row.role === "user"
       ? userMessageText(content)
       : visibleText(content);
-    if (!text && row.role !== "tool") return [];
-    return [
-      {
-        id: String(row.id ?? row.row_id ?? row.message_id ?? `row-${index}`),
-        role: row.role as Message["role"],
-        text,
-        ...(typeof row.timestamp === "number"
-          ? { createdAt: row.timestamp * 1000 }
-          : {}),
-        ...(row.role === "tool"
-          ? { tool: String(row.name ?? row.tool_name ?? "Tool") }
-          : {}),
-      },
-    ];
+    const id = String(row.id ?? row.row_id ?? row.message_id ?? `row-${index}`);
+    const createdAt = typeof row.timestamp === "number"
+      ? row.timestamp * 1000
+      : undefined;
+    const eventLabels: Record<string, string> = {
+      model_switch: "Model changed",
+      auto_continue: "Resumed interrupted turn",
+      personality_switch: "Personality changed",
+      async_delegation_complete: "Background agent work finished",
+    };
+    const event = eventLabels[String(row.display_kind)];
+    if (event) {
+      return [
+        { id, role: "event", text: event, ...(createdAt ? { createdAt } : {}) },
+      ];
+    }
+    const attachments: NonNullable<Message["attachments"]> = [];
+    if (Array.isArray(content)) {
+      for (const block of content) {
+        const item = record(block);
+        if (item.type !== "image_url") continue;
+        const url = typeof item.image_url === "string"
+          ? item.image_url
+          : record(item.image_url).url;
+        if (
+          typeof url === "string" &&
+          /^(https?:|file:|data:image\/(?:png|jpeg|webp|gif);|\/)/i.test(url)
+        ) {
+          attachments.push({
+            url,
+            name: url.startsWith("data:")
+              ? "Attached image"
+              : url.split("/").at(-1)?.split("?")[0] || "Attached image",
+            image: true,
+          });
+        }
+      }
+    }
+    const messages: Message[] =
+      text || attachments.length || row.role === "tool"
+        ? [
+          {
+            id,
+            role: row.role as Message["role"],
+            text,
+            ...(attachments.length ? { attachments } : {}),
+            ...(createdAt ? { createdAt } : {}),
+            ...(row.role === "tool"
+              ? {
+                tool: String(row.name ?? row.tool_name ?? "Tool"),
+                ...(row.tool_call_id
+                  ? { toolCallId: String(row.tool_call_id) }
+                  : {}),
+                details: { output: withoutReasoning(content) },
+              }
+              : {}),
+          },
+        ]
+        : [];
+    if (Array.isArray(row.tool_calls)) {
+      for (const raw of row.tool_calls) {
+        const call = record(raw),
+          fn = record(call.function),
+          result = results.get(String(call.id));
+        messages.push({
+          id: `${id}:tool:${call.id}`,
+          ...(call.id ? { toolCallId: String(call.id) } : {}),
+          role: "tool",
+          tool: String(fn.name ?? call.name ?? "Tool"),
+          text: result ? visibleText(result.content) : "Tool call",
+          details: {
+            input: withoutReasoning(fn.arguments ?? call.arguments ?? ""),
+            output: result
+              ? withoutReasoning(result.content)
+              : "Awaiting result",
+          },
+          ...(createdAt ? { createdAt } : {}),
+        });
+      }
+    }
+    return messages;
   });
 }
 export function elapsed(start: number, end = Date.now()): string {

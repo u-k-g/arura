@@ -13,6 +13,33 @@ const section = v.union(
   v.literal("recent"),
   v.literal("archived"),
 );
+export const runtimeView = query({
+  args: { key: v.string() },
+  handler: async (ctx, args) => {
+    await device(ctx);
+    return (
+      (
+        await ctx.db
+          .query("runtimeViews")
+          .withIndex("key", (q) => q.eq("key", args.key))
+          .unique()
+      )?.value ?? null
+    );
+  },
+});
+export const saveRuntimeView = mutation({
+  args: { key: v.string(), conversation: v.string(), value: v.any() },
+  handler: async (ctx, args) => {
+    await adapter(ctx);
+    const old = await ctx.db
+      .query("runtimeViews")
+      .withIndex("key", (q) => q.eq("key", args.key))
+      .unique();
+    if (old && JSON.stringify(old.value) === JSON.stringify(args.value)) return;
+    if (old) await ctx.db.patch(old._id, args);
+    else await ctx.db.insert("runtimeViews", args);
+  },
+});
 export const sourceKeys = query({
   args: {},
   handler: async (ctx) => {
@@ -56,6 +83,11 @@ export const overview = query({
     );
     return {
       deviceId: self.id,
+      readBaseline: self.createdAt,
+      reads: await ctx.db
+        .query("conversationReads")
+        .withIndex("device", (q) => q.eq("device", self.id))
+        .collect(),
       conversations: [...pinned, ...recent.page],
       recentCursor: recent.continueCursor,
       recentHasMore: !recent.isDone,
@@ -152,6 +184,37 @@ export const transcript = query({
         ...recent.filter((command) => command.status !== "queued"),
       ],
     };
+  },
+});
+export const markRead = mutation({
+  args: { key: v.string(), unread: v.boolean() },
+  handler: async (ctx, args) => {
+    const self = await device(ctx),
+      key = await resolveKey(ctx, args.key);
+    const conversation = await ctx.db
+      .query("conversations")
+      .withIndex("key", (q) => q.eq("key", key))
+      .unique();
+    if (!conversation) return;
+    const old = await ctx.db
+      .query("conversationReads")
+      .withIndex("device", (q) => q.eq("device", self.id).eq("key", key))
+      .unique();
+    const value = {
+      device: self.id,
+      key,
+      activityAt: conversation.activityAt,
+      unread: args.unread,
+    };
+    if (
+      old &&
+      old.activityAt === value.activityAt &&
+      old.unread === value.unread
+    ) {
+      return;
+    }
+    if (old) await ctx.db.patch(old._id, value);
+    else await ctx.db.insert("conversationReads", value);
   },
 });
 export const move = mutation({
@@ -571,6 +634,7 @@ export const backup = query({
       createdAt: Date.now(),
       conversations: await ctx.db.query("conversations").collect(),
       folders: await ctx.db.query("folders").collect(),
+      conversationReads: await ctx.db.query("conversationReads").collect(),
       conversationAliases: await ctx.db.query("conversationAliases").collect(),
       profileRenames: await ctx.db.query("profileRenames").collect(),
       settings: await ctx.db.query("settings").collect(),

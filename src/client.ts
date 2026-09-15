@@ -226,6 +226,64 @@ export function subscribe<T>(
     (error) => inform(error.message),
   );
 }
+export async function enqueueCommand(
+  kind: string,
+  conversation: string,
+  payload: unknown,
+  id: string = crypto.randomUUID(),
+) {
+  await mutate("commands.enqueue", { id, kind, conversation, payload });
+  return id;
+}
+export function watchRuntime<T>(
+  conversation: string,
+  method: string,
+  params: Record<string, unknown>,
+  callback: (value: T) => void,
+) {
+  const key = JSON.stringify([conversation, method, params]);
+  const watchToken = crypto.randomUUID();
+  const release = () =>
+    request("/api/query", {
+      conversation,
+      method,
+      params,
+      watchToken,
+      unwatch: true,
+    }).catch(() => {});
+  let disposed = false,
+    received = false;
+  const stop = subscribe<T | null>(
+    "workspace",
+    "runtimeView",
+    { key },
+    (value) => {
+      if (value !== null && !disposed) {
+        received = true;
+        callback(value);
+      }
+    },
+  );
+  void request("/api/query", {
+    conversation,
+    method,
+    params,
+    watch: true,
+    watchToken,
+  })
+    .then((value) => {
+      if (disposed) void release();
+      if (!disposed && !received) callback(value as T);
+    })
+    .catch((error) => {
+      if (!disposed) inform(error.message);
+    });
+  return () => {
+    disposed = true;
+    stop();
+    void release();
+  };
+}
 export async function command<T = Record<string, unknown>>(
   kind: string,
   conversation: string,

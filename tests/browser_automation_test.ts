@@ -1,3 +1,4 @@
+import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
@@ -73,7 +74,7 @@ Deno.test({
         .poll(async () => Boolean((await state()).last_run_at))
         .toBe(true);
       await page.getByRole("button", { name: "Close", exact: true }).click();
-      page.once("dialog", (dialog) => dialog.accept());
+      void onceActionDialog(page, (dialog) => dialog.accept());
       await card.getByRole("button", { name: "Delete", exact: true }).click();
       await expect(card).toHaveCount(0);
       await page
@@ -106,7 +107,10 @@ Deno.test({
       await expect(goal).toContainText("paused");
       await goal.getByRole("button", { name: "Resume", exact: true }).click();
       await expect(goal).toContainText("active");
-      page.once("dialog", (dialog) => dialog.accept("Choose native plants"));
+      void onceActionDialog(
+        page,
+        (dialog) => dialog.accept("Choose native plants"),
+      );
       await goal.getByRole("button", { name: "Add step", exact: true }).click();
       await expect(goal).toContainText("Choose native plants");
       await goal.getByRole("button", { name: "Clear", exact: true }).click();

@@ -2,6 +2,19 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  conversationReads: defineTable({
+    device: v.string(),
+    key: v.string(),
+    activityAt: v.number(),
+    unread: v.boolean(),
+  })
+    .index("device", ["device", "key"])
+    .index("key", ["key"]),
+  runtimeViews: defineTable({
+    key: v.string(),
+    conversation: v.string(),
+    value: v.any(),
+  }).index("key", ["key"]),
   backups: defineTable({
     status: v.union(
       v.literal("starting"),

@@ -116,7 +116,7 @@ export default function ComposerInput(props: {
         // Complete reference syntax only; a partially typed slash stays editable
         // so the existing upstream autocomplete remains in charge of suggestions.
         const match =
-          /\[(?:Attached file|Conversation): [^\]\n]+\]|(?:^|(?<=\s))\/[\w-]+(?=\s)/
+          /\[(?:Attached file|Conversation): [^\]\n]+\]|@(?:file|folder|url|image|session):(?:"[^"\n]+"|[^\s]+)|(?:^|(?<=\s))\/[\w-]+(?=\s)/
             .exec(
               node.getTextContent(),
             );

@@ -4,6 +4,8 @@ import type { Message, Turn } from "./model.ts";
 export type Doc<Table extends keyof DataModel> = DataModel[Table]["document"];
 export type Workspace = {
   deviceId: string;
+  readBaseline?: number;
+  reads?: Doc<"conversationReads">[];
   conversations: Doc<"conversations">[];
   folders: Doc<"folders">[];
   notices: Doc<"notices">[];

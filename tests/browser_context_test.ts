@@ -46,7 +46,13 @@ Deno.test({
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .click();
       const message = page.locator(".message.user").first();
-      await expect(message).toContainText(prompt);
+      await expect(message.locator(".markdown")).toHaveText("Summarize");
+      await expect(
+        message.getByRole("link", {
+          name: "https://example.com/article",
+          exact: true,
+        }),
+      ).toHaveCount(1);
       await expect(message).not.toContainText("Attached Context");
       await expect(message).not.toContainText("INTERNAL_");
       await message.hover();

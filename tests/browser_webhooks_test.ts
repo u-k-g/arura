@@ -1,3 +1,4 @@
+import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect } from "@playwright/test";
 
 Deno.test({
@@ -87,7 +88,7 @@ Deno.test({
         }
       });
       expect(JSON.stringify(cached)).not.toContain("ONE_TIME_WEBHOOK_SECRET");
-      page.once("dialog", (dialog) => dialog.accept());
+      void onceActionDialog(page, (dialog) => dialog.accept());
       await card.getByRole("button", { name: "Delete", exact: true }).click();
       await expect(card).toHaveCount(0);
     } finally {

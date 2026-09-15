@@ -1,3 +1,4 @@
+import { rejectAction } from "./ActionDialog.tsx";
 import {
   createEffect,
   createMemo,
@@ -101,8 +102,11 @@ export default function MemoryGraph() {
     setContent(document.content);
     setEditing(false);
   }
-  const close = () => {
-    if (selected()?.content !== content() && !confirm("Discard these edits?")) {
+  const close = async () => {
+    if (
+      selected()?.content !== content() &&
+      (await rejectAction("Discard these edits?"))
+    ) {
       return;
     }
     setSelected(undefined);
@@ -132,7 +136,7 @@ export default function MemoryGraph() {
   }
   async function remove() {
     const document = selected();
-    if (!document || !confirm(`Remove ${document.label}?`)) return;
+    if (!document || (await rejectAction(`Remove ${document.label}?`))) return;
     await verify(document);
     const result = await resource("deleteGraphNode", {}, { id: document.id });
     if (result.ok === false) {

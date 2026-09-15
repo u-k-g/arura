@@ -80,8 +80,56 @@ hermes.on("settled", (key: string) => activeCommands.delete(key));
 let processing = false;
 let recovered = false;
 let reconciling: Promise<void> | undefined;
+let profileChanges = 0;
 let reconcileAgain = false;
 const watched = new Set<string>();
+const runtimeWatches = new Map<
+  string,
+  {
+    conversation: string;
+    method: string;
+    params: Record<string, unknown>;
+    observers: Set<string>;
+  }
+>();
+let refreshingViews = false;
+let viewRefreshScheduled = false;
+function scheduleRuntimeViews() {
+  if (viewRefreshScheduled) return;
+  viewRefreshScheduled = true;
+  setTimeout(() => {
+    viewRefreshScheduled = false;
+    void refreshRuntimeViews();
+  }, 250);
+}
+async function refreshRuntimeViews() {
+  if (refreshingViews || !hermes.online) return;
+  refreshingViews = true;
+  try {
+    await Promise.allSettled(
+      [...runtimeWatches].map(async ([key, watch]) => {
+        const session_id = await hermes.attach(watch.conversation);
+        const result = await hermes.call(watch.method, {
+          ...watch.params,
+          session_id,
+        });
+        if (watch.method === "subagent.tail") {
+          result.text = subagentTranscript(
+            String(result.text ?? ""),
+            watch.params.details === true,
+          );
+        }
+        await convex.mutation(anyApi.workspace.saveRuntimeView, {
+          key,
+          conversation: watch.conversation,
+          value: withoutReasoning(result),
+        });
+      }),
+    );
+  } finally {
+    refreshingViews = false;
+  }
+}
 const lastActivity = new Map<string, number>();
 const historyJobs = new Map<string, Promise<void>>();
 function syncHistory(key: string, offset = 0): Promise<void> {
@@ -133,6 +181,9 @@ async function migrateProfile(
   }
   await convex.mutation(anyApi.profiles.finishRename, { from });
   hermes.forgetProfile(from);
+  for (const [key, watch] of runtimeWatches) {
+    if (JSON.parse(watch.conversation)[0] === from) runtimeWatches.delete(key);
+  }
   for (const key of watched) {
     if (JSON.parse(key)[0] === from) {
       watched.delete(key);
@@ -142,6 +193,7 @@ async function migrateProfile(
   }
 }
 async function reconcile() {
+  if (profileChanges) return;
   if (reconciling) {
     reconcileAgain = true;
     return await reconciling;
@@ -218,7 +270,8 @@ async function reconcile() {
   })().finally(() => {
     reconciling = undefined;
   });
-  return await reconciling;
+  await reconciling;
+  void refreshRuntimeViews();
 }
 const turnBuffer = new Map<string, Turn>();
 hermes.on("started", (key: string) => {
@@ -257,7 +310,12 @@ const artifactTimer = setInterval(async () => {
     indexingFiles = false;
   }
 }, 1000);
-hermes.on("turn", (turn: Turn) => turnBuffer.set(turn.conversation, turn));
+hermes.on("turn", (turn: Turn) => {
+  if (turn.state === "running") activeCommands.add(turn.conversation);
+  turnBuffer.set(turn.conversation, turn);
+  scheduleRuntimeViews();
+});
+hermes.on("changed", scheduleRuntimeViews);
 hermes.on("reconcile", () => void reconcile().catch(report));
 hermes.on("resync", (key: string | undefined) => {
   if (key) void syncHistory(key).catch(report);
@@ -351,7 +409,27 @@ async function processCommands() {
         } else if (kind === "load") {
           watched.add(key);
           await syncHistory(key, Number(payload.offset ?? 0));
-        } else if (kind === "send") {
+        } else if (kind === "sendNow" && alreadyRunning) {
+          const session_id = await hermes.attach(key);
+          for (const attachment of payload.attachments ?? []) {
+            if (attachment.image && typeof attachment.path === "string") {
+              await hermes.call("image.attach", {
+                session_id,
+                path: attachment.path,
+              });
+            }
+          }
+          result = await hermes.call("session.steer", {
+            session_id,
+            text: payload.text,
+          });
+          if (record(result).status === "rejected") {
+            await convex.mutation(anyApi.commands.deferSteer, {
+              id: command._id,
+            });
+            continue;
+          }
+        } else if (kind === "send" || kind === "sendNow") {
           if (typeof payload.text !== "string" || !payload.text.trim()) {
             throw new Error("Write a message first");
           }
@@ -512,9 +590,11 @@ async function processCommands() {
         }
         await convex.mutation(anyApi.commands.finish, {
           id: command._id,
-          status: kind === "send" && activeCommands.has(key)
-            ? "accepted"
-            : "complete",
+          status:
+            (kind === "send" || (kind === "sendNow" && !alreadyRunning)) &&
+              activeCommands.has(key)
+              ? "accepted"
+              : "complete",
           result: withoutReasoning(result),
         });
       } catch (error) {
@@ -717,9 +797,23 @@ async function handle(request: Request, ip: string): Promise<Response> {
   }
   if (path === "/api/query" && request.method === "POST") {
     await authenticated(request);
-    const { method, params = {}, conversation } = await request.json();
+    const {
+      method,
+      params = {},
+      conversation,
+      watch,
+      watchToken,
+      unwatch,
+    } = await request.json();
     if (!rpcQueries.has(method)) {
       return json({ error: "Unsupported query" }, 400);
+    }
+    const watchKey = JSON.stringify([conversation, method, params]);
+    if (unwatch && typeof watchToken === "string") {
+      const entry = runtimeWatches.get(watchKey);
+      entry?.observers.delete(watchToken);
+      if (entry && !entry.observers.size) runtimeWatches.delete(watchKey);
+      return json({ ok: true });
     }
     const session_id =
       conversation && !["commands.catalog", "complete.slash"].includes(method)
@@ -734,6 +828,31 @@ async function handle(request: Request, ip: string): Promise<Response> {
         String(record(result).text ?? ""),
         params.details === true,
       );
+    }
+    if (
+      watch &&
+      conversation &&
+      ([
+        "session.context_breakdown",
+        "session.control.read",
+        "subagent.list",
+        "subagent.tail",
+      ].includes(method) ||
+        (method === "config.get" && params.key === "reasoning"))
+    ) {
+      const key = JSON.stringify([conversation, method, params]);
+      const observers = runtimeWatches.get(key)?.observers ?? new Set<string>();
+      if (typeof watchToken === "string") observers.add(watchToken);
+      runtimeWatches.delete(key);
+      runtimeWatches.set(key, { conversation, method, params, observers });
+      if (runtimeWatches.size > 100) {
+        runtimeWatches.delete(runtimeWatches.keys().next().value!);
+      }
+      await convex.mutation(anyApi.workspace.saveRuntimeView, {
+        key,
+        conversation,
+        value: withoutReasoning(result),
+      });
     }
     return json(withoutReasoning(result));
   }
@@ -1084,43 +1203,55 @@ async function handle(request: Request, ip: string): Promise<Response> {
         409,
       );
     }
-    if (op === "editProfile" && params.id !== "default") {
-      await convex.mutation(anyApi.profiles.prepareRename, {
-        from: params.id,
-        to: String(body.new_name).trim().toLowerCase(),
-      });
+    const changesProfile = ["editProfile", "deleteProfile"].includes(op);
+    if (changesProfile) {
+      profileChanges++;
     }
-    let result: Awaited<ReturnType<Hermes["rest"]>>;
     try {
-      result = await hermes.rest(spec.path, spec.method, body);
-    } catch (error) {
-      if (
-        op === "editProfile" &&
-        error instanceof HermesHttpError &&
-        error.status < 500
-      ) {
-        await convex.mutation(anyApi.profiles.finishRename, {
+      if (changesProfile && reconciling) await reconciling;
+      if (op === "editProfile" && params.id !== "default") {
+        await convex.mutation(anyApi.profiles.prepareRename, {
           from: params.id,
+          to: String(body.new_name).trim().toLowerCase(),
         });
       }
-      throw error;
+      let result: Awaited<ReturnType<Hermes["rest"]>>;
+      try {
+        result = await hermes.rest(spec.path, spec.method, body);
+      } catch (error) {
+        if (
+          op === "editProfile" &&
+          error instanceof HermesHttpError &&
+          error.status < 500
+        ) {
+          await convex.mutation(anyApi.profiles.finishRename, {
+            from: params.id,
+          });
+        }
+        throw error;
+      }
+      if (
+        op === "editProfile" &&
+        result.ok &&
+        result.name &&
+        result.name !== params.id
+      ) {
+        await migrateProfile(params.id, result.name, await hermes.list());
+        await reconcile();
+      }
+      if (["createProfile", "deleteProfile", "saveConfig"].includes(op)) {
+        await reconcile();
+      }
+      if (spec.method !== "GET") {
+        await convex.mutation(anyApi.workspace.ingest, { changed: true });
+      }
+      return json(result);
+    } finally {
+      if (changesProfile) {
+        profileChanges--;
+        await reconcile();
+      }
     }
-    if (
-      op === "editProfile" &&
-      result.ok &&
-      result.name &&
-      result.name !== params.id
-    ) {
-      await migrateProfile(params.id, result.name, await hermes.list());
-      await reconcile();
-    }
-    if (["createProfile", "deleteProfile", "saveConfig"].includes(op)) {
-      await reconcile();
-    }
-    if (spec.method !== "GET") {
-      await convex.mutation(anyApi.workspace.ingest, { changed: true });
-    }
-    return json(result);
   }
   if (path.startsWith("/api/") || path.startsWith("/auth/")) {
     return json({ error: "Not found" }, 404);

@@ -1,3 +1,4 @@
+import { confirmAction, rejectAction } from "./ActionDialog.tsx";
 type ResourceField = {
   key: string;
   label?: string;
@@ -422,51 +423,87 @@ function Editor(props: {
                         </Show>
                       }
                     >
-                      <textarea
-                        value={(value() as unknown[])
-                          .map((item) =>
-                            typeof item === "object"
-                              ? JSON.stringify(item)
-                              : String(item)
-                          )
-                          .join("\n")}
-                        onChange={(e) => {
-                          try {
-                            const old = value() as unknown[];
-                            const parsed = e.currentTarget.value
-                              .split("\n")
-                              .filter(Boolean)
-                              .map((line, index) => {
-                                const example = old[index] ?? old[0];
-                                if (
-                                  typeof example === "object" ||
-                                  typeof example === "number" ||
-                                  typeof example === "boolean"
-                                ) {
-                                  const next = JSON.parse(line);
-                                  if (
-                                    typeof next !== typeof example ||
-                                    Array.isArray(next) !==
-                                      Array.isArray(example)
-                                  ) {
-                                    throw new Error(
-                                      "Keep the existing entry type",
-                                    );
-                                  }
-                                  return next;
+                      <div class="structured-list">
+                        <For each={value() as unknown[]}>
+                          {(item, index) => (
+                            <div class="structured-list-item">
+                              <Show
+                                when={item !== null && typeof item === "object"}
+                                fallback={
+                                  <input
+                                    aria-label={`${human(key)} item ${
+                                      index() + 1
+                                    }`}
+                                    type={typeof item === "number"
+                                      ? "number"
+                                      : "text"}
+                                    value={String(item ?? "")}
+                                    onChange={(event) => {
+                                      const next = [...(value() as unknown[])];
+                                      next[index()] = typeof item === "number"
+                                        ? Number(event.currentTarget.value)
+                                        : typeof item === "boolean"
+                                        ? event.currentTarget.value ===
+                                          "true"
+                                        : event.currentTarget.value;
+                                      update(next);
+                                    }}
+                                  />
                                 }
-                                return line;
-                              });
-                            e.currentTarget.setCustomValidity("");
-                            update(parsed);
-                          } catch {
-                            e.currentTarget.setCustomValidity(
-                              "Use one entry per line, with valid JSON for structured entries.",
-                            );
-                            e.currentTarget.reportValidity();
-                          }
-                        }}
-                      />
+                              >
+                                <Editor
+                                  value={Array.isArray(item)
+                                    ? { items: item }
+                                    : record(item)}
+                                  change={(entry) => {
+                                    const next = [...(value() as unknown[])];
+                                    next[index()] = Array.isArray(item)
+                                      ? entry.items
+                                      : entry;
+                                    update(next);
+                                  }}
+                                />
+                              </Show>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  update(
+                                    (value() as unknown[]).filter(
+                                      (_, i) => i !== index(),
+                                    ),
+                                  )}
+                              >
+                                Remove item
+                              </button>
+                            </div>
+                          )}
+                        </For>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const rows = value() as unknown[],
+                              first = rows[0];
+                            const empty = (item: unknown): unknown =>
+                              Array.isArray(item)
+                                ? []
+                                : item !== null && typeof item === "object"
+                                ? Object.fromEntries(
+                                  Object.entries(item).map(
+                                    ([key, value]) => [key, empty(value)],
+                                  ),
+                                )
+                                : typeof item === "number"
+                                ? 0
+                                : typeof item === "boolean"
+                                ? false
+                                : "";
+                            const entry = empty(first);
+                            update([...rows, entry]);
+                          }}
+                        >
+                          Add item
+                        </button>
+                      </div>
                     </Show>
                   </Field>
                 }
@@ -489,6 +526,7 @@ function Editor(props: {
 }
 export default function Resources(props: {
   name: string;
+  initialPath?: string;
   navigate: (view: string) => void;
   newChat: (profile?: string) => Promise<void>;
 }) {
@@ -507,7 +545,7 @@ export default function Resources(props: {
   const [connectionConversation, setConnectionConversation] = createSignal(
     preferences.getItem("arura.lastConversation") ?? "",
   );
-  const [path, setPath] = createSignal(""),
+  const [path, setPath] = createSignal(props.initialPath ?? ""),
     [file, setFile] = createSignal<
       {
         path: string;
@@ -821,7 +859,7 @@ export default function Resources(props: {
       return;
     }
     if (operation.startsWith("delete") || operation.startsWith("revoke")) {
-      if (!confirm(`${human(operation)} ${id}?`)) return;
+      if (await rejectAction(`${human(operation)} ${id}?`)) return;
       await resource(
         operation,
         params,
@@ -1003,7 +1041,11 @@ export default function Resources(props: {
       : f.values;
     let result = await resource(f.operation, f.params, body);
     if (result?.confirm_required) {
-      if (!confirm(result.confirm_message ?? "Confirm this model selection?")) {
+      if (
+        await rejectAction(
+          result.confirm_message ?? "Confirm this model selection?",
+        )
+      ) {
         return;
       }
       result = await resource(f.operation, f.params, {
@@ -1044,7 +1086,9 @@ export default function Resources(props: {
     }
     if (
       (latest.content ?? latest.text ?? "") !== original() &&
-      !confirm("This file changed on the host. Overwrite it with your edits?")
+      (await rejectAction(
+        "This file changed on the host. Overwrite it with your edits?",
+      ))
     ) {
       return;
     }
@@ -1220,8 +1264,8 @@ export default function Resources(props: {
       <Show when={props.name === "memory"}>
         <button
           type="button"
-          onClick={() => {
-            if (confirm("Reset Hermes memory?")) {
+          onClick={async () => {
+            if (await confirmAction("Reset Hermes memory?")) {
               void run(async () => {
                 await resource("resetMemory", {}, {});
                 await refresh();
@@ -1753,8 +1797,11 @@ export default function Resources(props: {
           <Dialog
             title={f().path.split("/").at(-1) ?? "File"}
             class="file-editor"
-            close={() => {
-              if (!dirty() || confirm("Discard unsaved changes?")) {
+            close={async () => {
+              if (
+                !dirty() ||
+                (await confirmAction("Discard unsaved changes?"))
+              ) {
                 setFile(null);
               }
             }}
@@ -1826,7 +1873,9 @@ export default function Resources(props: {
                   void run(async () => {
                     if (
                       dirty() &&
-                      !confirm("Leave this file and discard unsaved edits?")
+                      (await rejectAction(
+                        "Leave this file and discard unsaved edits?",
+                      ))
                     ) {
                       return;
                     }

@@ -186,6 +186,7 @@ export function hermesFixture(
       { status?: string; subgoals?: string[]; [key: string]: unknown }
     >
   >();
+  const sessionSettings = new Map<string, Record<string, string>>();
   const controlledRuns = new Map<
     string,
     { finish: () => void; steering: string[] }
@@ -519,6 +520,10 @@ export function hermesFixture(
                 },
               ],
             };
+          } else if (method === "config.get") {
+            result = {
+              value: sessionSettings.get(params.session_id)?.[params.key] ?? "",
+            };
           } else if (method === "config.set") {
             if (
               params.scope !== "session" ||
@@ -536,6 +541,12 @@ export function hermesFixture(
               );
               return;
             }
+            const settings = sessionSettings.get(params.session_id) ?? {};
+            settings[params.key] = params.key === "model"
+              ? (String(params.value).split('"')[1] ?? params.value)
+              : params.value;
+            sessionSettings.set(params.session_id, settings);
+            event("sessions.changed", "", {});
             result = { ok: true };
           } else if (
             method === "command.dispatch" &&
@@ -604,7 +615,8 @@ export function hermesFixture(
               context_used: 2000,
               context_max: 100000,
               context_percent: 2,
-              model: "fixture-model",
+              model: sessionSettings.get(params.session_id)?.model ??
+                "fixture-model",
               categories: [],
             };
           } else if (method === "subagent.list") {

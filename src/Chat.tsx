@@ -1,3 +1,4 @@
+import { ask, confirmAction, rejectAction } from "./ActionDialog.tsx";
 type ModelOption = {
   provider?: string;
   id?: string;
@@ -6,6 +7,13 @@ type ModelOption = {
   label?: string;
 };
 import type { Transcript } from "../shared/contracts.ts";
+import {
+  attachmentHref,
+  contextReference,
+  type ReferenceKind,
+  referencePattern,
+  referenceValue,
+} from "../shared/references.ts";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import {
@@ -24,6 +32,7 @@ import { fileReferences } from "../shared/artifacts.ts";
 import {
   elapsed,
   groupMessages,
+  mergeHistoryMessages,
   type Message,
   type Turn,
   userMessageText,
@@ -33,10 +42,12 @@ import { draft, draftAttachments, loadCache, saveCache } from "./cache.ts";
 import {
   command,
   connected,
+  enqueueCommand,
   inform,
   mutate,
   request,
   subscribe,
+  watchRuntime,
   workspace,
 } from "./client.ts";
 import ComposerInput, { type ComposerHandle } from "./ComposerInput.tsx";
@@ -89,6 +100,15 @@ export default function Chat(props: {
   const [text, setText] = createSignal(""),
     [sending, setSending] = createSignal(false),
     [pages, setPages] = createSignal(1);
+  const [queueOpen, setQueueOpen] = createSignal(true);
+  const queued = () =>
+    data()
+      .commands.filter(
+        (item) => item.kind === "send" && item.status === "queued",
+      )
+      .sort((a, b) => a.createdAt - b.createdAt);
+  const sendNow = (id: Transcript["commands"][number]["_id"]) =>
+    mutate("commands.edit", { id, sendNow: true });
   const [historyLoading, setHistoryLoading] = createSignal(false);
   const [historyRetry, setHistoryRetry] = createSignal(0);
   const [edit, setEdit] = createSignal<string>(),
@@ -100,6 +120,27 @@ export default function Chat(props: {
     [models, setModels] = createSignal<ModelOption[]>([]),
     [model, setModel] = createSignal("");
   const [currentModel, setCurrentModel] = createSignal("");
+  const [currentEffort, setCurrentEffort] = createSignal("");
+  createEffect(() => {
+    if (!connected()) return;
+    const key = props.conversation;
+    onCleanup(
+      watchRuntime<{ model?: string }>(
+        key,
+        "session.context_breakdown",
+        {},
+        (result) => setCurrentModel(String(result.model ?? "")),
+      ),
+    );
+    onCleanup(
+      watchRuntime<{ value?: string }>(
+        key,
+        "config.get",
+        { key: "reasoning" },
+        (result) => setCurrentEffort(String(result.value ?? "")),
+      ),
+    );
+  });
   const [customizeModels, setCustomizeModels] = createSignal(false);
   const modelKey = (entry: ModelOption) =>
     JSON.stringify([entry.provider ?? "", entry.id ?? entry.model ?? entry]);
@@ -120,6 +161,10 @@ export default function Chat(props: {
   >([]);
   const [completionIndex, setCompletionIndex] = createSignal(0),
     [cursor, setCursor] = createSignal(0);
+  const [referenceKind, setReferenceKind] = createSignal<ReferenceKind>("url");
+  const [pendingUploads, setPendingUploads] = createSignal<
+    { id: string; file: File; error?: string }[]
+  >([]);
   const excludedCommand = (value: string) =>
     /^\/(?:image|imagine|flux|voice|wake|terminal|shell|hud|radio|pet|browser)(?:[-\s]|$)/i
       .test(
@@ -142,12 +187,13 @@ export default function Chat(props: {
   const messages = createMemo(() => {
     historyRevision();
     // Command/status updates must not remount unchanged message groups.
-    return untrack(
-      () =>
+    return untrack(() =>
+      mergeHistoryMessages(
         data()
           .pages.slice()
           .sort((a, b) => b.offset - a.offset)
           .flatMap((page) => page.messages) as Message[],
+      )
     );
   });
   const turn = () => data().turn as Turn | null;
@@ -179,18 +225,9 @@ export default function Chat(props: {
     setHistoryLoading(false);
     setEdit(undefined);
     setCurrentModel("");
-    void request("/api/query", {
-      method: "session.context_breakdown",
-      conversation: key,
-      params: {},
-    })
-      .then((result) => {
-        if (props.conversation === key) {
-          setCurrentModel(String(result.model ?? ""));
-        }
-      })
-      .catch(() => {});
+    setCurrentEffort("");
     setUploads([]);
+    setPendingUploads([]);
     void draftAttachments(key).then((value) => {
       if (props.conversation === key && uploads().length === 0) {
         setUploads(value);
@@ -306,28 +343,47 @@ export default function Chat(props: {
     setText(value);
     void draft(props.conversation, value);
   };
+  let submission: { signature: string; id: string } | undefined;
   async function send() {
-    if (!text().trim() || sending()) return;
+    if (
+      !text().trim() ||
+      sending() ||
+      pendingUploads().some((item) => !item.error)
+    ) {
+      return;
+    }
     const value = text();
     const key = props.conversation;
     setSending(true);
     try {
-      const result = command("send", key, {
+      const payload = {
         text: value,
         attachments: uploads().filter((file) =>
           value.includes(`[Attached file: ${file.path}]`)
         ),
         ...(edit() ? { edit: edit() } : {}),
-      });
-      changeText("");
-      setEdit(undefined);
-      await result;
-      await draftAttachments(key, []);
-      if (props.conversation === key) setUploads([]);
-    } catch (error) {
-      if (props.conversation === key) changeText(value);
-      else await draft(key, value);
-      throw error;
+      };
+      const signature = JSON.stringify([key, payload]);
+      if (submission?.signature !== signature) {
+        submission = { signature, id: crypto.randomUUID() };
+      }
+      await enqueueCommand("send", key, payload, submission.id);
+      submission = undefined;
+      // Acceptance into the durable queue is enough to compose the next turn.
+      // Never erase newer text typed while the request was in flight.
+      if (
+        props.conversation === key &&
+        text() === value &&
+        edit() === payload.edit
+      ) {
+        changeText("");
+        setEdit(undefined);
+        setUploads([]);
+        await draftAttachments(key, []);
+      } else if (props.conversation !== key && (await draft(key)) === value) {
+        await draft(key, "");
+        await draftAttachments(key, []);
+      }
     } finally {
       setSending(false);
       input?.focus();
@@ -337,31 +393,50 @@ export default function Chat(props: {
     if (!files) return;
     const key = props.conversation;
     for (const file of files) {
-      const body = new FormData();
-      body.append("file", file);
-      const profile = JSON.parse(key)[0];
-      const r = await fetch(
-        `/api/upload?profile=${encodeURIComponent(profile)}`,
-        { method: "POST", body },
-      );
-      const result = await r.json();
-      if (!r.ok) throw new Error(result.error ?? "Upload failed");
-      const path = result.path ?? result.file?.path ?? result.files?.[0]?.path;
-      if (!path) {
-        throw new Error("Hermes did not return an uploaded file reference");
+      const uploadId = crypto.randomUUID();
+      setPendingUploads((items) => [...items, { id: uploadId, file }]);
+      try {
+        const body = new FormData();
+        body.append("file", file);
+        const profile = JSON.parse(key)[0];
+        const r = await fetch(
+          `/api/upload?profile=${encodeURIComponent(profile)}`,
+          { method: "POST", body },
+        );
+        const result = await r.json();
+        if (!r.ok) throw new Error(result.error ?? "Upload failed");
+        const path = result.path ?? result.file?.path ??
+          result.files?.[0]?.path;
+        if (!path) {
+          throw new Error("Hermes did not return an uploaded file reference");
+        }
+        const attachments = [
+          ...(await draftAttachments(key)),
+          { path, name: file.name, image: file.type.startsWith("image/") },
+        ];
+        await draftAttachments(key, attachments);
+        const value =
+          (props.conversation === key ? text() : ((await draft(key)) ?? "")) +
+          `\n[Attached file: ${path}]\n`;
+        if (props.conversation === key) {
+          setUploads(attachments);
+          changeText(value);
+        } else await draft(key, value);
+        setPendingUploads((items) =>
+          items.filter((item) => item.id !== uploadId)
+        );
+      } catch (error) {
+        setPendingUploads((items) =>
+          items.map((item) =>
+            item.id === uploadId
+              ? {
+                ...item,
+                error: error instanceof Error ? error.message : "Upload failed",
+              }
+              : item
+          )
+        );
       }
-      const attachments = [
-        ...(await draftAttachments(key)),
-        { path, name: file.name, image: file.type.startsWith("image/") },
-      ];
-      await draftAttachments(key, attachments);
-      const value =
-        (props.conversation === key ? text() : ((await draft(key)) ?? "")) +
-        `\n[Attached file: ${path}]\n`;
-      if (props.conversation === key) {
-        setUploads(attachments);
-        changeText(value);
-      } else await draft(key, value);
     }
   }
   const rpc = (method: string, params: Record<string, unknown> = {}) =>
@@ -433,9 +508,71 @@ export default function Chat(props: {
           </details>
         }
       >
+        <div class="message-attachments">
+          <For each={message.attachments ?? []}>
+            {(attachment) => (
+              <a
+                href={attachmentHref(attachment.url)}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Show when={!/^https?:/i.test(attachment.url)}>
+                  <img
+                    src={attachmentHref(attachment.url)}
+                    alt={attachment.name}
+                    loading="lazy"
+                  />
+                </Show>
+                {attachment.name}
+              </a>
+            )}
+          </For>
+          <For
+            each={message.role === "user"
+              ? Array.from(message.text.matchAll(referencePattern))
+              : []}
+          >
+            {(match) => (
+              <a
+                class="context-reference"
+                href={["session", "folder"].includes(match[1])
+                  ? "#"
+                  : attachmentHref(referenceValue(match[0]))}
+                target={match[1] === "session" ? undefined : "_blank"}
+                rel="noopener noreferrer"
+                onClick={(event) => {
+                  if (match[1] === "folder") {
+                    event.preventDefault();
+                    props.navigate(
+                      `resources:files?path=${
+                        encodeURIComponent(referenceValue(match[0]))
+                      }`,
+                    );
+                    return;
+                  }
+                  if (match[1] !== "session") return;
+                  event.preventDefault();
+                  const [profile, ...id] = referenceValue(match[0]).split("/");
+                  props.navigate(JSON.stringify([profile, id.join("/")]));
+                }}
+              >
+                <Icon
+                  name={match[1] === "session"
+                    ? "chat-bubble"
+                    : match[1] === "folder"
+                    ? "folder"
+                    : "attachment"}
+                />
+                {referenceValue(match[0])}
+              </a>
+            )}
+          </For>
+        </div>
         <Markdown
           text={message.role === "user"
             ? userMessageText(message.text)
+              .replace(referencePattern, "")
+              .trim()
             : message.text}
         />
         <div class="message-actions">
@@ -457,9 +594,60 @@ export default function Chat(props: {
               label="Edit and resubmit"
               onClick={() => {
                 setEdit(message.id);
-                changeText(userMessageText(message.text));
+                changeText(
+                  [
+                    userMessageText(message.text),
+                    ...(message.attachments ?? []).map((attachment) =>
+                      contextReference("image", attachment.url)
+                    ),
+                  ]
+                    .filter(Boolean)
+                    .join("\n"),
+                );
                 input.focus();
               }}
+            />
+          </Show>
+          <Show when={message.role === "assistant"}>
+            <IconButton
+              icon="refresh"
+              label="Regenerate response"
+              disabled={turn()?.state === "running" || sending()}
+              onClick={() =>
+                void run(async () => {
+                  const before = messages().slice(
+                    0,
+                    messages().findIndex((item) =>
+                      item.id === message.id
+                    ),
+                  );
+                  const prompt = before.findLast(
+                    (item) => item.role === "user",
+                  );
+                  if (!prompt) {
+                    throw new Error(
+                      "The original prompt is not loaded. Load earlier messages first.",
+                    );
+                  }
+                  if (
+                    await rejectAction(
+                      "Regenerate this response and replace the conversation after its original prompt?",
+                    )
+                  ) {
+                    return;
+                  }
+                  await enqueueCommand("send", props.conversation, {
+                    text: [
+                      prompt.text,
+                      ...(prompt.attachments ?? []).map((attachment) =>
+                        contextReference("image", attachment.url)
+                      ),
+                    ]
+                      .filter(Boolean)
+                      .join("\n"),
+                    edit: prompt.id,
+                  });
+                })}
             />
           </Show>
           <IconButton
@@ -518,6 +706,11 @@ export default function Chat(props: {
           <For each={groups()}>
             {(group, index) => (
               <>
+                <Show when={group.event}>
+                  <p class="timeline-event" role="status">
+                    {group.event?.text}
+                  </p>
+                </Show>
                 <Show when={group.prompt}>
                   {(message) => renderMessage(message())}
                 </Show>
@@ -739,6 +932,27 @@ export default function Chat(props: {
             {(c) => (
               <div class="command-error" role="alert">
                 {c.error}
+                <Show when={c.kind === "send" && c.status === "error"}>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void run(async () => {
+                        if (
+                          text().trim() &&
+                          !(await confirmAction(
+                            "Replace the current draft with this failed message?",
+                          ))
+                        ) {
+                          return;
+                        }
+                        changeText(c.payload.text);
+                        setEdit(c.payload.edit);
+                        setUploads(c.payload.attachments ?? []);
+                      })}
+                  >
+                    Edit failed message
+                  </button>
+                </Show>
                 <Show when={c.status === "unknown"}>
                   <p>Check the conversation before sending again.</p>
                 </Show>
@@ -748,6 +962,72 @@ export default function Chat(props: {
         </div>
       </div>
       <div class="compose-area">
+        <div class="composer-attachments">
+          <For each={pendingUploads()}>
+            {(item) => (
+              <div role="status">
+                {item.file.name} · {item.error ?? "Uploading…"}
+                <Show when={item.error}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPendingUploads((items) =>
+                        items.filter((entry) => entry.id !== item.id)
+                      );
+                      const transfer = new DataTransfer();
+                      transfer.items.add(item.file);
+                      void upload(transfer.files);
+                    }}
+                  >
+                    Retry upload
+                  </button>
+                  <IconButton
+                    icon="xmark"
+                    label={`Dismiss ${item.file.name}`}
+                    onClick={() =>
+                      setPendingUploads((items) =>
+                        items.filter((entry) => entry.id !== item.id)
+                      )}
+                  />
+                </Show>
+              </div>
+            )}
+          </For>
+          <For
+            each={uploads().filter((file) =>
+              text().includes(`[Attached file: ${file.path}]`)
+            )}
+          >
+            {(file) => (
+              <div class="context-reference">
+                <a
+                  href={attachmentHref(file.path)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Show when={file.image}>
+                    <img src={attachmentHref(file.path)} alt={file.name} />
+                  </Show>
+                  {file.name}
+                </a>
+                <IconButton
+                  icon="xmark"
+                  label={`Remove ${file.name}`}
+                  onClick={() => {
+                    changeText(
+                      text().replace(`[Attached file: ${file.path}]`, ""),
+                    );
+                    const next = uploads().filter(
+                      (item) => item.path !== file.path,
+                    );
+                    setUploads(next);
+                    void draftAttachments(props.conversation, next);
+                  }}
+                />
+              </div>
+            )}
+          </For>
+        </div>
         <Show when={awayFromBottom()}>
           <button type="button" class="jump-to-latest" onClick={scrollToLatest}>
             <Icon name="nav-arrow-down" /> Latest messages
@@ -777,53 +1057,86 @@ export default function Chat(props: {
             </For>
           </div>
         </Show>
-        <Show
-          when={data().commands.some(
-            (c) => c.status === "queued" && c.kind === "send",
-          )}
-        >
-          <div class="queue">
-            <For
-              each={data().commands.filter(
-                (c) => c.status === "queued" && c.kind === "send",
-              )}
-            >
-              {(c) => (
-                <div>
-                  <span>{c.payload.text}</span>
-                  <IconButton
-                    icon="edit-pencil"
-                    label="Edit queued message"
-                    onClick={() => {
-                      const text = prompt("Queued message", c.payload.text);
-                      if (text !== null) {
+        <Show when={queued().length}>
+          <section class="queue-panel">
+            <header>
+              <button
+                type="button"
+                aria-expanded={queueOpen()}
+                onClick={() => setQueueOpen((value) => !value)}
+              >
+                <Icon name="nav-arrow-down" />
+                {queued().length} Queued{" "}
+                {queued().length === 1 ? "Message" : "Messages"}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  void run(() =>
+                    mutate("commands.clearQueue", {
+                      conversation: props.conversation,
+                    })
+                  )}
+              >
+                Clear All
+              </button>
+            </header>
+            <Show when={queueOpen()}>
+              <For each={queued()}>
+                {(item, index) => (
+                  <div class="queued-message">
+                    <span
+                      class="queue-dot"
+                      classList={{ first: index() === 0 }}
+                    />
+                    <span class="queued-text">
+                      {item.payload.text}
+                      <Show when={item.error}>
+                        <small role="status">{item.error}</small>
+                      </Show>
+                    </span>
+                    <IconButton
+                      icon="trash"
+                      label="Delete queued message"
+                      onClick={() =>
                         void run(() =>
-                          mutate("commands.edit", { id: c._id, text })
-                        );
-                      }
-                    }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void run(() =>
-                        mutate("commands.edit", { id: c._id, next: true })
-                      )}
-                  >
-                    Send next
-                  </button>
-                  <IconButton
-                    icon="xmark"
-                    label="Remove queued message"
-                    onClick={() =>
-                      void run(() =>
-                        mutate("commands.edit", { id: c._id, cancel: true })
-                      )}
-                  />
-                </div>
-              )}
-            </For>
-          </div>
+                          mutate("commands.edit", {
+                            id: item._id,
+                            cancel: true,
+                          })
+                        )}
+                    />
+                    <IconButton
+                      icon="edit-pencil"
+                      label="Edit queued message"
+                      onClick={() =>
+                        void run(async () => {
+                          const value = await ask(
+                            "Queued message",
+                            item.payload.text,
+                            true,
+                          );
+                          if (value !== null) {
+                            await mutate("commands.edit", {
+                              id: item._id,
+                              text: value,
+                            });
+                          }
+                        })}
+                    />
+                    <button
+                      type="button"
+                      class="send-now"
+                      disabled={!connected()}
+                      onClick={() => void run(() => sendNow(item._id))}
+                    >
+                      Send Now
+                    </button>
+                  </div>
+                )}
+              </For>
+            </Show>
+          </section>
         </Show>
         <Show when={edit()}>
           <div class="editing">
@@ -854,13 +1167,13 @@ export default function Chat(props: {
         </Suspense>
         <form
           class="composer"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
             if (
               edit() &&
-              !confirm(
+              (await rejectAction(
                 "Replace the conversation after this message? Files and external actions will not be undone.",
-              )
+              ))
             ) {
               return;
             }
@@ -889,6 +1202,20 @@ export default function Chat(props: {
             onChange={changeText}
             onCursor={setCursor}
             onKeyDown={(e) => {
+              if (
+                e.key === "Enter" &&
+                e.metaKey &&
+                !e.ctrlKey &&
+                !e.altKey &&
+                !e.shiftKey &&
+                !e.isComposing
+              ) {
+                e.preventDefault();
+                if (e.repeat) return;
+                if (text().trim()) void run(send);
+                else if (queued()[0]) void run(() => sendNow(queued()[0]._id));
+                return;
+              }
               if (completions().length && !e.isComposing) {
                 if (e.key === "Escape") {
                   e.preventDefault();
@@ -907,7 +1234,7 @@ export default function Chat(props: {
                   );
                   return;
                 }
-                if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+                if (e.key === "Tab") {
                   e.preventDefault();
                   chooseCompletion(completionIndex());
                   return;
@@ -945,6 +1272,9 @@ export default function Chat(props: {
                 })}
             >
               {currentModel() || "Select model"}
+              {currentEffort()
+                ? ` · ${currentEffort() === "none" ? "Off" : currentEffort()}`
+                : ""}
               <Icon name="nav-arrow-down" />
             </button>
 
@@ -1006,27 +1336,6 @@ export default function Chat(props: {
                 <button
                   type="button"
                   class="text-button"
-                  disabled={!text().trim()}
-                  onClick={() =>
-                    void run(async () => {
-                      const value = text();
-                      const result = await rpc("session.steer", {
-                        text: value,
-                      });
-                      if (result.status === "rejected") {
-                        throw new Error(
-                          "Hermes could not accept steering at this point",
-                        );
-                      }
-                      changeText("");
-                      inform("Instructions sent to the active run");
-                    })}
-                >
-                  Steer
-                </button>
-                <button
-                  type="button"
-                  class="text-button"
                   onClick={() => void run(() => rpc("session.interrupt"))}
                 >
                   <Icon name="square" />
@@ -1039,7 +1348,10 @@ export default function Chat(props: {
                 aria-label={turn()?.state === "running"
                   ? "Queue message"
                   : "Send message"}
-                disabled={!text().trim() || !connected() || sending()}
+                disabled={!text().trim() ||
+                  !connected() ||
+                  sending() ||
+                  pendingUploads().some((item) => !item.error)}
               >
                 <Icon name="send" />
               </button>
@@ -1076,7 +1388,19 @@ export default function Chat(props: {
             Upload files
           </button>
           <Field label="File, folder, or URL">
+            <select
+              aria-label="Reference type"
+              value={referenceKind()}
+              onChange={(event) =>
+                setReferenceKind(event.currentTarget.value as ReferenceKind)}
+            >
+              <option value="url">URL</option>
+              <option value="file">File</option>
+              <option value="folder">Folder</option>
+              <option value="image">Image</option>
+            </select>
             <input
+              aria-label="Reference"
               value={reference()}
               onInput={(e) => setReference(e.currentTarget.value)}
             />
@@ -1085,7 +1409,15 @@ export default function Chat(props: {
             type="button"
             class="primary"
             onClick={() => {
-              changeText(text() + "\n" + reference());
+              if (!reference().trim()) return;
+              changeText(
+                text() +
+                  "\n" +
+                  (reference().trim().startsWith("@")
+                    ? reference().trim()
+                    : contextReference(referenceKind(), reference().trim())),
+              );
+              setReference("");
               setAttachment(false);
             }}
           >
@@ -1099,7 +1431,9 @@ export default function Chat(props: {
                 class="list-button"
                 onClick={() => {
                   changeText(
-                    text() + `\n[Conversation: ${c.sourceId} — ${c.title}]`,
+                    text() +
+                      "\n" +
+                      contextReference("session", `${c.profile}/${c.sourceId}`),
                   );
                   setAttachment(false);
                 }}
@@ -1166,7 +1500,9 @@ export default function Chat(props: {
                       });
                       if (result.confirm_required) {
                         if (
-                          !confirm(result.confirm_message || "Use this model?")
+                          await rejectAction(
+                            result.confirm_message || "Use this model?",
+                          )
                         ) {
                           return;
                         }
@@ -1189,17 +1525,32 @@ export default function Chat(props: {
           <Field label="Reasoning effort">
             <select
               aria-label="Reasoning effort"
-              onChange={(e) =>
-                void run(() =>
-                  rpc("config.set", {
+              value={currentEffort()}
+              onChange={(e) => {
+                const effort = e.currentTarget.value;
+                void run(async () => {
+                  await rpc("config.set", {
                     key: "reasoning",
-                    value: e.currentTarget.value,
+                    value: effort,
                     scope: "session",
-                  })
-                )}
+                  });
+                  setCurrentEffort(effort);
+                });
+              }}
             >
               <option value="">Choose effort</option>
-              <For each={["none", "minimal", "low", "medium", "high", "xhigh"]}>
+              <For
+                each={[
+                  "none",
+                  "minimal",
+                  "low",
+                  "medium",
+                  "high",
+                  "xhigh",
+                  "max",
+                  "ultra",
+                ]}
+              >
                 {(effort) => <option value={effort}>{effort}</option>}
               </For>
             </select>
@@ -1228,7 +1579,11 @@ export default function Chat(props: {
       </Show>
       <Show when={tool()}>
         <Dialog title="Tool result" close={() => setTool(undefined)}>
-          <pre>{tool()?.text}</pre>
+          <pre>
+            {tool()?.details
+              ? JSON.stringify(tool()?.details, null, 2)
+              : tool()?.text}
+          </pre>
         </Dialog>
       </Show>
       <Show when={controls()}>

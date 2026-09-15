@@ -1,3 +1,4 @@
+import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect, type Page } from "@playwright/test";
 
 Deno.test({
@@ -58,7 +59,7 @@ Deno.test({
       await a
         .getByRole("button", { name: "Conversation actions", exact: true })
         .click();
-      a.once("dialog", (dialog) => dialog.accept(title));
+      void onceActionDialog(a, (dialog) => dialog.accept(title));
       await a.getByRole("button", { name: "Rename", exact: true }).click();
       await expect(
         b.getByRole("button", { name: title, exact: true }),
@@ -80,7 +81,7 @@ Deno.test({
         .getByRole("button", { name: title, exact: true })
         .click();
       await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveText(
-        new RegExp(title),
+        `@session:${JSON.parse(original!)[0]}/${JSON.parse(original!)[1]}`,
       );
       await a
         .getByRole("button", {
@@ -88,9 +89,7 @@ Deno.test({
           exact: true,
         })
         .click();
-      await a
-        .getByLabel("File, folder, or URL", { exact: true })
-        .fill("/fixture/garden");
+      await a.getByLabel("Reference", { exact: true }).fill("/fixture/garden");
       await a
         .getByRole("button", { name: "Attach reference", exact: true })
         .click();
@@ -151,7 +150,7 @@ Deno.test({
       await a
         .getByRole("button", { name: "Conversation actions", exact: true })
         .click();
-      a.once("dialog", (dialog) => dialog.accept());
+      void onceActionDialog(a, (dialog) => dialog.accept());
       await a
         .getByRole("button", { name: "Delete conversation", exact: true })
         .click();

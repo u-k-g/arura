@@ -1,3 +1,4 @@
+import { rejectAction } from "./ActionDialog.tsx";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { inform, resource, revision } from "./client.ts";
 import { Dialog, run } from "./ui.tsx";
@@ -130,7 +131,9 @@ export default function ProviderAccess() {
                 type="button"
                 onClick={() =>
                   void run(async () => {
-                    if (!confirm(`Disconnect ${provider.name}?`)) return;
+                    if (await rejectAction(`Disconnect ${provider.name}?`)) {
+                      return;
+                    }
                     await resource(
                       "providerDisconnect",
                       { id: provider.id },

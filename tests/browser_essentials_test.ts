@@ -73,12 +73,10 @@ Deno.test({
       ).toHaveAttribute("aria-pressed", "true");
       await b.getByRole("button", { name: "Close", exact: true }).click();
       await expect(
-        a
-          .locator(".topbar")
-          .getByRole("button", {
-            name: "Toggle conversation pin",
-            exact: true,
-          }),
+        a.locator(".topbar").getByRole("button", {
+          name: "Toggle conversation pin",
+          exact: true,
+        }),
       ).toHaveCount(0);
       await a.screenshot({
         path: `${Deno.env.get("TMPDIR")}/essentials-desktop.png`,
@@ -127,6 +125,23 @@ Deno.test({
       await a.screenshot({
         path: `${Deno.env.get("TMPDIR")}/essentials-mobile.png`,
       });
+      await a.getByRole("button", { name: "Close", exact: true }).click();
+      await actions();
+      await a
+        .getByRole("button", { name: "Toggle Essentials", exact: true })
+        .click();
+      await expect
+        .poll(async () => {
+          const result = await (
+            await fetch(
+              `${Deno.env.get("HERMES_URL")}/api/sessions?profile=default`,
+            )
+          ).json();
+          return result.sessions.find(
+            (row: { id: string }) => row.id === "fixture-chat",
+          )?.pinned;
+        })
+        .toBe(false);
     } finally {
       await browser.close();
     }

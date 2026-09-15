@@ -87,6 +87,22 @@ Deno.test({
           .click();
         const editor = page.getByLabel("File content", { exact: true });
         await expect(editor).toContainText(content);
+        await page
+          .getByRole("button", { name: "Find and replace", exact: true })
+          .click();
+        await page
+          .getByRole("textbox", { name: "Find in file", exact: true })
+          .fill("notes");
+        await page
+          .getByRole("textbox", { name: "Replace with", exact: true })
+          .fill("drafts");
+        await page
+          .getByRole("button", { name: "Replace all", exact: true })
+          .click();
+        await expect(editor).toContainText("Uploaded drafts");
+        await page
+          .getByRole("button", { name: "Find and replace", exact: true })
+          .click();
         await editor.click();
         await page.keyboard.press("ControlOrMeta+a");
         await page.keyboard.insertText(text);
@@ -97,11 +113,10 @@ Deno.test({
       await expect(
         a.getByRole("status").filter({ hasText: "File saved" }),
       ).toBeVisible();
-      const conflict = b.waitForEvent("dialog");
       await b.getByRole("button", { name: "Save", exact: true }).click();
-      const dialog = await conflict;
-      expect(dialog.message()).toContain("changed on the host");
-      await dialog.dismiss();
+      const dialog = b.locator("dialog.action-dialog");
+      await expect(dialog).toContainText("changed on the host");
+      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
       await expect(b.getByLabel("File content", { exact: true })).toContainText(
         "Second device draft",
       );

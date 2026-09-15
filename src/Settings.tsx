@@ -1,3 +1,4 @@
+import { ask, confirmAction } from "./ActionDialog.tsx";
 import type { Doc } from "../shared/contracts.ts";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import {
@@ -198,8 +199,8 @@ export default function Settings(props: {
                   <IconButton
                     icon="edit-pencil"
                     label={`Rename ${d.name}`}
-                    onClick={() => {
-                      const name = prompt("Device name", d.name);
+                    onClick={async () => {
+                      const name = await ask("Device name", d.name);
                       if (name) {
                         void run(() =>
                           mutate("devices.rename", { id: d.id, name })
@@ -210,8 +211,8 @@ export default function Settings(props: {
                   <button
                     type="button"
                     class="danger"
-                    onClick={() => {
-                      if (confirm(`Revoke access for ${d.name}?`)) {
+                    onClick={async () => {
+                      if (await confirmAction(`Revoke access for ${d.name}?`)) {
                         void run(() => mutate("devices.revoke", { id: d.id }));
                       }
                     }}
@@ -235,8 +236,8 @@ export default function Settings(props: {
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (confirm("Revoke all other devices?")) {
+              onClick={async () => {
+                if (await confirmAction("Revoke all other devices?")) {
                   void run(() => mutate("devices.revoke", { others: true }));
                 }
               }}
@@ -400,8 +401,8 @@ export default function Settings(props: {
             {(a) => (
               <button
                 type="button"
-                onClick={() => {
-                  if (confirm(`${a.label}?`)) {
+                onClick={async () => {
+                  if (await confirmAction(`${a.label}?`)) {
                     void run(async () => {
                       await request("/api/maintenance", { id: a.id });
                       inform("Action completed");

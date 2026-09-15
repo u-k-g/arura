@@ -1,12 +1,12 @@
+import { ask } from "./ActionDialog.tsx";
+import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import {
-  createEffect,
-  createSignal,
-  For,
-  onCleanup,
-  onMount,
-  Show,
-} from "solid-js";
-import { command, connected, request, revision } from "./client.ts";
+  command,
+  connected,
+  request,
+  revision,
+  watchRuntime,
+} from "./client.ts";
 import { Dialog, Field, run } from "./ui.tsx";
 
 export type ControlView = "automation" | "context" | "subagents";
@@ -109,12 +109,51 @@ export default function RunControls(props: {
     revision();
     void refresh();
   });
-  onMount(() => {
-    const timer = setInterval(() => void refresh(), 2000);
-    onCleanup(() => {
-      disposed = true;
-      clearInterval(timer);
-    });
+  createEffect(() => {
+    if (!connected()) return;
+    const key = props.conversation;
+    if (props.view === "automation") {
+      onCleanup(
+        watchRuntime<{ control?: Record<string, Automation> }>(
+          key,
+          "session.control.read",
+          {},
+          (value) =>
+            setControls(value.control ?? (value as Record<string, Automation>)),
+        ),
+      );
+    } else if (props.view === "context") {
+      onCleanup(
+        watchRuntime<NonNullable<ReturnType<typeof context>>>(
+          key,
+          "session.context_breakdown",
+          {},
+          setContext,
+        ),
+      );
+    } else {
+      onCleanup(
+        watchRuntime<{ subagents?: Agent[] }>(
+          key,
+          "subagent.list",
+          {},
+          (value) => setAgents(value.subagents ?? []),
+        ),
+      );
+      if (selected()) {
+        onCleanup(
+          watchRuntime<ReturnType<typeof transcript>>(
+            key,
+            "subagent.tail",
+            { subagent_id: selected() },
+            setTranscript,
+          ),
+        );
+      }
+    }
+  });
+  onCleanup(() => {
+    disposed = true;
   });
   async function action(name: string, args: Record<string, unknown> = {}) {
     setBusy(true);
@@ -280,8 +319,8 @@ export default function RunControls(props: {
                       <button
                         type="button"
                         disabled={busy()}
-                        onClick={() => {
-                          const text = globalThis.prompt("Add a goal step");
+                        onClick={async () => {
+                          const text = await ask("Add a goal step");
                           if (text?.trim()) {
                             void run(() => action("subgoal.add", { text }));
                           }

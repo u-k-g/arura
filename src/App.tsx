@@ -1,3 +1,5 @@
+import ActionDialog from "./ActionDialog.tsx";
+import { ask, confirmAction } from "./ActionDialog.tsx";
 import type { ConversationPage, Doc } from "../shared/contracts.ts";
 import { essentialIcons } from "../shared/essentialIcons.ts";
 import {
@@ -10,6 +12,7 @@ import {
   onMount,
   Show,
   Suspense,
+  untrack,
 } from "solid-js";
 import {
   authorized,
@@ -279,6 +282,46 @@ export default function App() {
     chats().find((c) => c.key === view()) ??
       archived().find((c) => c.key === view()) ??
       activeConversation();
+  const unread = (conversation: Conversation) => {
+    const state = workspace()?.reads?.find(
+      (item) => item.key === conversation.key,
+    );
+    return (
+      state?.unread ||
+      conversation.activityAt >
+        (state?.activityAt ?? workspace()?.readBaseline ?? Infinity)
+    );
+  };
+  onMount(() => {
+    const markVisible = () => {
+      const current = selected();
+      if (connected() && current && document.visibilityState === "visible") {
+        void mutate("workspace.markRead", {
+          key: current.key,
+          unread: false,
+        }).catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", markVisible);
+    onCleanup(() =>
+      document.removeEventListener("visibilitychange", markVisible)
+    );
+  });
+  const viewedRevision = createMemo(() =>
+    selected() ? `${selected()!.key}:${selected()!.activityAt}` : ""
+  );
+  createEffect(() => {
+    viewedRevision();
+    const online = connected();
+    untrack(() => {
+      if (online && document.visibilityState === "visible" && selected()) {
+        void mutate("workspace.markRead", {
+          key: selected()!.key,
+          unread: false,
+        }).catch(() => {});
+      }
+    });
+  });
   async function newChat(profile = "default") {
     await run(async () => {
       const result = await command("create", "", { profile });
@@ -376,7 +419,10 @@ export default function App() {
     return [...groups.entries()];
   });
   const row = (c: Conversation) => (
-    <div class="thread-row" classList={{ selected: view() === c.key }}>
+    <div
+      class="thread-row"
+      classList={{ selected: view() === c.key, unread: Boolean(unread(c)) }}
+    >
       <button
         type="button"
         class="thread-select"
@@ -387,8 +433,7 @@ export default function App() {
         aria-current={view() === c.key ? "page" : undefined}
         title={c.title}
         aria-label={c.title}
-        onClick={() =>
-          navigate(c.key)}
+        onClick={() => navigate(c.key)}
       >
         <span class="session-dot" classList={{ running: c.running }} />
         <span>{c.title}</span>
@@ -404,8 +449,7 @@ export default function App() {
       <IconButton
         icon="more-horiz"
         label={`Actions for ${c.title}`}
-        onClick={(event) =>
-          openMenu(c, event)}
+        onClick={(event) => openMenu(c, event)}
       />
     </div>
   );
@@ -549,8 +593,8 @@ export default function App() {
                 <IconButton
                   icon="edit-pencil"
                   label={`Rename folder ${folder.name}`}
-                  onClick={() => {
-                    const name = prompt("Folder name", folder.name);
+                  onClick={async () => {
+                    const name = await ask("Folder name", folder.name);
                     if (name?.trim()) {
                       void run(() =>
                         mutate("workspace.folder", { id: folder._id, name })
@@ -587,10 +631,10 @@ export default function App() {
                   type="button"
                   class="folder-delete"
                   aria-label={`Delete folder ${folder.name}`}
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.preventDefault();
                     if (
-                      confirm(
+                      await confirmAction(
                         "Remove this folder? Its conversations stay pinned.",
                       )
                     ) {
@@ -1001,7 +1045,12 @@ export default function App() {
                       when={view() === "resources:artifacts"}
                       fallback={
                         <Resources
-                          name={view().slice(10)}
+                          name={view().slice(10).split("?")[0]}
+                          initialPath={new URLSearchParams(
+                            view().split("?")[1] ?? "",
+                          ).get(
+                            "path",
+                          ) ?? ""}
                           navigate={navigate}
                           newChat={async (profile) => {
                             const result = await command("openBot", "", {
@@ -1104,7 +1153,13 @@ export default function App() {
           </Dialog>
         )}
       </Show>
-      <Show when={menu()}>
+      <Show
+        when={menu() &&
+          (workspace()?.conversations.find(
+            (item) => item.key === menu()!.key,
+          ) ??
+            menu())}
+      >
         {(c) => (
           <Dialog
             title={c().title}
@@ -1113,6 +1168,32 @@ export default function App() {
             close={() => setMenu(undefined)}
           >
             <div class="action-list">
+              <button
+                type="button"
+                onClick={() =>
+                  void run(async () => {
+                    await mutate("workspace.markRead", {
+                      key: c().key,
+                      unread: !unread(c()),
+                    });
+                    setMenu(undefined);
+                  })}
+              >
+                <Icon name="chat-bubble" />
+                {unread(c()) ? "Mark as read" : "Mark as unread"}
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  void run(async () => {
+                    await navigator.clipboard.writeText(c().sourceId);
+                    setMenu(undefined);
+                    inform("Session ID copied");
+                  })}
+              >
+                <Icon name="page" />
+                Copy session ID
+              </button>
               <Show when={c().section === "essential"}>
                 <button
                   type="button"
@@ -1191,8 +1272,8 @@ export default function App() {
               <Show when={!c().bot}>
                 <button
                   type="button"
-                  onClick={() => {
-                    const title = prompt("Conversation name", c().title);
+                  onClick={async () => {
+                    const title = await ask("Conversation name", c().title);
                     if (title) {
                       void run(() => command("rename", c().key, { title }));
                     }
@@ -1217,8 +1298,10 @@ export default function App() {
               <button
                 type="button"
                 class="danger"
-                onClick={() => {
-                  if (confirm("Permanently delete this conversation?")) {
+                onClick={async () => {
+                  if (
+                    await confirmAction("Permanently delete this conversation?")
+                  ) {
                     void run(() => command("delete", c().key, {}));
                   }
                   setMenu(undefined);
@@ -1231,6 +1314,7 @@ export default function App() {
           </Dialog>
         )}
       </Show>
+      <ActionDialog />
       <Show when={notice()}>
         <div class="toast" role="status">
           {notice()}

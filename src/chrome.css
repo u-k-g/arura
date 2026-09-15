@@ -18,8 +18,8 @@
 }
 .sidebar-titlebar .icon,
 .topbar .icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 .sidebar-sections {
   display: flex;
@@ -53,8 +53,8 @@
   gap: 10px;
 }
 .sidebar-actions .icon {
-  width: 17px;
-  height: 17px;
+  width: 14px;
+  height: 14px;
   color: var(--muted);
 }
 .sidebar-actions .selected,
@@ -72,8 +72,8 @@
   color: var(--subtle);
 }
 .nav-search .icon {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
 }
 .navigation .section-heading {
   text-transform: uppercase;
@@ -171,8 +171,8 @@
   padding: 4px;
 }
 .composer .icon {
-  width: 17px;
-  height: 17px;
+  width: 14px;
+  height: 14px;
 }
 .composer .send {
   width: 28px;
@@ -338,7 +338,7 @@
 }
 .home-list-heading .icon {
   transform: rotate(180deg);
-  width: 14px;
+  width: 12px;
 }
 .home-conversation {
   display: flex;
@@ -406,8 +406,8 @@ dialog.conversation-menu {
   border-radius: 3px;
 }
 .conversation-menu .action-list .icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: var(--muted);
 }
 .conversation-menu .action-list .danger .icon {
@@ -473,8 +473,8 @@ dialog.conversation-menu {
   background: var(--active);
 }
 .palette-results [role="option"] .icon {
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   color: var(--muted);
 }
 .palette-item-text {

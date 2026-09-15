@@ -86,6 +86,22 @@ export const renamed = mutation({
         .unique();
       if (oldAlias) await ctx.db.patch(oldAlias._id, { target });
       else await ctx.db.insert("conversationAliases", { key: row.key, target });
+      for (
+        const read of await ctx.db
+          .query("conversationReads")
+          .withIndex("key", (q) => q.eq("key", row.key))
+          .collect()
+      ) {
+        const existingRead = await ctx.db
+          .query("conversationReads")
+          .withIndex(
+            "device",
+            (q) => q.eq("device", read.device).eq("key", target),
+          )
+          .unique();
+        if (existingRead) await ctx.db.delete(read._id);
+        else await ctx.db.patch(read._id, { key: target });
+      }
       // Public projections are rebuilt from Hermes; web-owned organization and
       // queued actions retain their identity.
       for (

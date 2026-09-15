@@ -110,8 +110,8 @@ small {
   color: var(--muted);
 }
 .icon {
-  width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
   display: inline-flex;
   flex: none;
 }
@@ -241,8 +241,8 @@ small {
   box-shadow: none;
 }
 .essentials .icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 .essential-icon-picker {
   display: grid;
@@ -281,8 +281,8 @@ small {
   padding: 0;
 }
 .section-heading .icon {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
 }
 .thread-row {
   display: flex;
@@ -316,8 +316,8 @@ small {
   white-space: nowrap;
 }
 .thread-select .icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: var(--muted);
 }
 .thread-row > .icon-button {
@@ -338,8 +338,8 @@ small {
   font-size: 14px;
 }
 .folder summary > .icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 .folder .thread-row {
   margin-left: 16px;
@@ -437,8 +437,8 @@ small {
   text-align: center;
 }
 .empty > .icon {
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
   color: var(--muted);
   margin-bottom: 16px;
 }
@@ -474,8 +474,8 @@ small {
   font-size: 12px;
 }
 .conversation-toolbar .icon {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
 }
 .transcript {
   overflow: auto;
@@ -570,8 +570,8 @@ small {
   opacity: 1;
 }
 .message-actions .icon {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 .message-actions .icon-button {
   min-height: 25px;
@@ -600,8 +600,8 @@ small {
   padding: 2px 0;
 }
 .activity .icon {
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
 }
 .past-tool {
   font-size: 12px;
@@ -1592,4 +1592,141 @@ progress {
 .jump-to-latest .icon {
   width: 12px;
   height: 12px;
+}
+
+.queue-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px 8px 0 0;
+  background: var(--panel);
+  margin-bottom: 6px;
+  overflow: hidden;
+  font-size: 12px;
+}
+.queue-panel > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--accent-soft);
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.queue-panel button {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 5px 7px;
+}
+.queue-panel header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.queued-message {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.queued-message:last-child {
+  border-bottom: 0;
+}
+.queued-text {
+  flex: 1;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 80px;
+  overflow: auto;
+  font-family: var(--font-mono, monospace);
+}
+.queue-dot {
+  height: 6px;
+  width: 6px;
+  flex-shrink: 0;
+  background: var(--muted);
+  border-radius: 50%;
+}
+.queue-dot.first {
+  background: var(--accent);
+}
+.queue-panel .send-now {
+  background: var(--accent-soft);
+  white-space: nowrap;
+}
+.message-attachments,
+.composer-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.message-attachments:empty,
+.composer-attachments:empty {
+  display: none;
+}
+.message-attachments img {
+  display: block;
+  max-width: 180px;
+  max-height: 140px;
+  border-radius: 5px;
+}
+.composer-attachments img {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.context-reference {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 4px 7px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.context-reference .icon {
+  width: 13px;
+  height: 13px;
+}
+.timeline-event {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 6px 0;
+}
+.thread-row.unread .session-dot {
+  background: var(--accent);
+}
+.thread-row.unread .thread-select {
+  font-weight: 600;
+}
+.editor-search {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 8px;
+}
+.editor-search input {
+  width: 160px;
+}
+.structured-list-item {
+  border: 1px solid var(--line);
+  padding: 10px;
+  border-radius: 6px;
+  margin: 6px 0;
+}
+@media (max-width: 720px) {
+  .queued-message {
+    gap: 4px;
+    padding: 6px;
+    flex-wrap: wrap;
+  }
+  .queued-text {
+    flex-basis: calc(100% - 24px);
+  }
+  .queue-panel button {
+    min-height: 36px;
+  }
 }

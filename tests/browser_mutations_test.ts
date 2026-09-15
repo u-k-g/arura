@@ -1,3 +1,4 @@
+import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
@@ -49,7 +50,7 @@ Deno.test({
         .getByRole("button", { name: "Edit and resubmit", exact: true })
         .click();
       await input.fill("Revised instruction");
-      page.once("dialog", async (dialog) => {
+      void onceActionDialog(page, async (dialog) => {
         expect(dialog.message()).toContain(
           "Replace the conversation after this message?",
         );
@@ -219,28 +220,30 @@ Deno.test({
         next: true,
       });
       await client.mutation(anyApi.commands.edit, { id: lastNext, next: true });
-      await expect(a.locator(".queue > div").first()).toContainText(
+      await expect(a.locator(".queued-message").first()).toContainText(
         "Last priority",
       );
-      await expect(b.locator(".queue > div").first()).toContainText(
+      await expect(b.locator(".queued-message").first()).toContainText(
         "Last priority",
       );
       const lastRow = b
-        .locator(".queue > div")
+        .locator(".queued-message")
         .filter({ hasText: "Last priority" });
-      b.once("dialog", (dialog) => dialog.accept("Edited priority"));
+      void onceActionDialog(b, (dialog) => dialog.accept("Edited priority"));
       await lastRow
         .getByRole("button", { name: "Edit queued message", exact: true })
         .click();
-      await expect(a.locator(".queue > div").first()).toContainText(
+      await expect(a.locator(".queued-message").first()).toContainText(
         "Edited priority",
       );
       await b
-        .locator(".queue > div")
+        .locator(".queued-message")
         .filter({ hasText: "First priority" })
-        .getByRole("button", { name: "Remove queued message", exact: true })
+        .getByRole("button", { name: "Delete queued message", exact: true })
         .click();
-      await expect(a.locator(".queue")).not.toContainText("First priority");
+      await expect(a.locator(".queue-panel")).not.toContainText(
+        "First priority",
+      );
       const backlog = [];
       for (let i = 0; i < 105; i++) backlog.push(await enqueue(`Backlog ${i}`));
       const expiredApprovalId = crypto.randomUUID();
@@ -448,21 +451,35 @@ Deno.test({
         page.getByRole("button", { name: "Stop", exact: true }),
       ).toBeVisible();
       await input.fill("Reject this correction");
-      await page.getByRole("button", { name: "Steer", exact: true }).click();
-      await expect(
-        page.getByText("Hermes could not accept steering at this point", {
-          exact: true,
-        }),
-      ).toBeVisible();
-      await expect(input).toHaveText("Reject this correction");
+      await page
+        .getByRole("button", { name: "Queue message", exact: true })
+        .click();
+      await page
+        .locator(".queued-message")
+        .getByRole("button", { name: "Send Now", exact: true })
+        .click();
+      await expect(page.locator(".queued-message")).toContainText(
+        "Reject this correction",
+      );
+      await page
+        .locator(".queued-message")
+        .getByRole("button", { name: "Delete queued message", exact: true })
+        .click();
       await input.fill("Focus on the garden");
-      await page.getByRole("button", { name: "Steer", exact: true }).click();
+      await page
+        .getByRole("button", { name: "Queue message", exact: true })
+        .click();
+      await page
+        .locator(".queued-message")
+        .getByRole("button", { name: "Send Now", exact: true })
+        .click();
+      await expect(page.locator(".queued-message")).toHaveCount(0);
       await expect(input).toHaveText("");
       await input.fill("Continue after stopping");
       await page
         .getByRole("button", { name: "Queue message", exact: true })
         .click();
-      await expect(page.locator(".queue")).toContainText(
+      await expect(page.locator(".queue-panel")).toContainText(
         "Continue after stopping",
       );
       await page.getByRole("button", { name: "Stop", exact: true }).click();

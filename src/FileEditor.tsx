@@ -1,4 +1,4 @@
-import { createEffect, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { minimalSetup } from "codemirror";
 import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView, lineNumbers } from "@codemirror/view";
@@ -13,6 +13,52 @@ export default function FileEditor(props: {
   let parent!: HTMLDivElement, view: EditorView | undefined;
   let applying = false,
     disposed = false;
+  const [searchOpen, setSearchOpen] = createSignal(false),
+    [query, setQuery] = createSignal(""),
+    [replacement, setReplacement] = createSignal("");
+  function find(backward = false) {
+    if (!view || !query()) return;
+    const content = view.state.doc.toString(),
+      selection = view.state.selection.main;
+    let at = backward
+      ? selection.from === 0
+        ? -1
+        : content.lastIndexOf(query(), selection.from - 1)
+      : content.indexOf(query(), selection.to);
+    if (at < 0) {
+      at = backward ? content.lastIndexOf(query()) : content.indexOf(query());
+    }
+    if (at >= 0) {
+      view.dispatch({
+        selection: { anchor: at, head: at + query().length },
+        scrollIntoView: true,
+      });
+    }
+  }
+  function replace(all = false) {
+    if (!view || props.readOnly || !query()) return;
+    const content = view.state.doc.toString(),
+      selection = view.state.selection.main;
+    if (all) {
+      view.dispatch({
+        changes: {
+          from: 0,
+          to: content.length,
+          insert: content.split(query()).join(replacement()),
+        },
+      });
+    } else if (view.state.sliceDoc(selection.from, selection.to) === query()) {
+      view.dispatch({
+        changes: {
+          from: selection.from,
+          to: selection.to,
+          insert: replacement(),
+        },
+        selection: { anchor: selection.from + replacement().length },
+      });
+      find();
+    } else find();
+  }
   const language = new Compartment();
   const editing = new Compartment();
   createEffect(() => {
@@ -96,5 +142,47 @@ export default function FileEditor(props: {
     disposed = true;
     view?.destroy();
   });
-  return <div class="code-editor" ref={parent} />;
+  return (
+    <>
+      <button
+        type="button"
+        class="text-button"
+        onClick={() => setSearchOpen((value) => !value)}
+      >
+        Find and replace
+      </button>
+      <Show when={searchOpen()}>
+        <div class="editor-search">
+          <input
+            aria-label="Find in file"
+            value={query()}
+            onInput={(event) => setQuery(event.currentTarget.value)}
+          />
+          <span role="status">
+            {query() ? props.content.split(query()).length - 1 : 0} matches
+          </span>
+          <button type="button" onClick={() => find(true)}>
+            Previous
+          </button>
+          <button type="button" onClick={() => find()}>
+            Next
+          </button>
+          <Show when={!props.readOnly}>
+            <input
+              aria-label="Replace with"
+              value={replacement()}
+              onInput={(event) => setReplacement(event.currentTarget.value)}
+            />
+            <button type="button" onClick={() => replace()}>
+              Replace
+            </button>
+            <button type="button" onClick={() => replace(true)}>
+              Replace all
+            </button>
+          </Show>
+        </div>
+      </Show>
+      <div class="code-editor" ref={parent} />
+    </>
+  );
 }

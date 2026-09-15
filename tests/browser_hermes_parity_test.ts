@@ -13,6 +13,7 @@ Deno.test({
       colorScheme: "dark",
     });
     const hermes = Deno.env.get("HERMES_URL")!;
+    const originalConfig = await (await fetch(`${hermes}/api/config`)).json();
     const rows = await (
       await fetch(`${hermes}/api/sessions?profile=default`)
     ).json();
@@ -178,6 +179,23 @@ Deno.test({
         })
         .toEqual({ auto_archive: false, auto_archive_days: 21 });
     } finally {
+      const url = Deno.env.get("ARURA_TEST_URL")!;
+      const restored = await page.request.put(
+        `${url}/api/resource/saveConfig`,
+        {
+          headers: { origin: url },
+          data: {
+            config: {
+              ...originalConfig.config,
+              sessions: originalConfig.config.sessions ?? {
+                auto_archive: true,
+                auto_archive_days: 7,
+              },
+            },
+          },
+        },
+      );
+      expect(restored.ok()).toBe(true);
       await page.close();
       await browser.close();
     }

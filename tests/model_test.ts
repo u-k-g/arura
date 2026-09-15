@@ -4,6 +4,7 @@ import {
   type Conversation,
   groupMessages,
   interactionFromEvent,
+  mergeHistoryMessages,
   normalizeMessages,
   shouldArchive,
   subagentTranscript,
@@ -229,4 +230,79 @@ Deno.test("archive protects pinned folders, active work, input, and recently res
     equal(shouldArchive({ ...c, ...patch } as Conversation, 7, now), false);
   }
   equal(shouldArchive({ ...c, activityAt: now - 7 * 86400000 }, 7, now), true);
+});
+
+Deno.test("image-only history and tool arguments survive projection without reasoning", () => {
+  const messages = normalizeMessages([
+    {
+      id: 1,
+      role: "user",
+      content: [
+        { type: "image_url", image_url: { url: "data:image/png;base64,YQ==" } },
+      ],
+    },
+    {
+      id: 2,
+      role: "assistant",
+      content: "The answer",
+      tool_calls: [
+        {
+          id: "call",
+          function: {
+            name: "read_file",
+            arguments: { path: "notes", reasoning: "PRIVATE" },
+          },
+        },
+      ],
+    },
+    { id: 3, role: "tool", tool_call_id: "call", content: "Result" },
+  ]);
+  equal(messages[0].attachments?.length, 1);
+  equal(messages.length, 3);
+  deepStrictEqual(messages[2].details, {
+    input: { path: "notes" },
+    output: "Result",
+  });
+  equal(groupMessages(messages)[0].answer?.text, "The answer");
+  equal(groupMessages(messages)[0].work.length, 1);
+});
+
+Deno.test("timeline events retain chronology without becoming user messages", () => {
+  const messages = normalizeMessages([
+    { id: 1, role: "user", content: "Hello" },
+    { id: 2, role: "assistant", content: "Before" },
+    {
+      id: 3,
+      role: "user",
+      display_kind: "model_switch",
+      content: "Internal model event",
+    },
+    { id: 4, role: "assistant", content: "After" },
+  ]);
+  const groups = groupMessages(messages);
+  equal(groups[0].answer?.text, "Before");
+  equal(groups[1].event?.text, "Model changed");
+  equal(groups[2].answer?.text, "After");
+});
+
+Deno.test("tool calls split across history pages retain both input and output", () => {
+  const older = normalizeMessages([
+    {
+      id: 1,
+      role: "assistant",
+      tool_calls: [
+        { id: "call", function: { name: "read_file", arguments: "notes" } },
+      ],
+    },
+  ]);
+  const newer = normalizeMessages([
+    { id: 2, role: "tool", tool_call_id: "call", content: "File contents" },
+  ]);
+  const merged = mergeHistoryMessages([...older, ...newer]);
+  equal(merged.length, 1);
+  equal(merged[0].tool, "read_file");
+  deepStrictEqual(merged[0].details, {
+    input: "notes",
+    output: "File contents",
+  });
 });

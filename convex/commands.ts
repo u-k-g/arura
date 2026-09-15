@@ -4,6 +4,7 @@ import { resolveKey } from "./conversationKeys.ts";
 import { v } from "convex/values";
 const kinds = [
   "send",
+  "sendNow",
   "create",
   "openBot",
   "rename",
@@ -147,6 +148,7 @@ export const edit = mutation({
     text: v.optional(v.string()),
     cancel: v.optional(v.boolean()),
     next: v.optional(v.boolean()),
+    sendNow: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     await device(ctx);
@@ -167,6 +169,7 @@ export const edit = mutation({
         .first()
       : null;
     await ctx.db.patch(c._id, {
+      ...(args.sendNow ? { kind: "sendNow" } : {}),
       ...(args.cancel ? { status: "cancelled" as const } : {}),
       ...(args.text !== undefined
         ? { payload: { ...c.payload, text: args.text } }
@@ -175,5 +178,38 @@ export const edit = mutation({
         ? { createdAt: Math.min(0, first?.createdAt ?? 0) - 1 }
         : {}),
     });
+  },
+});
+export const clearQueue = mutation({
+  args: { conversation: v.string() },
+  handler: async (ctx, args) => {
+    await device(ctx);
+    const key = await resolveKey(ctx, args.conversation);
+    const rows = await ctx.db
+      .query("commands")
+      .withIndex(
+        "pending",
+        (q) => q.eq("conversation", key).eq("status", "queued"),
+      )
+      .collect();
+    for (const row of rows) {
+      if (row.kind === "send") {
+        await ctx.db.patch(row._id, { status: "cancelled" });
+      }
+    }
+  },
+});
+export const deferSteer = mutation({
+  args: { id: v.id("commands") },
+  handler: async (ctx, args) => {
+    await adapter(ctx);
+    const row = await ctx.db.get(args.id);
+    if (row?.kind === "sendNow" && row.status === "dispatching") {
+      await ctx.db.patch(row._id, {
+        kind: "send",
+        status: "queued",
+        error: "Hermes could not steer this run. This message stays queued.",
+      });
+    }
   },
 });

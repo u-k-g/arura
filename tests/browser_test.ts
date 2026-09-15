@@ -1,3 +1,4 @@
+import { onceActionDialog } from "./action_dialog.ts";
 import { Buffer } from "node:buffer";
 import { chromium, expect } from "@playwright/test";
 
@@ -44,12 +45,13 @@ Deno.test({
         .click();
       await page.getByLabel("Model", { exact: true }).fill("larger-helper");
       let confirmed = false;
-      page.once("dialog", async (dialog) => {
+      const confirmation = onceActionDialog(page, async (dialog) => {
         confirmed = dialog.message().includes("helper model cost");
         await dialog.accept();
       });
       await page.getByRole("button", { name: "Save", exact: true }).click();
-      await expect(page.getByRole("dialog")).not.toBeVisible();
+      await confirmation;
+      await expect(page.getByRole("dialog")).toHaveCount(0);
       expect(confirmed).toBe(true);
       const aux = await (
         await page.request.get(`${url}/api/resource/auxiliary`)
@@ -561,6 +563,17 @@ Deno.test({
       await expect(
         a.getByRole("dialog", { name: "Choose a model" }),
       ).toHaveCount(0);
+      await expect(
+        b.getByRole("button", { name: "Model", exact: true }),
+      ).toContainText("fixture-alternative", { timeout: 15000 });
+      await a.getByRole("button", { name: "Model", exact: true }).click();
+      await a
+        .getByLabel("Reasoning effort", { exact: true })
+        .selectOption("high");
+      await a.getByRole("button", { name: "Close", exact: true }).click();
+      await expect(
+        b.getByRole("button", { name: "Model", exact: true }),
+      ).toContainText("high", { timeout: 15000 });
       await a.getByLabel("More composer actions", { exact: true }).click();
       await a.getByRole("button", { name: "Context", exact: true }).click();
       await expect(
@@ -735,7 +748,7 @@ Deno.test({
       const phone = a
         .locator(".device-card")
         .filter({ hasText: `Phone ${suffix}` });
-      a.once("dialog", (dialog) => dialog.accept());
+      void onceActionDialog(a, (dialog) => dialog.accept());
       await phone.getByRole("button", { name: "Revoke", exact: true }).click();
       await expect(
         b.getByRole("button", { name: "Authorize this device", exact: true }),
