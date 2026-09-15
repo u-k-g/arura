@@ -78,6 +78,9 @@ Deno.test({
       await expect(page.locator(".queued-message").first()).toContainText(
         "third\nwith a second line",
       );
+      expect(
+        (await page.locator(".queued-message").last().boundingBox())!.height,
+      ).toBeLessThanOrEqual(32);
       await page.screenshot({
         path: `${Deno.env.get("TMPDIR")}/queue-desktop.png`,
       });

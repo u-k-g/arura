@@ -95,7 +95,7 @@ Deno.test({
       const composer = await page.locator(".composer").boundingBox();
       expect(composer!.height).toBeLessThan(65);
       const sidebar = await page.locator(".desktop-navigation").boundingBox();
-      expect(sidebar!.width).toBe(260);
+      expect(sidebar!.width).toBe(247);
       const prompt =
         "Compare the two options.\n\n| Option | Benefit |\n| --- | --- |\n| One | Less weight |\n| Two | More tread |\n\nThe choice depends on the course and conditions.";
       await page.getByLabel("Message Hermes", { exact: true }).fill(prompt);

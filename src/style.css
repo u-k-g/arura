@@ -28,14 +28,14 @@ button {
   color: inherit;
   background: transparent;
   border: var(--hairline) solid var(--line);
-  border-radius: 8px;
-  padding: 7px 12px;
+  border-radius: 5px;
+  padding: 4px 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: 12px;
+  line-height: 18px;
 }
 button:hover {
   background: var(--hover);
@@ -59,12 +59,12 @@ input,
 textarea,
 select {
   border: var(--hairline) solid var(--line);
-  border-radius: 8px;
+  border-radius: 5px;
   background: transparent;
   color: var(--ink);
-  padding: 8px 12px;
+  padding: 5px 8px;
   max-width: 100%;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 20px;
 }
 textarea {
@@ -89,18 +89,18 @@ p {
   line-height: 1.5;
 }
 h1 {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 500;
   letter-spacing: -0.5px;
   margin-bottom: 10px;
-  line-height: 32px;
+  line-height: 28px;
 }
 h2 {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
 }
 h3 {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
 }
 p {
@@ -110,8 +110,8 @@ small {
   color: var(--muted);
 }
 .icon {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   display: inline-flex;
   flex: none;
 }
@@ -122,9 +122,9 @@ small {
 .icon-button {
   border: 0;
   background: transparent;
-  padding: 7px;
-  min-width: 34px;
-  min-height: 34px;
+  padding: 4px;
+  min-width: 28px;
+  min-height: 28px;
 }
 .primary,
 .send {
@@ -170,7 +170,7 @@ small {
 .app-shell {
   height: 100dvh;
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 247px minmax(0, 1fr);
 }
 .desktop-navigation {
   border-right: 0;
@@ -241,8 +241,10 @@ small {
   box-shadow: none;
 }
 .essentials .icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  opacity: 0.7;
 }
 .essential-icon-picker {
   display: grid;
@@ -281,8 +283,8 @@ small {
   padding: 0;
 }
 .section-heading .icon {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
 }
 .thread-row {
   display: flex;
@@ -316,8 +318,8 @@ small {
   white-space: nowrap;
 }
 .thread-select .icon {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   color: var(--muted);
 }
 .thread-row > .icon-button {
@@ -338,8 +340,8 @@ small {
   font-size: 14px;
 }
 .folder summary > .icon {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
 }
 .folder .thread-row {
   margin-left: 16px;
@@ -362,6 +364,14 @@ small {
 }
 .archive .section-heading .icon:last-child {
   margin-left: auto;
+}
+.archive .section-heading[aria-expanded="true"] .icon:last-child {
+  transform: rotate(180deg);
+}
+.archive-status {
+  margin: 4px 8px 10px;
+  color: var(--muted);
+  font-size: 12px;
 }
 .nav-footer {
   display: flex;
@@ -437,8 +447,8 @@ small {
   text-align: center;
 }
 .empty > .icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   color: var(--muted);
   margin-bottom: 16px;
 }
@@ -474,8 +484,8 @@ small {
   font-size: 12px;
 }
 .conversation-toolbar .icon {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
 }
 .transcript {
   overflow: auto;
@@ -570,8 +580,8 @@ small {
   opacity: 1;
 }
 .message-actions .icon {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
 }
 .message-actions .icon-button {
   min-height: 25px;
@@ -600,8 +610,8 @@ small {
   padding: 2px 0;
 }
 .activity .icon {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
 }
 .past-tool {
   font-size: 12px;
@@ -634,14 +644,14 @@ small {
 }
 .composer-input {
   resize: none;
-  min-height: 30px;
+  min-height: 26px;
   max-height: 220px;
   width: 100%;
   border: 0;
   box-shadow: none;
   background: transparent;
-  padding: 5px 2px;
-  font-size: 14px;
+  padding: 3px 2px;
+  font-size: 13px;
   outline: none;
 }
 
@@ -662,9 +672,9 @@ small {
 }
 .composer-placeholder {
   position: absolute;
-  top: 5px;
+  top: 3px;
   left: 2px;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--subtle);
   pointer-events: none;
@@ -783,15 +793,15 @@ small {
 .field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin: 16px 0;
-  font-size: 14px;
+  gap: 4px;
+  margin: 10px 0;
+  font-size: 13px;
   font-weight: 400;
 }
 .field > label {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 .field small {
   font-weight: 400;
@@ -799,7 +809,7 @@ small {
   line-height: 1.6;
 }
 .field textarea {
-  min-height: 160px;
+  min-height: 96px;
 }
 .inline-field {
   display: flex;
@@ -812,14 +822,14 @@ small {
 .settings-page,
 .resource-page {
   width: min(100%, 968px);
-  padding: 24px 24px 48px;
+  padding: 16px 18px 32px;
   margin: 0 auto;
   overflow: auto;
   flex: 1;
   min-height: 0;
 }
 .settings-group {
-  margin-top: 32px;
+  margin-top: 20px;
 }
 .settings-group > h2 {
   font-size: 12px;
@@ -834,12 +844,12 @@ small {
 }
 .settings-grid > button {
   justify-content: flex-start;
-  min-height: 44px;
+  min-height: 34px;
   border-radius: 0;
   text-align: left;
   border: 0;
   border-bottom: var(--hairline) solid var(--line);
-  padding: 10px 8px;
+  padding: 6px 8px;
 }
 .settings-grid > button .icon {
   color: var(--muted);
@@ -851,9 +861,9 @@ small {
 .device-card {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
   border-bottom: var(--hairline) solid var(--line);
-  padding: 16px 0;
+  padding: 10px 0;
 }
 .device-card > div {
   flex: 1;
@@ -914,7 +924,7 @@ small {
   background: transparent;
   border: 0;
   border-radius: 0;
-  padding: 16px 0;
+  padding: 10px 0;
   border-bottom: var(--hairline) solid var(--line);
 }
 .resource-card-heading {
@@ -1034,14 +1044,14 @@ dialog::backdrop {
   backdrop-filter: none;
 }
 .dialog-inner {
-  padding: 20px 24px;
+  padding: 14px 16px;
 }
 .dialog-inner > header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 15px;
-  margin-bottom: 18px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 .dialog-inner > header h2 {
   margin: 0;
@@ -1568,8 +1578,8 @@ progress {
   padding: 3px 0;
 }
 .current-activity .icon {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
 }
 .work-summary:has(~ .current-activity)[open] ~ .current-activity {
   display: none;
@@ -1590,8 +1600,8 @@ progress {
   padding: 4px 10px;
 }
 .jump-to-latest .icon {
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
 }
 
 .queue-panel {
@@ -1607,14 +1617,18 @@ progress {
   justify-content: space-between;
   align-items: center;
   background: var(--accent-soft);
-  padding: 5px 10px;
+  padding: 2px 8px;
   border-bottom: 1px solid var(--line);
 }
 .queue-panel button {
   border: 0;
   background: transparent;
   box-shadow: none;
-  padding: 5px 7px;
+  padding: 2px 5px;
+  font-size: inherit;
+  line-height: 18px;
+  min-height: 24px;
+  min-width: 24px;
 }
 .queue-panel header button {
   display: inline-flex;
@@ -1624,8 +1638,8 @@ progress {
 .queued-message {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 2px 8px;
   border-bottom: 1px solid var(--line);
 }
 .queued-message:last-child {
@@ -1687,8 +1701,8 @@ progress {
   overflow-wrap: anywhere;
 }
 .context-reference .icon {
-  width: 13px;
-  height: 13px;
+  width: 12px;
+  height: 12px;
 }
 .timeline-event {
   font-size: 12px;
@@ -1719,14 +1733,15 @@ progress {
 }
 @media (max-width: 720px) {
   .queued-message {
-    gap: 4px;
-    padding: 6px;
-    flex-wrap: wrap;
-  }
-  .queued-text {
-    flex-basis: calc(100% - 24px);
+    display: grid;
+    grid-template-columns: 6px minmax(0, 1fr) 32px 32px auto;
+    gap: 2px;
+    padding: 3px 6px;
   }
   .queue-panel button {
-    min-height: 36px;
+    min-height: 32px;
+  }
+  .settings-grid > button {
+    min-height: 40px;
   }
 }

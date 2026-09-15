@@ -131,6 +131,7 @@ export default function App() {
     [archiveOpen, setArchiveOpen] = createSignal(false),
     [archiveLimit, setArchiveLimit] = createSignal(10);
   const [archiveHasMore, setArchiveHasMore] = createSignal(false);
+  const [archiveReady, setArchiveReady] = createSignal(false);
   const [menu, setMenu] = createSignal<Conversation>(),
     [folderName, setFolderName] = createSignal<string | null>(null);
   const [activeConversation, setActiveConversation] = createSignal<
@@ -190,7 +191,9 @@ export default function App() {
   });
   createEffect(() => {
     if (authorized()) {
+      connected();
       const count = archiveLimit() / 10;
+      setArchiveReady(false);
       const pages = new Map<
         number,
         {
@@ -209,6 +212,7 @@ export default function App() {
         if (cached && !disposed && !fresh) {
           setArchived(cached.items);
           setArchiveHasMore(cached.hasMore);
+          setArchiveReady(true);
         }
       });
       const follow = function (index: number, cursor: string | null) {
@@ -222,6 +226,7 @@ export default function App() {
             (result) => {
               if (disposed) return;
               fresh = true;
+              setArchiveReady(true);
               pages.set(index, result);
               if (result.isDone || result.continueCursor !== nextCursor) {
                 for (const [page, stop] of stops) {
@@ -695,6 +700,18 @@ export default function App() {
             <Icon name="nav-arrow-down" />
           </button>
           <Show when={archiveOpen()}>
+            <Show when={!archiveReady()}>
+              <p class="archive-status" role="status">
+                {connected()
+                  ? "Loading archived conversations…"
+                  : "Connect to load archived conversations."}
+              </p>
+            </Show>
+            <Show when={archiveReady() && !archived().length}>
+              <p class="archive-status" role="status">
+                No archived conversations.
+              </p>
+            </Show>
             <For each={archived()}>
               {(c) => (
                 <div class="thread-row">
