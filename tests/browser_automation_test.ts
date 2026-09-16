@@ -63,7 +63,9 @@ Deno.test({
       await expect.poll(async () => (await state()).enabled).toBe(false);
       await card.getByRole("button", { name: "Resume", exact: true }).click();
       await expect.poll(async () => (await state()).enabled).toBe(true);
-      await card.getByRole("button", { name: "Run now", exact: true }).click();
+      await card
+        .getByRole("button", { name: "Trigger now", exact: true })
+        .click();
       await expect
         .poll(async () => Boolean((await state()).last_run_at))
         .toBe(true);

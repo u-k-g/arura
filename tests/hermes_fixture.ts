@@ -436,8 +436,16 @@ export function hermesFixture(
           } else if (method === "profiles.set_asset") {
             avatarData = params.clear ? "" : params.data;
             result = { ok: true };
+          } else if (method === "session.active_list") {
+            result = {
+              sessions: [...sessions.keys()].map((id) => ({
+                id,
+                status: "idle",
+              })),
+            };
           } else if (method === "session.close") {
-            sessions.delete(params.session_id);
+            // Closing a runtime does not delete its persisted conversation.
+            result = { closed: true };
           } else if (method === "session.resume") {
             const live = sessions.get(params.session_id);
             if (!live) {
@@ -571,6 +579,16 @@ export function hermesFixture(
                   slug: "fixture",
                   name: "Fixture provider",
                   models: ["fixture-model", "fixture-alternative"],
+                  capabilities: {
+                    "fixture-model": {
+                      reasoning: true,
+                      supported_efforts: ["low", "high"],
+                    },
+                    "fixture-alternative": {
+                      reasoning: true,
+                      supported_efforts: ["low", "medium", "high"],
+                    },
+                  },
                 },
               ],
             };

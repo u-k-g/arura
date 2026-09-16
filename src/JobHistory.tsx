@@ -59,7 +59,7 @@ export default function JobHistory(props: {
             onClick={() =>
               props.navigate(
                 JSON.stringify([
-                  String(run.profile ?? props.profile),
+                  String(run.profile ?? (props.profile || "default")),
                   String(run.id),
                 ]),
               )}

@@ -37,6 +37,11 @@ Deno.test({
       await expect(
         picker.getByRole("button", { name: "Starred models", exact: true }),
       ).toHaveAttribute("aria-pressed", "true");
+      await expect(
+        picker
+          .getByRole("combobox", { name: "Reasoning effort" })
+          .locator("option:not([disabled])"),
+      ).toHaveText(["Low", "High"]);
       let optionRequests = 0;
       a.on("request", (request) => {
         if (

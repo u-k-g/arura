@@ -419,7 +419,7 @@ export const sweep = internalMutation({
     for (const c of batch.page) {
       if (
         !c.deleted &&
-        shouldArchive(c, Number(pref?.value ?? 7), Date.now())
+        shouldArchive(c, Number(pref?.value ?? 14), Date.now())
       ) {
         await ctx.db.patch(c._id, {
           section: "archived",

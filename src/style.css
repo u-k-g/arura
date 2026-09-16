@@ -1738,3 +1738,50 @@ progress {
   font-size: 13px;
   overflow-wrap: anywhere;
 }
+
+/* Work stays between its prompt and answer, with compact desktop-style rows. */
+.work-summary {
+  margin: 10px 12px 14px;
+  padding: 0;
+  font-size: 12px;
+}
+.work-summary > summary,
+.past-tool > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  list-style: none;
+}
+.work-summary > summary::-webkit-details-marker,
+.past-tool > summary::-webkit-details-marker {
+  display: none;
+}
+.work-summary > summary .icon,
+.past-tool > summary .icon {
+  width: 12px;
+  height: 12px;
+  transform: rotate(-90deg);
+}
+.work-summary[open] > summary .icon,
+.past-tool[open] > summary .icon {
+  transform: none;
+}
+.work-summary[open] > summary {
+  margin-bottom: 10px;
+}
+.work-summary > .message {
+  padding: 2px 0;
+  margin: 0;
+}
+.work-summary .past-tool {
+  padding: 2px 0;
+  margin: 0;
+}
+.work-summary > .activity {
+  padding: 3px 0;
+}
+.history-work[open] {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}

@@ -37,6 +37,7 @@
   --line: oklch(0.91 0 59deg);
   --accent: oklch(0.65 0.2 59deg);
   --danger: oklch(63.7% 0.237 25.331);
+  --warning: #956400;
   --accent-soft: color-mix(in oklch, var(--accent) 8%, transparent);
   --hover: color-mix(in oklch, var(--ink) 3%, transparent);
   --active: color-mix(in oklch, var(--ink) 6%, transparent);
@@ -59,6 +60,7 @@
     --line: oklch(0.28 0 21deg);
     --accent: oklch(0.75 0.2 59deg);
     --danger: oklch(0.75 0.2 25.331deg);
+    --warning: #e9b75f;
     color-scheme: dark;
   }
 }
@@ -73,6 +75,7 @@
   --line: oklch(0.28 0 21deg);
   --accent: oklch(0.75 0.2 59deg);
   --danger: oklch(0.75 0.2 25.331deg);
+  --warning: #e9b75f;
   color-scheme: dark;
 }
 
@@ -89,6 +92,7 @@
   --line: #36654c;
   --accent: #69d69a;
   --danger: #fb414a;
+  --warning: #e5bf70;
   color-scheme: dark;
 }
 :root[data-theme="jade"] {
@@ -102,6 +106,7 @@
   --line: #162920;
   --accent: #6bc3bd;
   --danger: #ff5345;
+  --warning: #d9b86c;
   color-scheme: dark;
 }
 :root[data-theme="black-rose"] {
@@ -115,6 +120,7 @@
   --line: #222222;
   --accent: #a06666;
   --danger: #5f8787;
+  --warning: #c4a078;
   color-scheme: dark;
 }
 :root[data-theme="gruvbox-dark-hard"] {
@@ -128,6 +134,7 @@
   --line: #504945;
   --accent: #83a598;
   --danger: #fb4934;
+  --warning: #fabd2f;
   color-scheme: dark;
 }
 :root[data-theme="rose-pine"] {
@@ -141,5 +148,6 @@
   --line: #26233a;
   --accent: #c4a7e7;
   --danger: #eb6f92;
+  --warning: #f6c177;
   color-scheme: dark;
 }

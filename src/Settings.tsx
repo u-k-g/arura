@@ -274,7 +274,7 @@ export default function Settings(props: {
               onChange={(e) =>
                 void run(() =>
                   saveArchivePolicy(
-                    Number(workspace()?.settings?.archiveDays ?? 7),
+                    Number(workspace()?.settings?.archiveDays ?? 14),
                     e.currentTarget.checked,
                   )
                 )}
@@ -289,7 +289,7 @@ export default function Settings(props: {
                 type="number"
                 min="1"
                 max="3650"
-                value={workspace()?.settings?.archiveDays ?? 7}
+                value={workspace()?.settings?.archiveDays ?? 14}
                 onChange={(e) =>
                   void run(() =>
                     saveArchivePolicy(

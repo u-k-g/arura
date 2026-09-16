@@ -533,9 +533,7 @@ export default function Resources(props: {
   newChat: (profile?: string) => Promise<void>;
 }) {
   const scoped = () =>
-    ["skills", "toolsets", "mcp", "jobs", "models", "auxiliary"].includes(
-      props.name,
-    );
+    ["skills", "toolsets", "mcp", "models", "auxiliary"].includes(props.name);
   const [resourceProfile, setResourceProfile] = createSignal("default");
   const [profiles, setProfiles] = createSignal<string[]>(["default"]);
   createEffect(() => {
@@ -556,7 +554,14 @@ export default function Resources(props: {
       disposed = true;
     });
   });
-  const [blueprints, setBlueprints] = createSignal<Blueprint[] | undefined>();
+  const [jobBlueprints, setJobBlueprints] = createSignal<Blueprint[]>([]);
+  createEffect(() => {
+    if (props.name === "jobs") {
+      void resource("blueprints")
+        .then((result) => setJobBlueprints(result.blueprints ?? []))
+        .catch(() => {});
+    }
+  });
   const [blueprint, setBlueprint] = createSignal<Blueprint>();
   const [blueprintValues, setBlueprintValues] = createSignal<
     Record<string, unknown>
@@ -571,7 +576,7 @@ export default function Resources(props: {
   const [connectionConversation, setConnectionConversation] = createSignal(
     preferences.getItem("arura.lastConversation") ?? "",
   );
-  const [path, setPath] = createSignal(props.initialPath ?? ""),
+  const [path, setPath] = createSignal(props.initialPath || "~"),
     [file, setFile] = createSignal<
       {
         path: string;
@@ -755,7 +760,7 @@ export default function Resources(props: {
       const value = await resource(
         surface().read,
         props.name === "files"
-          ? { path: path() }
+          ? { path: path().trim() || "~" }
           : props.name === "connectors"
           ? { conversation: connectionConversation() }
           : scoped()
@@ -824,6 +829,11 @@ export default function Resources(props: {
             ? Number(b.usage ?? 0) - Number(a.usage ?? 0)
             : 0) || String(a.name).localeCompare(String(b.name))
       );
+  const jobDate = (value: unknown, fallback: string) => {
+    if (!value) return fallback;
+    const date = new Date(String(value));
+    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+  };
   const masterDetail = () =>
     [
       "profiles",
@@ -887,6 +897,16 @@ export default function Resources(props: {
     ];
   const itemList = () => (
     <nav class="resource-rail" aria-label={`${surface().title} list`}>
+      <Show when={props.name === "jobs"}>
+        <input
+          type="search"
+          aria-label="Filter schedules"
+          placeholder="Search jobs…"
+          value={filter()}
+          onInput={(event) =>
+            setFilter(event.currentTarget.value)}
+        />
+      </Show>
       <Show when={props.name === "skills"}>
         <select
           aria-label="Sort skills"
@@ -967,6 +987,26 @@ export default function Resources(props: {
           </div>
         )}
       </For>
+      <Show when={props.name === "jobs"}>
+        <button
+          type="button"
+          aria-label="Add schedule"
+          onClick={() => void run(() => action("createJob"))}
+        >
+          <Icon name="plus" />
+        </button>
+        <h4>Blueprints</h4>
+        <For each={jobBlueprints()}>
+          {(item) => (
+            <button
+              type="button"
+              onClick={() => setBlueprint(item)}
+            >
+              {item.title}
+            </button>
+          )}
+        </For>
+      </Show>
     </nav>
   );
   const [actionPending, setActionPending] = createSignal(false);
@@ -1358,7 +1398,10 @@ export default function Resources(props: {
   return (
     <div
       class="resource-page"
-      classList={{ "resource-master-detail": masterDetail() }}
+      classList={{
+        "resource-master-detail": masterDetail(),
+        "jobs-page": props.name === "jobs",
+      }}
     >
       <Show when={props.name === "webhooks" && data()?.enabled === false}>
         <button
@@ -1573,17 +1616,6 @@ export default function Resources(props: {
           Host resources
         </button>
       </Show>
-      <Show when={props.name === "jobs"}>
-        <button
-          type="button"
-          onClick={() =>
-            void run(async () =>
-              setBlueprints((await resource("blueprints")).blueprints ?? [])
-            )}
-        >
-          Automation blueprints
-        </button>
-      </Show>
       <Show when={props.name === "backup"}>
         <Backups />
       </Show>
@@ -1707,6 +1739,34 @@ export default function Resources(props: {
                           {item.enabled ? "Enabled" : "Disabled"}
                         </span>
                       </Show>
+                      <Show when={props.name === "jobs"}>
+                        <div class="job-primary-actions">
+                          <button
+                            type="button"
+                            disabled={actionPending()}
+                            onClick={() =>
+                              void run(() =>
+                                action(
+                                  item.enabled === false
+                                    ? "resumeJob"
+                                    : "pauseJob",
+                                  item,
+                                )
+                              )}
+                          >
+                            {item.enabled === false ? "Resume" : "Pause"}
+                          </button>
+                          <button
+                            type="button"
+                            class="primary"
+                            disabled={actionPending()}
+                            onClick={() =>
+                              void run(() => action("runJob", item))}
+                          >
+                            Trigger now
+                          </button>
+                        </div>
+                      </Show>
                     </div>
                     <Show when={props.name === "jobs"}>
                       <dl class="job-metadata">
@@ -1724,17 +1784,16 @@ export default function Resources(props: {
                         <div>
                           <dt>Last</dt>
                           <dd>
-                            {String(
-                              item.last_run_at ??
-                                item.last_run ??
-                                "Not run yet",
+                            {jobDate(
+                              item.last_run_at ?? item.last_run,
+                              "Not run yet",
                             )}
                           </dd>
                         </div>
                         <div>
                           <dt>Next</dt>
                           <dd>
-                            {String(item.next_run_at ?? item.next_run ?? "—")}
+                            {jobDate(item.next_run_at ?? item.next_run, "—")}
                           </dd>
                         </div>
                         <div>
@@ -1745,7 +1804,9 @@ export default function Resources(props: {
                         </div>
                       </dl>
                       <Show when={item.last_error}>
-                        <p class="error">{String(item.last_error)}</p>
+                        <p class="job-error" role="alert">
+                          {String(item.last_error)}
+                        </p>
                       </Show>
                       <h4>Prompt</h4>
                       <pre class="resource-document">
@@ -1810,9 +1871,9 @@ export default function Resources(props: {
                         each={(surface().actions ?? []).filter(
                           ([, op]) =>
                             (props.name !== "jobs" ||
-                              ((op !== "pauseJob" || item.enabled !== false) &&
-                                (op !== "resumeJob" ||
-                                  item.enabled === false))) &&
+                              !["runJob", "pauseJob", "resumeJob"].includes(
+                                op,
+                              )) &&
                             (props.name !== "pairing" ||
                               (op === "approvePairing"
                                 ? item.accessStatus === "pending"
@@ -1838,7 +1899,7 @@ export default function Resources(props: {
                     <Show when={props.name === "jobs"}>
                       <JobHistory
                         id={rowId(item)}
-                        profile={resourceProfile()}
+                        profile={String(item.profile ?? "")}
                         navigate={props.navigate}
                       />
                     </Show>
@@ -2253,37 +2314,6 @@ export default function Resources(props: {
                   })}
               >
                 {c.title}
-              </button>
-            )}
-          </For>
-        </Dialog>
-      </Show>
-      <Show when={blueprints()}>
-        <Dialog
-          title="Automation blueprints"
-          close={() => setBlueprints(undefined)}
-        >
-          <For each={blueprints()}>
-            {(item) => (
-              <button
-                type="button"
-                class="list-button"
-                onClick={() => {
-                  setBlueprint(item);
-                  setBlueprintValues(
-                    Object.fromEntries(
-                      item.fields.map((field) => [
-                        field.name,
-                        field.default ?? "",
-                      ]),
-                    ),
-                  );
-                  setBlueprints(undefined);
-                }}
-              >
-                <strong>{item.title}</strong>
-                <span>{item.description}</span>
-                <small>{item.scheduleHuman}</small>
               </button>
             )}
           </For>

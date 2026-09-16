@@ -131,18 +131,31 @@ grace period.
   overlay dialogs. Threads returns to the last conversation. Mobile uses the
   same row in its navigation sheet and closes the sheet on selection.
 - Messaging setup lives in Settings, with no permanent sidebar shortcut.
+- Use the global search palette; no separate sidebar session-search field.
+- Scheduled jobs show all profiles together, with blueprints in the job list,
+  compact timestamps and prompt previews, and primary actions above the details.
+- Settings has one gear button in the sidebar footer, not the top bar. The
+  footer profile selector chooses the profile for new chats. Archive is
+  available in both the top bar and each chat's context menu. Archiving or
+  deleting the open chat returns to a blank new-chat screen in that profile.
 - Bot conversations display their bot's name rather than "Bot Chat". Preserve
   Hermes's canonical session title internally so bot discovery remains
   compatible.
 - The model picker opens as a compact popover anchored to its composer button,
   with a left rail containing only providers and Starred (no All models),
   opening on Starred, with a searchable model list, per-model stars synchronized
-  across devices, and an always-visible reasoning effort selector. Keep
-  model-list customization available.
+  across devices, and an always-visible reasoning effort selector limited to
+  supported levels for the selected model and provider. Disable it when support
+  is unknown or absent. Model-list customization lives in Settings. Model
+  changes do not insert visible notices into conversation history.
 - **Pinned:** manually pinned entries and all folders. Folder contents count as
   pinned. Folders cannot live in any other section.
-- **Other entries:** below Pinned, no folders; autoarchive after seven days of
-  inactivity, configurable.
+- **Other entries:** below Pinned, no folders; autoarchive after fourteen days
+  of inactivity by default, configurable. Age labels use the theme's warning
+  color during the final day and error color once due. Disabled autoarchive,
+  pinned or Essential entries, folder contents, bot chats, active runs, and
+  pending input are exempt. Bot chats never autoarchive, regardless of
+  inactivity. Restoring an entry restarts this clock.
 - **Archived:** at the bottom; collapsed initially; newest ten archived entries,
   “Show 10 more,” and an Unarchive action on each. Unarchive returns an entry to
   ordinary unpinned navigation and restarts its inactivity window.
@@ -152,7 +165,8 @@ grace period.
   closes the navigation sheet. Editors, documents, and substantial settings can
   occupy the current full-screen view. No internal tabs or split panes.
 - While a turn runs, show readable activity/progress. On completion, retain its
-  final answer and collapse intermediate work beneath “Worked for __m __s.” Keep
+  final answer and collapse intermediate work beneath “Worked for __m __s.”
+  Place this summary directly after its user prompt, before the answer. Keep
   previous conversation turns. [T3 Code](https://github.com/pingdotgg/t3code) is
   the presentation reference, not a dependency. Do not transmit reasoning to the
   UI, including through replay, restored transcripts, or subagent views.

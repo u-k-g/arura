@@ -232,9 +232,9 @@ async function reconcile() {
       const rawConfig = await hermes.rest("/api/config");
       const config = record(rawConfig.config ?? rawConfig);
       const sessionsConfig = record(config.sessions);
-      const days = Number(sessionsConfig.auto_archive_days ?? 7);
+      const days = Number(sessionsConfig.auto_archive_days ?? 14);
       const archivePolicy = {
-        days: Number.isFinite(days) && days >= 1 ? days : 7,
+        days: Number.isFinite(days) && days >= 1 ? days : 14,
         enabled: sessionsConfig.auto_archive !== false,
       };
       const existing = await convex.query(anyApi.workspace.sourceKeys, {});
@@ -1260,6 +1260,9 @@ async function handle(request: Request, ip: string): Promise<Response> {
     try {
       if (changesProfile && reconciling) await reconciling;
       if (op === "editProfile" && params.id !== "default") {
+        // Release live agents while the old home still exists. Dropping only
+        // Arura's cache leaves Hermes agents pointing at the renamed directory.
+        await hermes.releaseProfile(params.id);
         await convex.mutation(anyApi.profiles.prepareRename, {
           from: params.id,
           to: String(body.new_name).trim().toLowerCase(),
@@ -1298,6 +1301,7 @@ async function handle(request: Request, ip: string): Promise<Response> {
       return json(result);
     } finally {
       if (changesProfile) {
+        hermes.finishProfileChange(params.id);
         profileChanges--;
         await reconcile();
       }

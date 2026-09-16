@@ -9,8 +9,13 @@ import {
 import { mutate, workspace } from "./client.ts";
 import { Icon, IconButton, run } from "./ui.tsx";
 import "./model-picker.css";
+import {
+  type ReasoningCapabilities,
+  reasoningLevels,
+} from "../shared/model-reasoning.ts";
 
 export type ModelOption = {
+  capabilities?: ReasoningCapabilities;
   provider?: string;
   providerName?: string;
   id?: string;
@@ -31,6 +36,7 @@ export default function ModelPicker(props: {
   anchor?: HTMLButtonElement;
   models: ModelOption[];
   current: string;
+  provider: string;
   effort: string;
   close: () => void;
   choose: (model: ModelOption) => Promise<void>;
@@ -106,6 +112,25 @@ export default function ModelPicker(props: {
           .includes(search().trim().toLowerCase()),
     )
   );
+  const selected = createMemo(() => {
+    const matches = props.models.filter((entry) =>
+      [entry.id, entry.model, modelLabel(entry)].includes(props.current)
+    );
+    return (
+      matches.find((entry) => entry.provider === props.provider) ??
+        (matches.length === 1 ? matches[0] : undefined)
+    );
+  });
+  const efforts = createMemo(() => {
+    const entry = selected();
+    return entry
+      ? reasoningLevels(
+        entry.provider ?? "",
+        entry.id ?? entry.model ?? "",
+        entry.capabilities,
+      )
+      : undefined;
+  });
   const perform = (action: () => Promise<void>) => {
     if (busy()) return;
     setBusy(true);
@@ -229,28 +254,23 @@ export default function ModelPicker(props: {
               Reasoning effort
               <select
                 aria-label="Reasoning effort"
-                value={props.effort}
-                disabled={busy()}
+                value={efforts()?.includes(props.effort) ? props.effort : ""}
+                disabled={busy() || !efforts()?.length}
                 onChange={(event) => {
                   const effort = event.currentTarget.value;
-                  perform(() => props.changeEffort(effort));
+                  if (efforts()?.includes(effort)) {
+                    perform(() => props.changeEffort(effort));
+                  }
                 }}
               >
                 <option value="" disabled>
-                  Choose effort
+                  {efforts() === undefined
+                    ? "Not reported"
+                    : !efforts()?.length
+                    ? "Not supported"
+                    : "Choose effort"}
                 </option>
-                <For
-                  each={[
-                    "none",
-                    "minimal",
-                    "low",
-                    "medium",
-                    "high",
-                    "xhigh",
-                    "max",
-                    "ultra",
-                  ]}
-                >
+                <For each={efforts() ?? []}>
                   {(effort) => (
                     <option value={effort}>
                       {effort === "none"

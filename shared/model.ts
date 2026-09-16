@@ -38,6 +38,8 @@ export function groupMessages(messages: Message[]) {
   }[] = [];
   let group: (typeof groups)[number] | undefined;
   for (const message of messages) {
+    // Older synchronized history may still contain this presentation-only event.
+    if (message.role === "event" && message.text === "Model changed") continue;
     if (message.role === "event") {
       groups.push({ event: message, work: [] });
       group = undefined;
@@ -174,11 +176,23 @@ export function shouldArchive(
 ): boolean {
   return (
     c.section === "recent" &&
+    !c.bot &&
     !c.folderId &&
     !c.running &&
     !c.pendingInput &&
     now - Math.max(c.activityAt, c.unarchivedAt ?? 0) >= days * 86_400_000
   );
+}
+export function archiveAgeStatus(
+  c: Conversation,
+  days: number,
+  now: number,
+  enabled = true,
+): "warning" | "overdue" | undefined {
+  if (!enabled || !Number.isFinite(days) || days < 1) return undefined;
+  if (shouldArchive(c, days, now)) return "overdue";
+  if (shouldArchive(c, Math.max(0, days - 1), now)) return "warning";
+  return undefined;
 }
 export function plainText(value: unknown): string {
   if (typeof value === "string") return value;
@@ -299,6 +313,7 @@ export function normalizeMessages(rows: Record<string, unknown>[]): Message[] {
   return rows.flatMap((row, index): Message[] => {
     if (
       row.display_kind === "hidden" ||
+      row.display_kind === "model_switch" ||
       !["user", "assistant", "tool"].includes(String(row.role))
     ) {
       return [];
@@ -313,7 +328,6 @@ export function normalizeMessages(rows: Record<string, unknown>[]): Message[] {
       ? row.timestamp * 1000
       : undefined;
     const eventLabels: Record<string, string> = {
-      model_switch: "Model changed",
       auto_continue: "Resumed interrupted turn",
       personality_switch: "Personality changed",
       async_delegation_complete: "Background agent work finished",

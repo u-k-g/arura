@@ -1,6 +1,7 @@
 import { deepStrictEqual, equal } from "node:assert/strict";
 import { fileReferences } from "../shared/artifacts.ts";
 import {
+  archiveAgeStatus,
   type Conversation,
   groupMessages,
   interactionFromEvent,
@@ -219,6 +220,7 @@ Deno.test("archive protects pinned folders, active work, input, and recently res
   equal(shouldArchive(c, 7, now), true);
   for (
     const patch of [
+      { bot: true },
       { section: "essential" },
       { section: "pinned" },
       { folderId: "folder" },
@@ -274,14 +276,14 @@ Deno.test("timeline events retain chronology without becoming user messages", ()
     {
       id: 3,
       role: "user",
-      display_kind: "model_switch",
+      display_kind: "personality_switch",
       content: "Internal model event",
     },
     { id: 4, role: "assistant", content: "After" },
   ]);
   const groups = groupMessages(messages);
   equal(groups[0].answer?.text, "Before");
-  equal(groups[1].event?.text, "Model changed");
+  equal(groups[1].event?.text, "Personality changed");
   equal(groups[2].answer?.text, "After");
 });
 
@@ -305,4 +307,54 @@ Deno.test("tool calls split across history pages retain both input and output", 
     input: "notes",
     output: "File contents",
   });
+});
+
+Deno.test("model switches are hidden without removing ordinary messages", () => {
+  const rows = normalizeMessages([
+    { id: 1, role: "user", content: "Model changed" },
+    {
+      id: 2,
+      role: "user",
+      display_kind: "model_switch",
+      content: "Internal event",
+    },
+  ]);
+  equal(rows.length, 1);
+  equal(rows[0].text, "Model changed");
+  equal(
+    groupMessages([{ id: "legacy", role: "event", text: "Model changed" }])
+      .length,
+    0,
+  );
+});
+
+Deno.test("archive age warnings share archive eligibility and restored inactivity window", () => {
+  const now = 20 * 86400000;
+  const c = {
+    section: "recent",
+    activityAt: now - 13 * 86400000,
+  } as Conversation;
+  equal(archiveAgeStatus(c, 14, now), "warning");
+  equal(archiveAgeStatus(c, 14, now + 86400000), "overdue");
+  equal(archiveAgeStatus(c, 14, now - 1), undefined);
+  equal(archiveAgeStatus(c, 14, now, false), undefined);
+  equal(archiveAgeStatus({ ...c, bot: true }, 14, now + 86400000), undefined);
+  for (
+    const patch of [
+      { bot: true },
+      { section: "pinned" },
+      { section: "essential" },
+      { section: "archived" },
+      { folderId: "folder" },
+      { running: true },
+      { pendingInput: true },
+      { unarchivedAt: now },
+    ]
+  ) {
+    equal(
+      archiveAgeStatus({ ...c, ...patch } as Conversation, 14, now),
+      undefined,
+    );
+  }
+  equal(archiveAgeStatus(c, 30, now), undefined);
 });

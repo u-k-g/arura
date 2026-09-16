@@ -56,6 +56,7 @@ export class Hermes extends EventEmitter {
     { timer?: ReturnType<typeof setTimeout> }
   >();
   online = false;
+  private changingProfiles = new Set<string>();
   // Restore only unfinished projections; gateway snapshots remain authoritative.
   restoreRunningTurns(turns: Turn[]) {
     for (const turn of turns) {
@@ -632,6 +633,9 @@ export class Hermes extends EventEmitter {
     if (!result.running) this.emit("settled", key);
   }
   async attach(key: string): Promise<string> {
+    if (this.changingProfiles.has(JSON.parse(key)[0])) {
+      throw new Error("Profile is being renamed. Try again shortly.");
+    }
     const cached = this.runtime.get(key);
     if (cached) return cached;
     const pending = this.attaching.get(key);
@@ -743,6 +747,34 @@ export class Hermes extends EventEmitter {
       this.turns.delete(key);
       this.seq.delete(sid);
     }
+  }
+  async releaseProfile(profile: string) {
+    this.changingProfiles.add(profile);
+    await Promise.all(
+      [...this.attaching]
+        .filter(([key]) => JSON.parse(key)[0] === profile)
+        .map(([, pending]) => pending.catch(() => undefined)),
+    );
+    const sessions = [...this.runtime].filter(
+      ([key]) => JSON.parse(key)[0] === profile,
+    );
+    if (!sessions.length) return;
+    const live = await this.call("session.active_list", {});
+    const rows = (live.sessions ?? []) as { id: string; status: string }[];
+    if (
+      sessions.some(([, id]) =>
+        rows.some((row) => row.id === id && row.status !== "idle")
+      )
+    ) {
+      throw new Error("Stop active work before renaming this profile");
+    }
+    for (const [, session_id] of sessions) {
+      await this.call("session.close", { session_id });
+    }
+    this.forgetProfile(profile);
+  }
+  finishProfileChange(profile: string) {
+    this.changingProfiles.delete(profile);
   }
   async list() {
     const discovery = await this.rest(

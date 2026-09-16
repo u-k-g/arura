@@ -83,6 +83,7 @@ function Markdown(props: { text: string }) {
 }
 const ContextSuggestions = lazy(() => import("./ContextSuggestions.tsx"));
 export default function Chat(props: {
+  profile?: string;
   conversation: string;
   title: string;
   navigate: (view: string) => void;
@@ -116,6 +117,7 @@ export default function Chat(props: {
     [model, setModel] = createSignal("");
   const [modelLoading, setModelLoading] = createSignal(false);
   let modelButton: HTMLButtonElement | undefined;
+  const [currentProvider, setCurrentProvider] = createSignal("");
   const [currentModel, setCurrentModel] = createSignal("");
   const [currentEffort, setCurrentEffort] = createSignal("");
   createEffect(() => {
@@ -367,7 +369,9 @@ export default function Chat(props: {
         ...(edit() ? { edit: edit() } : {}),
       };
       if (!key) {
-        const created = await command("create", "", { profile: "default" });
+        const created = await command("create", "", {
+          profile: props.profile ?? "default",
+        });
         key = String(created.key);
         // Preserve the unsent draft if submitting to the new session fails.
         await draft(key, value);
@@ -418,7 +422,7 @@ export default function Chat(props: {
       try {
         const body = new FormData();
         body.append("file", file);
-        const profile = key ? JSON.parse(key)[0] : "default";
+        const profile = key ? JSON.parse(key)[0] : (props.profile ?? "default");
         const r = await fetch(
           `/api/upload?profile=${encodeURIComponent(profile)}`,
           { method: "POST", body },
@@ -464,7 +468,9 @@ export default function Chat(props: {
     let key = props.conversation;
     if (!key) {
       draftConversation ??= (async () => {
-        const created = await command("create", "", { profile: "default" });
+        const created = await command("create", "", {
+          profile: props.profile ?? "default",
+        });
         const next = String(created.key);
         await draft(next, text());
         await draftAttachments(next, uploads());
@@ -550,13 +556,33 @@ export default function Chat(props: {
       {activity.label}
     </div>
   );
+  const renderLiveWork = (t: Turn) => (
+    <Show when={t.activity.length && !historyOwnsWork()}>
+      <details class="work-summary">
+        <summary>
+          {t.state === "running" ? "Working" : "Worked"} for{" "}
+          {elapsed(t.startedAt, t.finishedAt ?? clock())}
+          <span class="activity-count">
+            {" "}
+            · {t.activity.length} tool{" "}
+            {t.activity.length === 1 ? "call" : "calls"}
+          </span>
+          <Icon name="nav-arrow-down" />
+        </summary>
+        <For each={t.activity}>{renderActivity}</For>
+      </details>
+    </Show>
+  );
   const renderMessage = (message: Message) => (
     <article class={`message ${message.role}`} data-message-id={message.id}>
       <Show
         when={message.role !== "tool"}
         fallback={
           <details class="past-tool">
-            <summary>{message.tool ?? "Tool result"}</summary>
+            <summary>
+              {(message.tool ?? "Tool result").replaceAll("_", " ")}
+              <Icon name="nav-arrow-down" />
+            </summary>
             <button
               type="button"
               class="desktop-only text-button"
@@ -781,6 +807,9 @@ export default function Chat(props: {
                 <Show when={group.prompt}>
                   {(message) => renderMessage(message())}
                 </Show>
+                <Show when={index() === groups().length - 1 && turn()}>
+                  {(t) => renderLiveWork(t())}
+                </Show>
                 <Show
                   when={turn()?.state === "running" &&
                     index() === groups().length - 1}
@@ -792,9 +821,6 @@ export default function Chat(props: {
                   >
                     {renderMessage}
                   </For>
-                </Show>
-                <Show when={group.answer}>
-                  {(message) => renderMessage(message())}
                 </Show>
                 <Show
                   when={group.work.length &&
@@ -820,6 +846,7 @@ export default function Chat(props: {
                             : (group.answer?.createdAt ?? 0),
                         )}
                       </Show>
+                      <Icon name="nav-arrow-down" />
                     </summary>
                     <For each={group.work}>{renderMessage}</For>
                     <Show when={group === settledHistoryGroup()}>
@@ -827,7 +854,9 @@ export default function Chat(props: {
                         each={turn()?.activity.filter(
                           (activity) =>
                             !group.work.some(
-                              (message) => message.toolCallId === activity.id,
+                              (message) =>
+                                message.toolCallId === activity.id ||
+                                message.tool === activity.label,
                             ),
                         )}
                       >
@@ -835,6 +864,9 @@ export default function Chat(props: {
                       </For>
                     </Show>
                   </details>
+                </Show>
+                <Show when={group.answer}>
+                  {(message) => renderMessage(message())}
                 </Show>
               </>
             )}
@@ -851,27 +883,14 @@ export default function Chat(props: {
                   "settled-work": t().state !== "running" && turnIsInHistory(),
                 }}
               >
-                <Show when={t().text && !turnIsInHistory()}>
-                  <Markdown text={t().text} />
-                </Show>
                 <Show when={t().recovering}>
                   <p class="subtitle" role="status">
                     Recovering live progress from Hermes…
                   </p>
                 </Show>
-                <Show when={t().activity.length && !historyOwnsWork()}>
-                  <details class="work-summary">
-                    <summary>
-                      {t().state === "running" ? "Working" : "Worked"} for{" "}
-                      {elapsed(t().startedAt, t().finishedAt ?? clock())}
-                      <span class="activity-count">
-                        {" "}
-                        · {t().activity.length} tool{" "}
-                        {t().activity.length === 1 ? "call" : "calls"}
-                      </span>
-                    </summary>
-                    <For each={t().activity}>{renderActivity}</For>
-                  </details>
+                <Show when={!groups().length}>{renderLiveWork(t())}</Show>
+                <Show when={t().text && !turnIsInHistory()}>
+                  <Markdown text={t().text} />
                 </Show>
                 <Show
                   when={t().state === "running" &&
@@ -1232,7 +1251,7 @@ export default function Chat(props: {
             text={text()}
             profile={props.conversation
               ? JSON.parse(props.conversation)[0]
-              : "default"}
+              : (props.profile ?? "default")}
             error={turn()?.error}
             useSkill={(name) => {
               changeText(`/${name} ${text()}`);
@@ -1335,18 +1354,27 @@ export default function Chat(props: {
                 setModelLoading(true);
                 void run(async () => {
                   const result = await rpc("model.options");
+                  setCurrentProvider(String(result.provider ?? ""));
+                  if (typeof result.model === "string") {
+                    setCurrentModel(result.model);
+                  }
                   setModels(
                     result.providers?.flatMap(
                       (provider: {
                         slug: string;
                         name: string;
                         models?: string[];
+                        capabilities?: Record<
+                          string,
+                          ModelOption["capabilities"]
+                        >;
                       }) =>
                         (provider.models ?? []).map((id: string) => ({
                           id,
                           provider: provider.slug,
                           name: id,
                           providerName: provider.name,
+                          capabilities: provider.capabilities?.[id],
                         })),
                     ) ??
                       result.models ??
@@ -1530,6 +1558,7 @@ export default function Chat(props: {
           anchor={modelButton}
           models={models()}
           current={currentModel()}
+          provider={currentProvider()}
           effort={currentEffort()}
           close={() => setModel("")}
           choose={async (m) => {
@@ -1558,6 +1587,7 @@ export default function Chat(props: {
               });
             }
             setCurrentModel(modelLabel(m));
+            setCurrentProvider(m.provider ?? "");
             setModel("");
           }}
           changeEffort={async (effort) => {

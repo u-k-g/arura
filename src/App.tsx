@@ -25,6 +25,7 @@ import {
   mutate,
   notice,
   request,
+  resource,
   start,
   subscribe,
   workspace,
@@ -37,7 +38,7 @@ import {
   preferences,
   saveCache,
 } from "./cache.ts";
-import type { Conversation } from "../shared/model.ts";
+import { archiveAgeStatus, type Conversation } from "../shared/model.ts";
 import CommandPalette, { type PaletteItem } from "./CommandPalette.tsx";
 const Chat = lazy(() => import("./Chat.tsx"));
 const Settings = lazy(() => import("./Settings.tsx"));
@@ -60,7 +61,6 @@ export default function App() {
   const [view, setView] = createSignal(preferences.getItem("arura.view") ?? "");
   const [sheet, setSheet] = createSignal(false),
     [search, setSearch] = createSignal(""),
-    [sidebarFilter, setSidebarFilter] = createSignal(""),
     [palette, setPalette] = createSignal(false);
   const [matches, setMatches] = createSignal<
     { key: string; title: string; profile: string }[]
@@ -279,12 +279,7 @@ export default function App() {
     setPalette(false);
     setSearch("");
   };
-  const chats = () =>
-    ((workspace()?.conversations ?? []) as Conversation[]).filter(
-      (c) =>
-        !sidebarFilter().trim() ||
-        c.title.toLowerCase().includes(sidebarFilter().trim().toLowerCase()),
-    );
+  const chats = () => (workspace()?.conversations ?? []) as Conversation[];
   const selected = () =>
     chats().find((c) => c.key === view()) ??
       archived().find((c) => c.key === view()) ??
@@ -331,8 +326,36 @@ export default function App() {
       }
     });
   });
+  const [chosenProfile, setChosenProfile] = createSignal(
+    preferences.getItem("arura.profile") || "default",
+  );
+  const [profileNames, setProfileNames] = createSignal<string[]>(["default"]);
+  const currentProfile = () => selected()?.profile ?? chosenProfile();
+  createEffect(() => {
+    const profile = selected()?.profile;
+    if (profile) {
+      setChosenProfile(profile);
+      preferences.setItem("arura.profile", profile);
+    }
+  });
+  createEffect(() => {
+    if (!connected()) return;
+    let disposed = false;
+    void resource("profileRoster")
+      .then((result) => {
+        if (!disposed) {
+          setProfileNames(
+            (result.profiles ?? []).map((p: { name: string }) => p.name),
+          );
+        }
+      })
+      .catch(() => {});
+    onCleanup(() => {
+      disposed = true;
+    });
+  });
   const [creatingChat, setCreatingChat] = createSignal(false);
-  async function newChat(profile = "default") {
+  async function newChat(profile = currentProfile()) {
     if (creatingChat()) return;
     setCreatingChat(true);
     try {
@@ -342,6 +365,14 @@ export default function App() {
       });
     } finally {
       setCreatingChat(false);
+    }
+  }
+  async function archiveConversation(conversation: Conversation) {
+    const section = conversation.section === "archived" ? "recent" : "archived";
+    await mutate("workspace.move", { key: conversation.key, section });
+    if (section === "archived" && view() === conversation.key) {
+      setChosenProfile(conversation.profile);
+      navigate("");
     }
   }
   const openMenu = (conversation: Conversation, event: MouseEvent) => {
@@ -369,7 +400,7 @@ export default function App() {
         label: "New conversation",
         icon: "plus",
         group: "Actions",
-        run: () => void newChat(selected()?.profile ?? "default"),
+        run: () => void newChat(currentProfile()),
       },
       {
         id: "sidebar",
@@ -414,6 +445,16 @@ export default function App() {
       .filter((c) => c.section === "recent" && !c.backgroundSession)
       .sort((a, b) => b.activityAt - a.activityAt)
   );
+  const [ageNow, setAgeNow] = createSignal(Date.now());
+  const ageTimer = setInterval(() => setAgeNow(Date.now()), 60_000);
+  onCleanup(() => clearInterval(ageTimer));
+  const ageStatus = (c: Conversation) =>
+    archiveAgeStatus(
+      c,
+      Number(workspace()?.settings.archiveDays ?? 14),
+      ageNow(),
+      workspace()?.settings.archiveEnabled !== false,
+    );
   const row = (c: Conversation) => (
     <div
       class="thread-row"
@@ -433,10 +474,20 @@ export default function App() {
       >
         <span class="session-dot" classList={{ running: c.running }} />
         <span>{c.title}</span>
-        <time class="session-age">
-          {Math.max(0, Math.floor((Date.now() - c.activityAt) / 86400000)) ||
-            ""}
-          {Date.now() - c.activityAt >= 86400000 ? "d" : "now"}
+        <time
+          class="session-age"
+          classList={{
+            "archive-warning": ageStatus(c) === "warning",
+            "archive-overdue": ageStatus(c) === "overdue",
+          }}
+          title={ageStatus(c) === "overdue"
+            ? "Due for automatic archive"
+            : ageStatus(c) === "warning"
+            ? "Automatic archive within one day"
+            : undefined}
+        >
+          {Math.max(0, Math.floor((ageNow() - c.activityAt) / 86400000)) || ""}
+          {ageNow() - c.activityAt >= 86400000 ? "d" : "now"}
         </time>
         <Show when={c.running}>
           <i class="busy-dot" />
@@ -493,26 +544,6 @@ export default function App() {
           }}
         </For>
       </nav>
-      <div class="nav-search">
-        <IconButton
-          icon="search"
-          label="Find anything"
-          onClick={() => setPalette(true)}
-        />
-        <input
-          aria-label="Filter sessions"
-          placeholder="Search sessions…"
-          value={sidebarFilter()}
-          onInput={(event) => setSidebarFilter(event.currentTarget.value)}
-        />
-        <Show when={sidebarFilter()}>
-          <IconButton
-            icon="xmark"
-            label="Clear session filter"
-            onClick={() => setSidebarFilter("")}
-          />
-        </Show>
-      </div>
       <div class="nav-scroll">
         <Show when={chats().some((c) => c.section === "essential")}>
           <div class="section-heading">
@@ -724,22 +755,37 @@ export default function App() {
       </div>
       <footer class="nav-footer">
         <div class="profile-actions">
-          <button
-            type="button"
+          <select
             class="profile-name"
-            aria-label="Profiles and bots"
-            onClick={() => navigate("resources:profiles")}
+            aria-label="Select profile"
+            value={currentProfile()}
+            onChange={(event) => {
+              const profile = event.currentTarget.value;
+              setChosenProfile(profile);
+              preferences.setItem("arura.profile", profile);
+              const latest = chats()
+                .filter(
+                  (c) =>
+                    c.profile === profile &&
+                    c.section !== "archived" &&
+                    !c.backgroundSession,
+                )
+                .sort((a, b) => b.activityAt - a.activityAt)[0];
+              navigate(latest?.key ?? "");
+            }}
           >
-            {selected()?.profile ?? "default"}
-          </button>
+            <For each={[...new Set([currentProfile(), ...profileNames()])]}>
+              {(name) => <option value={name}>{name}</option>}
+            </For>
+          </select>
           <IconButton
             icon="folder"
             label="Files"
             onClick={() => navigate("resources:files")}
           />
           <IconButton
-            icon="more-horiz"
-            label="All settings"
+            icon="settings"
+            label="Settings"
             onClick={() => navigate("settings")}
           />
         </div>
@@ -850,7 +896,7 @@ export default function App() {
               icon="plus"
               label="New conversation"
               disabled={!connected()}
-              onClick={() => void newChat(selected()?.profile ?? "default")}
+              onClick={() => void newChat(currentProfile())}
             />
             <IconButton
               icon="search"
@@ -867,15 +913,7 @@ export default function App() {
                       : "Archive conversation"}
                     disabled={c().section !== "archived" &&
                       (c().running || c().pendingInput)}
-                    onClick={() =>
-                      void run(() =>
-                        mutate("workspace.move", {
-                          key: c().key,
-                          section: c().section === "archived"
-                            ? "recent"
-                            : "archived",
-                        })
-                      )}
+                    onClick={() => void run(() => archiveConversation(c()))}
                   />
                   <IconButton
                     icon="more-horiz"
@@ -885,11 +923,6 @@ export default function App() {
                 </>
               )}
             </Show>
-            <IconButton
-              icon="settings"
-              label="Settings"
-              onClick={() => navigate("settings")}
-            />
           </header>
           <Show
             when={!creatingChat()}
@@ -916,6 +949,7 @@ export default function App() {
                             fallback={
                               <Chat
                                 conversation=""
+                                profile={chosenProfile()}
                                 title="New session"
                                 navigate={navigate}
                               />
@@ -1097,6 +1131,19 @@ export default function App() {
             <div class="action-list">
               <button
                 type="button"
+                disabled={c().section !== "archived" &&
+                  (c().running || c().pendingInput)}
+                onClick={() =>
+                  void run(async () => {
+                    await archiveConversation(c());
+                    setMenu(undefined);
+                  })}
+              >
+                <Icon name="archive" />
+                {c().section === "archived" ? "Unarchive" : "Archive"}
+              </button>
+              <button
+                type="button"
                 onClick={() =>
                   void run(async () => {
                     await mutate("workspace.markRead", {
@@ -1229,7 +1276,14 @@ export default function App() {
                   if (
                     await confirmAction("Permanently delete this conversation?")
                   ) {
-                    void run(() => command("delete", c().key, {}));
+                    const conversation = c();
+                    await run(async () => {
+                      await command("delete", conversation.key, {});
+                      if (view() === conversation.key) {
+                        setChosenProfile(conversation.profile);
+                        navigate("");
+                      }
+                    });
                   }
                   setMenu(undefined);
                 }}

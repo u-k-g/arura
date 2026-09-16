@@ -600,3 +600,53 @@
   border: 1px solid var(--line);
   font-size: 12px;
 }
+
+.jobs-page .resource-document {
+  max-height: 300px;
+  overflow: auto;
+  background: var(--hover);
+  border: 0;
+  padding: 12px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.jobs-page .job-error {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 9%, transparent);
+  padding: 10px 12px;
+  border-radius: 4px;
+}
+.job-primary-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.jobs-page .job-metadata {
+  margin: 16px 0;
+  font-size: 12px;
+}
+.jobs-page .resource-card > .row {
+  align-items: center;
+}
+
+.jobs-page > .filter {
+  display: none;
+}
+.jobs-page .resource-rail > input {
+  width: 100%;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.jobs-page .resource-rail > button {
+  text-align: left;
+  border: 0;
+  font-size: 12px;
+  padding: 7px 8px;
+  background: transparent;
+}
+.jobs-page .resource-rail > h4 {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  margin: 20px 8px 6px;
+}

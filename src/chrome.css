@@ -692,3 +692,10 @@ dialog.conversation-menu {
 .navigation .section-heading > .icon-button {
   order: 1;
 }
+
+.session-age.archive-warning {
+  color: var(--warning);
+}
+.session-age.archive-overdue {
+  color: var(--danger);
+}
