@@ -478,14 +478,6 @@ export default function App() {
       <nav class="sidebar-actions" aria-label="Hermes tools">
         <button
           type="button"
-          classList={{ selected: view() === "resources:platforms" }}
-          onClick={() => navigate("resources:platforms")}
-        >
-          <Icon name="chat-bubble" />
-          <span>Messaging</span>
-        </button>
-        <button
-          type="button"
           classList={{ selected: view() === "resources:artifacts" }}
           onClick={() => navigate("resources:artifacts")}
         >

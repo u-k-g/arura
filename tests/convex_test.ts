@@ -426,3 +426,52 @@ Deno.test({
     }
   },
 });
+
+Deno.test({
+  name: "idle reconciliation removes stale runs without erasing a newer run",
+  ignore: !Deno.env.get("CONVEX_SELF_HOSTED_URL"),
+  async fn() {
+    const client = new ConvexHttpClient(
+      requireValue(Deno.env.get("CONVEX_SELF_HOSTED_URL"), "Convex URL"),
+    );
+    client.setAuth(await (await identity()).sign("arura:adapter"));
+    const conversation = JSON.stringify(["default", crypto.randomUUID()]);
+    const turn = {
+      conversation,
+      state: "running",
+      startedAt: 1000,
+      text: "",
+      activity: [],
+      interactions: [],
+    };
+    await client.mutation(api.workspace.ingest, { turn });
+    await client.mutation(api.workspace.ingest, {
+      idleTurn: { conversation, startedAt: 1000 },
+    });
+    let running = (await client.query(api.workspace.runningTurns, {})) as {
+      conversation: string;
+      startedAt: number;
+    }[];
+    assert.equal(
+      running.some((row) => row.conversation === conversation),
+      false,
+    );
+    await client.mutation(api.workspace.ingest, {
+      turn: { ...turn, startedAt: 2000 },
+    });
+    await client.mutation(api.workspace.ingest, {
+      idleTurn: { conversation, startedAt: 1000 },
+    });
+    running = (await client.query(api.workspace.runningTurns, {})) as {
+      conversation: string;
+      startedAt: number;
+    }[];
+    assert.equal(
+      running.find((row) => row.conversation === conversation)?.startedAt,
+      2000,
+    );
+    await client.mutation(api.workspace.ingest, {
+      idleTurn: { conversation, startedAt: 2000 },
+    });
+  },
+});

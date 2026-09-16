@@ -45,6 +45,7 @@ export class Hermes extends EventEmitter {
   private attaching = new Map<string, Promise<string>>();
   private reverse = new Map<string, string>();
   private turns = new Map<string, Turn>();
+  private persistedTurns = new Set<string>();
   private connecting?: Promise<void>;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
   private authPromise?: Promise<void>;
@@ -55,6 +56,15 @@ export class Hermes extends EventEmitter {
     { timer?: ReturnType<typeof setTimeout> }
   >();
   online = false;
+  // Restore only unfinished projections; gateway snapshots remain authoritative.
+  restoreRunningTurns(turns: Turn[]) {
+    for (const turn of turns) {
+      if (turn.state === "running" && !this.turns.has(turn.conversation)) {
+        this.turns.set(turn.conversation, turn);
+        this.persistedTurns.add(turn.conversation);
+      }
+    }
+  }
   async passwordLogin(username: string, password: string): Promise<Response> {
     let provider = process.env.HERMES_AUTH_PROVIDER;
     if (!provider) {
@@ -293,7 +303,9 @@ export class Hermes extends EventEmitter {
       this.epoch = String(payload.replay_epoch ?? "");
       if (changed) {
         for (const sid of this.recovering.keys()) this.stopRecovery(sid);
-        const keys = [...this.runtime.keys()];
+        const keys = [
+          ...new Set([...this.runtime.keys(), ...this.turns.keys()]),
+        ];
         this.seq.clear();
         this.runtime.clear();
         this.reverse.clear();
@@ -561,6 +573,7 @@ export class Hermes extends EventEmitter {
       result.pending_approval ||
       result.pending_clarify
     ) {
+      this.persistedTurns.delete(key);
       const snapshot = result.inflight ?? {};
       const turn: Turn = {
         conversation: key,
@@ -597,6 +610,15 @@ export class Hermes extends EventEmitter {
         }
       }
       this.emit("turn", turn);
+    } else if (
+      previous?.state === "running" &&
+      this.persistedTurns.delete(key)
+    ) {
+      // We missed the completion while offline. History knows the answer; the
+      // old live projection cannot provide a trustworthy completion time.
+      this.turns.delete(key);
+      this.emit("idle", { conversation: key, startedAt: previous.startedAt });
+      this.emit("resync", key);
     } else if (previous?.state === "running") {
       const turn: Turn = {
         ...previous,
@@ -697,12 +719,17 @@ export class Hermes extends EventEmitter {
     if (!sourceId || sourceId === "undefined") {
       throw new Error("Hermes did not return a stored bot conversation ID");
     }
+    const roster = await this.call("profiles.list", {});
+    const bot = roster.profiles?.find(
+      (entry: { name: string }) => entry.name === profile,
+    );
     return {
       key: conversationKey(profile, sourceId),
       profile,
       sourceId,
       bot: true,
-      title: row.title || "Bot Chat",
+      title: bot?.ui_meta?.["hermes-bots"]?.title || bot?.display_name ||
+        profile,
       activityAt:
         Number(row.last_active ?? row.started_at ?? Date.now() / 1000) * 1000,
     };
@@ -796,7 +823,9 @@ export class Hermes extends EventEmitter {
         profile: profile.name,
         sourceId,
         bot: true,
-        title: all.get(key)?.title || "Bot Chat",
+        title: profile.ui_meta?.["hermes-bots"]?.title ||
+          profile.display_name ||
+          profile.name,
         activityAt:
           Number(canonical?.last_active ?? canonical?.started_at ?? 0) * 1000,
       });

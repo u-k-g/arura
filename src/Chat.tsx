@@ -1,11 +1,5 @@
 import { ask, confirmAction, rejectAction } from "./ActionDialog.tsx";
-type ModelOption = {
-  provider?: string;
-  id?: string;
-  model?: string;
-  name?: string;
-  label?: string;
-};
+import ModelPicker, { modelLabel, type ModelOption } from "./ModelPicker.tsx";
 import type { Transcript } from "../shared/contracts.ts";
 import {
   attachmentHref,
@@ -120,6 +114,7 @@ export default function Chat(props: {
   const [tool, setTool] = createSignal<Message>(),
     [models, setModels] = createSignal<ModelOption[]>([]),
     [model, setModel] = createSignal("");
+  let modelButton: HTMLButtonElement | undefined;
   const [currentModel, setCurrentModel] = createSignal("");
   const [currentEffort, setCurrentEffort] = createSignal("");
   createEffect(() => {
@@ -156,16 +151,6 @@ export default function Chat(props: {
       ),
     );
   });
-  const [customizeModels, setCustomizeModels] = createSignal(false);
-  const modelKey = (entry: ModelOption) =>
-    JSON.stringify([entry.provider ?? "", entry.id ?? entry.model ?? entry]);
-  const modelLabel = (entry: ModelOption) =>
-    entry.name ?? entry.label ?? entry.id ?? String(entry);
-  const hiddenModels = createMemo(
-    () => new Set<string>(workspace()?.settings?.hiddenModels ?? []),
-  );
-  const visibleModels = () =>
-    models().filter((entry) => !hiddenModels().has(modelKey(entry)));
   const [suggestions, setSuggestions] = createSignal<
       { command: string; description: string; name?: string }[]
     >([]),
@@ -1337,6 +1322,7 @@ export default function Chat(props: {
             <button
               type="button"
               class="text-button composer-model"
+              ref={modelButton}
               aria-label="Model"
               onClick={() =>
                 void run(async () => {
@@ -1351,14 +1337,14 @@ export default function Chat(props: {
                         (provider.models ?? []).map((id: string) => ({
                           id,
                           provider: provider.slug,
-                          name: `${id} · ${provider.name}`,
+                          name: id,
+                          providerName: provider.name,
                         })),
                     ) ??
                       result.models ??
                       [],
                   );
                   setModel("choose");
-                  setCustomizeModels(false);
                 })}
             >
               {currentModel() || "Select model"}
@@ -1448,13 +1434,9 @@ export default function Chat(props: {
             </div>
           </div>
         </form>
-        <Show when={!connected() || turn()?.state === "running"}>
+        <Show when={!connected()}>
           <p class="compose-hint">
-            {!connected()
-              ? "Draft saved on this device. Connect to send."
-              : turn()?.state === "running"
-              ? "Messages sent now join the queue."
-              : "Hermes runs on your host."}
+            Draft saved on this device. Connect to send.
           </p>
         </Show>
         <input
@@ -1535,116 +1517,49 @@ export default function Chat(props: {
         </Dialog>
       </Show>
       <Show when={model()}>
-        <Dialog title="Choose a model" close={() => setModel("")}>
-          <button
-            type="button"
-            onClick={() => setCustomizeModels((value) => !value)}
-          >
-            {customizeModels() ? "Done customizing" : "Customize model list"}
-          </button>
-          <Show when={customizeModels()}>
-            <p>
-              Choose the models shown in your picker. This list syncs across
-              your devices.
-            </p>
-            <For each={models()}>
-              {(entry) => (
-                <Field label={modelLabel(entry)}>
-                  <input
-                    type="checkbox"
-                    checked={!hiddenModels().has(modelKey(entry))}
-                    onChange={(event) =>
-                      void run(() =>
-                        mutate("workspace.modelVisibility", {
-                          model: modelKey(entry),
-                          hidden: !event.currentTarget.checked,
-                        })
-                      )}
-                  />
-                </Field>
-              )}
-            </For>
-          </Show>
-          <Show when={!customizeModels()}>
-            <Show when={!visibleModels().length}>
-              <p>
-                No models are visible. Use Customize model list to show them.
-              </p>
-            </Show>
-            <For each={visibleModels()}>
-              {(m) => (
-                <button
-                  type="button"
-                  class="list-button"
-                  onClick={() =>
-                    void run(async () => {
-                      // Hermes parses this as /model arguments, not JSON or shell quoting.
-                      const value = `${m.id ?? m.model ?? m}${
-                        m.provider ? ` --provider ${m.provider}` : ""
-                      } --session`;
-                      const result = await sessionRpc("config.set", {
-                        key: "model",
-                        value,
-                        scope: "session",
-                      });
-                      if (result.confirm_required) {
-                        if (
-                          await rejectAction(
-                            String(result.confirm_message || "Use this model?"),
-                          )
-                        ) {
-                          return;
-                        }
-                        await sessionRpc("config.set", {
-                          key: "model",
-                          value,
-                          scope: "session",
-                          confirm_expensive_model: true,
-                        });
-                      }
-                      setCurrentModel(modelLabel(m));
-                      setModel("");
-                    })}
-                >
-                  {modelLabel(m)}
-                </button>
-              )}
-            </For>
-          </Show>
-          <Field label="Reasoning effort">
-            <select
-              aria-label="Reasoning effort"
-              value={currentEffort()}
-              onChange={(e) => {
-                const effort = e.currentTarget.value;
-                void run(async () => {
-                  await sessionRpc("config.set", {
-                    key: "reasoning",
-                    value: effort,
-                    scope: "session",
-                  });
-                  setCurrentEffort(effort);
-                });
-              }}
-            >
-              <option value="">Choose effort</option>
-              <For
-                each={[
-                  "none",
-                  "minimal",
-                  "low",
-                  "medium",
-                  "high",
-                  "xhigh",
-                  "max",
-                  "ultra",
-                ]}
-              >
-                {(effort) => <option value={effort}>{effort}</option>}
-              </For>
-            </select>
-          </Field>
-        </Dialog>
+        <ModelPicker
+          anchor={modelButton}
+          models={models()}
+          current={currentModel()}
+          effort={currentEffort()}
+          close={() => setModel("")}
+          choose={async (m) => {
+            // Hermes parses this as /model arguments, not JSON or shell quoting.
+            const value = `${m.id ?? m.model ?? m}${
+              m.provider ? ` --provider ${m.provider}` : ""
+            } --session`;
+            const result = await sessionRpc("config.set", {
+              key: "model",
+              value,
+              scope: "session",
+            });
+            if (result.confirm_required) {
+              if (
+                await rejectAction(
+                  String(result.confirm_message || "Use this model?"),
+                )
+              ) {
+                return;
+              }
+              await sessionRpc("config.set", {
+                key: "model",
+                value,
+                scope: "session",
+                confirm_expensive_model: true,
+              });
+            }
+            setCurrentModel(modelLabel(m));
+            setModel("");
+          }}
+          changeEffort={async (effort) => {
+            await sessionRpc("config.set", {
+              key: "reasoning",
+              value: effort,
+              scope: "session",
+            });
+            setCurrentEffort(effort);
+          }}
+        />
       </Show>
       <Show when={suggestions().length}>
         <Dialog title="Commands and skills" close={() => setSuggestions([])}>

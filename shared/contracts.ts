@@ -11,6 +11,7 @@ export type Workspace = {
   connection: Doc<"connection"> | null;
   settings: Record<string, unknown> & {
     hiddenModels?: string[];
+    modelFavorites?: string[];
     autoArchiveDays?: number;
     archiveDays?: number;
   };

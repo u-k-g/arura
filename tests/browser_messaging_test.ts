@@ -1,6 +1,6 @@
 import { requireValue } from "./require_value.ts";
 import { chromium, expect } from "@playwright/test";
-import { signIn } from "./sign_in.ts";
+import { openSettings, signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 Deno.test({
   name:
@@ -22,6 +22,12 @@ Deno.test({
         ),
       );
       await signIn(page, "Messaging test");
+      await expect(
+        page
+          .locator(".sidebar-actions")
+          .getByRole("button", { name: "Messaging", exact: true }),
+      ).toHaveCount(0);
+      await openSettings(page);
       await page
         .getByRole("button", { name: "Messaging", exact: true })
         .click();

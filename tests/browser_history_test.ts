@@ -40,7 +40,10 @@ Deno.test({
         ),
       );
       await signIn(page, "History test");
-      await page.getByRole("button", { name: "Bot Chat", exact: true }).click();
+      await page
+        .locator(".thread-select")
+        .filter({ hasText: "default" })
+        .click();
       const transcript = page.locator(".transcript");
       await expect(
         transcript.getByText("History row 250", { exact: true }),

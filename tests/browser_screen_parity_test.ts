@@ -112,7 +112,12 @@ Deno.test({
       await page.reload();
       await input.fill("Preserve this draft while selecting a model");
       await page.getByRole("button", { name: "Model", exact: true }).click();
-      await page.getByRole("button", { name: /fixture-alternative/ }).click();
+      await page
+        .getByRole("button", {
+          name: "fixture-alternative · Fixture provider",
+          exact: true,
+        })
+        .click();
       await expect(input).toHaveText(
         "Preserve this draft while selecting a model",
       );

@@ -50,6 +50,15 @@ export const sourceKeys = query({
   },
 });
 // New gateway sessions are live before Hermes writes their first history row.
+export const runningTurns = query({
+  args: {},
+  handler: async (ctx) => {
+    await adapter(ctx);
+    return (await ctx.db.query("turns").collect())
+      .map((row) => row.data)
+      .filter((turn) => turn.state === "running");
+  },
+});
 export const pendingSessions = query({
   args: {},
   handler: async (ctx) => {
@@ -372,6 +381,25 @@ export const modelVisibility = mutation({
     else await ctx.db.insert("settings", { key: "hiddenModels", value });
   },
 });
+export const modelFavorite = mutation({
+  args: { model: v.string(), starred: v.boolean() },
+  handler: async (ctx, args) => {
+    await device(ctx);
+    if (!args.model || args.model.length > 1024) {
+      throw new Error("Invalid model");
+    }
+    const old = await ctx.db
+      .query("settings")
+      .withIndex("key", (q) => q.eq("key", "modelFavorites"))
+      .unique();
+    const starred = new Set<string>(Array.isArray(old?.value) ? old.value : []);
+    if (args.starred) starred.add(args.model);
+    else starred.delete(args.model);
+    const value = [...starred];
+    if (old) await ctx.db.patch(old._id, { value });
+    else await ctx.db.insert("settings", { key: "modelFavorites", value });
+  },
+});
 export const sweep = internalMutation({
   args: { cursor: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -416,6 +444,9 @@ export const ingest = mutation({
     ),
     page: v.optional(v.any()),
     turn: v.optional(v.any()),
+    idleTurn: v.optional(
+      v.object({ conversation: v.string(), startedAt: v.number() }),
+    ),
     online: v.optional(v.boolean()),
     error: v.optional(v.string()),
     changed: v.optional(v.boolean()),
@@ -536,6 +567,24 @@ export const ingest = mutation({
       };
       if (old) await ctx.db.patch(old._id, value);
       else await ctx.db.insert("pages", value);
+    }
+    if (args.idleTurn) {
+      const { conversation, startedAt } = args.idleTurn;
+      const old = await ctx.db
+        .query("turns")
+        .withIndex("conversation", (q) => q.eq("conversation", conversation))
+        .unique();
+      // Do not erase a newer run that arrived while the idle snapshot was saving.
+      if (old?.data.state === "running" && old.data.startedAt === startedAt) {
+        await ctx.db.delete(old._id);
+        const row = await ctx.db
+          .query("conversations")
+          .withIndex("key", (q) => q.eq("key", conversation))
+          .unique();
+        if (row) {
+          await ctx.db.patch(row._id, { running: false, pendingInput: false });
+        }
+      }
     }
     if (args.turn) {
       const t = args.turn;

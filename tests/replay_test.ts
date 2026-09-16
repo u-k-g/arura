@@ -198,3 +198,42 @@ Deno.test("new sessions load before persistence and survive adapter reconnection
     else Deno.env.set("HERMES_URL", before);
   }
 });
+
+Deno.test("adapter startup reconciles persisted running turns against an idle gateway", async () => {
+  const fixture = hermesFixture(0, { resume: () => ({ running: false }) });
+  const before = Deno.env.get("HERMES_URL");
+  Deno.env.set("HERMES_URL", `http://127.0.0.1:${fixture.server.addr.port}`);
+  const hermes = new Hermes();
+  const key = JSON.stringify(["default", "fixture-chat"]);
+  let restored: { conversation: string; startedAt: number } | undefined;
+  hermes.restoreRunningTurns([
+    {
+      conversation: key,
+      state: "running",
+      startedAt: Date.now() - 86400000,
+      text: "Last known answer",
+      activity: [{ id: "old-tool", label: "read_file", state: "complete" }],
+      interactions: [],
+    },
+  ]);
+  hermes.on("idle", (turn: { conversation: string; startedAt: number }) => {
+    if (turn.conversation === key) restored = turn;
+  });
+  try {
+    await hermes.connect();
+    const deadline = Date.now() + 6000;
+    while (!restored) {
+      if (Date.now() > deadline) {
+        throw new Error("Persisted run was not reconciled at startup");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
+    equal(restored.conversation, key);
+    equal(typeof restored.startedAt, "number");
+  } finally {
+    hermes.close();
+    await fixture.close();
+    if (before === undefined) Deno.env.delete("HERMES_URL");
+    else Deno.env.set("HERMES_URL", before);
+  }
+});

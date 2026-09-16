@@ -307,6 +307,9 @@ hermes.on("turn", (turn: Turn) => {
   turnBuffer.set(turn.conversation, turn);
   scheduleRuntimeViews();
 });
+hermes.on("idle", (idleTurn: { conversation: string; startedAt: number }) => {
+  void convex.mutation(anyApi.workspace.ingest, { idleTurn }).catch(report);
+});
 hermes.on("changed", scheduleRuntimeViews);
 hermes.on("reconcile", () => void reconcile().catch(report));
 hermes.on("resync", (key: string | undefined) => {
@@ -1359,6 +1362,9 @@ const server = Deno.serve(
       );
     }
   },
+);
+hermes.restoreRunningTurns(
+  await convex.query(anyApi.workspace.runningTurns, {}),
 );
 void hermes.connect().catch(report);
 Deno.addSignalListener("SIGTERM", () => {

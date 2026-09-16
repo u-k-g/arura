@@ -33,13 +33,7 @@ const groups = [
     ["settings:maintenance", "Maintenance & backups", "refresh"],
   ],
 ];
-const separate = new Set([
-  "profiles",
-  "jobs",
-  "platforms",
-  "files",
-  "artifacts",
-]);
+const separate = new Set(["profiles", "jobs", "files", "artifacts"]);
 export const inSettings = (view: string) =>
   view.startsWith("settings") ||
   view === "capabilities" ||
