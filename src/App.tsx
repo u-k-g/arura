@@ -38,7 +38,11 @@ import {
   preferences,
   saveCache,
 } from "./cache.ts";
-import { archiveAgeStatus, type Conversation } from "../shared/model.ts";
+import {
+  archiveAgeStatus,
+  type Conversation,
+  conversationActivity,
+} from "../shared/model.ts";
 import CommandPalette, { type PaletteItem } from "./CommandPalette.tsx";
 const Chat = lazy(() => import("./Chat.tsx"));
 const Settings = lazy(() => import("./Settings.tsx"));
@@ -328,7 +332,7 @@ export default function App() {
     );
     return (
       state?.unread ||
-      conversation.activityAt >
+      conversationActivity(conversation) >
         (state?.activityAt ?? workspace()?.readBaseline ?? Infinity)
     );
   };
@@ -349,7 +353,7 @@ export default function App() {
   });
   const viewedRevision = createMemo(() => {
     const current = selected();
-    return current ? `${current.key}:${current.activityAt}` : "";
+    return current ? `${current.key}:${conversationActivity(current)}` : "";
   });
   createEffect(() => {
     viewedRevision();
@@ -466,7 +470,7 @@ export default function App() {
   const recentConversations = createMemo(() =>
     chats()
       .filter((c) => c.section === "recent" && !c.backgroundSession)
-      .sort((a, b) => b.activityAt - a.activityAt)
+      .sort((a, b) => conversationActivity(b) - conversationActivity(a))
   );
   const [ageNow, setAgeNow] = createSignal(Date.now());
   const ageTimer = setInterval(() => setAgeNow(Date.now()), 60_000);
@@ -479,7 +483,9 @@ export default function App() {
       workspace()?.settings.archiveEnabled !== false,
     );
   const ageLabel = (c: Conversation) => {
-    const minutes = Math.floor(Math.max(0, ageNow() - c.activityAt) / 60_000);
+    const minutes = Math.floor(
+      Math.max(0, ageNow() - conversationActivity(c)) / 60_000,
+    );
     if (minutes < 1) return "now";
     if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
@@ -842,7 +848,9 @@ export default function App() {
                     c.section !== "archived" &&
                     !c.backgroundSession,
                 )
-                .sort((a, b) => b.activityAt - a.activityAt)[0];
+                .sort(
+                  (a, b) => conversationActivity(b) - conversationActivity(a),
+                )[0];
               navigate(latest?.key ?? "");
             }}
           />

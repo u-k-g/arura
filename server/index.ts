@@ -258,6 +258,13 @@ async function reconcile() {
         }
         lastActivity.set(c.key, c.activityAt);
       }
+      const backlog: string[] = await convex.query(
+        anyApi.workspace.activityBacklog,
+        {},
+      );
+      for (const key of backlog.slice(0, 25)) {
+        await syncHistory(key).catch(() => {});
+      }
     } while (reconcileAgain);
   })().finally(() => {
     reconciling = undefined;

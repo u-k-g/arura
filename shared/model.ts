@@ -10,6 +10,7 @@ export interface Conversation {
   backgroundSession?: boolean;
   title: string;
   activityAt: number;
+  messageActivityAt?: number;
   section: Section;
   folderId?: string;
   rank: number;
@@ -189,6 +190,11 @@ export interface Turn {
 }
 export const conversationKey = (profile: string, id: string) =>
   JSON.stringify([profile || "default", id]);
+export function conversationActivity(
+  c: Pick<Conversation, "activityAt" | "messageActivityAt">,
+): number {
+  return c.messageActivityAt ?? c.activityAt;
+}
 export function shouldArchive(
   c: Conversation,
   days: number,
@@ -200,7 +206,8 @@ export function shouldArchive(
     !c.folderId &&
     !c.running &&
     !c.pendingInput &&
-    now - Math.max(c.activityAt, c.unarchivedAt ?? 0) >= days * 86_400_000
+    now - Math.max(conversationActivity(c), c.unarchivedAt ?? 0) >=
+      days * 86_400_000
   );
 }
 export function archiveAgeStatus(

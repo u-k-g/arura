@@ -60,6 +60,7 @@ export default defineSchema({
     pendingPersistence: v.optional(v.boolean()),
     title: v.string(),
     activityAt: v.number(),
+    messageActivityAt: v.optional(v.number()),
     section: v.union(
       v.literal("essential"),
       v.literal("pinned"),

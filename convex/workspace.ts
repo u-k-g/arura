@@ -1,7 +1,7 @@
 import { anyApi } from "convex/server";
 import { v } from "convex/values";
 import { incomingOrganization } from "../shared/organization.ts";
-import { shouldArchive } from "../shared/model.ts";
+import { conversationActivity, shouldArchive } from "../shared/model.ts";
 import { internalMutation, mutation, query } from "./_generated/server.ts";
 import { adapter, device } from "./access.ts";
 import { resolveKey } from "./conversationKeys.ts";
@@ -46,6 +46,22 @@ export const sourceKeys = query({
     await adapter(ctx);
     return (await ctx.db.query("conversations").collect())
       .filter((c) => !c.deleted && !c.pendingPersistence)
+      .map((c) => c.key);
+  },
+});
+// Conversations that predate message-derived activity; the server backfills a
+// history page so sidebar ages ignore non-message rows like model switches.
+export const activityBacklog = query({
+  args: {},
+  handler: async (ctx) => {
+    await adapter(ctx);
+    return (await ctx.db.query("conversations").collect())
+      .filter(
+        (c) =>
+          !c.deleted &&
+          !c.backgroundSession &&
+          c.messageActivityAt === undefined,
+      )
       .map((c) => c.key);
   },
 });
@@ -207,7 +223,7 @@ export const markRead = mutation({
     const value = {
       device: self.id,
       key,
-      activityAt: conversation.activityAt,
+      activityAt: conversationActivity(conversation),
       unread: args.unread,
     };
     if (
@@ -584,6 +600,25 @@ export const ingest = mutation({
       };
       if (old) await ctx.db.patch(old._id, value);
       else await ctx.db.insert("pages", value);
+      if (p.offset === 0) {
+        const messages: { createdAt?: unknown }[] = Array.isArray(p.messages)
+          ? p.messages
+          : [];
+        const newest = messages.reduce(
+          (max, message) => Math.max(max, Number(message?.createdAt) || 0),
+          0,
+        );
+        const conversation = await ctx.db
+          .query("conversations")
+          .withIndex("key", (q) => q.eq("key", String(p.conversation)))
+          .unique();
+        const resolved = newest || conversation?.activityAt;
+        if (conversation && resolved !== conversation.messageActivityAt) {
+          await ctx.db.patch(conversation._id, {
+            messageActivityAt: resolved,
+          });
+        }
+      }
     }
     if (args.idleTurn) {
       const { conversation, startedAt } = args.idleTurn;
