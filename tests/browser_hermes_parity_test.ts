@@ -50,9 +50,7 @@ Deno.test({
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .click();
-      await page
-        .getByRole("button", { name: "Conversation actions", exact: true })
-        .click();
+      await page.locator(".thread-row.selected > .icon-button").click();
       const pin = page.getByRole("button", {
         name: "Toggle pinned",
         exact: true,
@@ -87,7 +85,7 @@ Deno.test({
       ).toHaveCount(0);
       await expect(
         page
-          .locator(".sidebar-titlebar, .topbar")
+          .locator(".sidebar-titlebar, .topbar, .nav-footer")
           .getByRole("button", { name: "New conversation", exact: true }),
       ).toBeVisible();
       await expect(

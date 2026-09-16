@@ -705,3 +705,105 @@ dialog.conversation-menu {
 .session-age.archive-overdue {
   color: var(--danger);
 }
+
+.sidebar-titlebar > button[aria-label="New folder"] {
+  margin-left: auto;
+}
+.sidebar-titlebar > button[aria-label="Search conversations"],
+.collapsed-controls > button[aria-label="Search conversations"] {
+  margin-left: 0;
+}
+.topbar > .thread-row {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.topbar > .thread-row > .icon-button {
+  opacity: 1;
+}
+.nav-scroll {
+  min-height: 0;
+}
+.pinned-divider {
+  border-bottom: var(--hairline) solid var(--line);
+  margin: 12px 8px;
+}
+.navigation > .archive {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 45%;
+  display: flex;
+  flex-direction: column;
+  margin: 8px 0 0;
+}
+.archive-toggle {
+  flex: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--subtle);
+  font-size: 12px;
+  text-align: left;
+}
+.archive-rule {
+  height: var(--hairline);
+  flex: 1;
+  background: var(--line);
+}
+.archive-toggle .icon {
+  width: 12px;
+  height: 12px;
+}
+.archive-toggle[aria-expanded="true"] .icon {
+  transform: rotate(180deg);
+}
+.archive-list {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  color: var(--muted);
+}
+.archive-list .thread-select {
+  color: var(--muted);
+}
+.sidebar-bottom-row {
+  display: flex;
+  align-items: center;
+}
+.sidebar-bottom-row .gateway-status {
+  min-width: 0;
+  flex: 1;
+}
+.thread-actions {
+  display: flex;
+  margin-left: auto;
+  flex: none;
+}
+.thread-actions .icon-button {
+  min-width: 26px;
+  min-height: 26px;
+  padding: 4px;
+}
+.thread-actions .icon {
+  width: 13px;
+  height: 13px;
+}
+.essential-icon-picker {
+  max-height: min(360px, 55dvh);
+  overflow-y: auto;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 4px;
+}
+.essential-icon-picker button {
+  min-height: 38px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.essential-icon-picker button:hover {
+  background: var(--hover);
+}

@@ -40,8 +40,8 @@ and
 | 28             | Live voice conversations                                                                                       | Deferred.                                                                                                                                                                          |
 | 29             | Cross-conversation artifact library                                                                            | Retain generated-file browsing; no image-generation UI.                                                                                                                            |
 | 30–31          | File previews and saving/downloading                                                                           | Use browser/device handling, including normal PDF viewing in a browser tab.                                                                                                        |
-| 32             | Host directory browsing                                                                                        | Exclude intentionally. No host directory browser; retain conversation artifacts and downloads. |
-| 33–34          | Text-file viewer/editor; attach selected content/lines                                                         | Exclude general host-file editing and attaching selections. Retain dedicated profile/configuration editors.                                                                                                       |
+| 32             | Host directory browsing                                                                                        | Exclude intentionally. No host directory browser; retain conversation artifacts and downloads.                                                                                     |
+| 33–34          | Text-file viewer/editor; attach selected content/lines                                                         | Exclude general host-file editing and attaching selections. Retain dedicated profile/configuration editors.                                                                        |
 | 35             | File checkpoints and rollback/rerun                                                                            | Exclude checkpoint UI. Message editing remains independent.                                                                                                                        |
 | 36             | Directory-based projects                                                                                       | Replace with logical conversation folders, unrelated to filesystem directories.                                                                                                    |
 | 37–38          | Working directories and Git discovery                                                                          | Exclude.                                                                                                                                                                           |
@@ -123,8 +123,8 @@ grace period.
   tooltips and accessible labels. Tiles flex and wrap to fill the available
   width. Context-menu icon choices sync across devices. No folders. Never
   autoarchive.
-- The conversation top bar has Archive (Unarchive for archived chats), without a
-  pin button. Archive is not duplicated in the conversation action menu.
+- The sidebar footer's thread actions include Archive (Unarchive for archived
+  chats) for the open conversation, without a pin button.
 - Essentials and Pinned are context-menu toggles. Toggling the current section
   off returns the item to the ordinary list; either toggle clears folder
   membership. There is no separate "Move to conversations" action.
@@ -135,8 +135,9 @@ grace period.
   while running); with empty text it sends the first queued message now.
   Command+K opens the command palette. Other application shortcuts remain
   disabled.
-- Sidebar navigation has one horizontal icon-only row: Threads, Bots, and Cron jobs.
-  Artifacts lives at the bottom of the sidebar beside Settings, replacing Files on host. Each switches the main content; Bots and Cron jobs do not open
+- Sidebar navigation has one horizontal icon-only row: Threads, Bots, and Cron
+  jobs. Artifacts lives at the bottom of the sidebar beside Settings, replacing
+  Files on host. Each switches the main content; Bots and Cron jobs do not open
   overlay dialogs. Threads returns to the last conversation. Mobile uses the
   same row in its navigation sheet and closes the sheet on selection.
 - Messaging setup lives in Settings, with no permanent sidebar shortcut.
@@ -203,3 +204,11 @@ ownership, deployment, and the full acceptance workflow stay in
 Assistant messages expose only Copy. User messages retain Copy, Edit and
 resubmit, and Branch conversation. Branching from a user prompt includes its
 assistant response and ends before the next user prompt.
+
+Sidebar organization intentionally differs from desktop: Essentials is an
+untitled icon grid with a searchable icon library; Pinned has no heading and
+ends with a separator above ordinary threads. Archived is a muted expandable
+section anchored above the footer. New thread and Archive sit at the footer’s
+bottom right; Search sits at the top right, beside New folder. The duplicate
+global conversation menu is removed; thread context menus remain. On mobile the
+top bar shows the open thread with its context-menu action.

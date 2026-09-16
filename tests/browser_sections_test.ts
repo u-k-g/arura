@@ -3,7 +3,7 @@ import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 
 Deno.test({
-  name: "four icon navigation switches main content on desktop and mobile",
+  name: "icon navigation switches main content on desktop and mobile",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -33,7 +33,6 @@ Deno.test({
         for (
           const [label, route] of [
             ["Bots", "resources:profiles"],
-            ["Artifacts", "resources:artifacts"],
             ["Cron jobs", "resources:jobs"],
             ["Threads", '["default","fixture-chat"]'],
           ]
@@ -43,7 +42,7 @@ Deno.test({
             name: "Main navigation",
             exact: true,
           });
-          await expect(nav.getByRole("button")).toHaveCount(4);
+          await expect(nav.getByRole("button")).toHaveCount(3);
           const button = nav.getByRole("button", { name: label, exact: true });
           await expect(button).toHaveText("");
           await button.click();
@@ -66,9 +65,6 @@ Deno.test({
                 exact: true,
               }),
             ).toBeVisible();
-          }
-          if (label === "Artifacts") {
-            await expect(page.locator(".artifacts-page")).toBeVisible();
           }
         }
         await page.close();

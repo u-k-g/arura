@@ -24,7 +24,7 @@ Deno.test({
       const a = await device("Files desktop"),
         b = await device("Files second device");
       await a
-        .locator(".sidebar-titlebar, .topbar")
+        .locator(".sidebar-titlebar, .topbar, .nav-footer")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
@@ -54,8 +54,9 @@ Deno.test({
         clipboardData.items.add(
           new File(
             [
-              Uint8Array.from(atob(data), (character) =>
-                character.charCodeAt(0),
+              Uint8Array.from(
+                atob(data),
+                (character) => character.charCodeAt(0),
               ),
             ],
             "pasted.png",

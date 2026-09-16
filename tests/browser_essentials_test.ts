@@ -31,17 +31,10 @@ Deno.test({
           .click();
       }
       const actions = () =>
-        a
-          .getByRole("button", { name: "Conversation actions", exact: true })
-          .click();
+        a.locator(".thread-row.selected > .icon-button").click();
       await actions();
       await expect(
         a.getByRole("button", { name: "Move to conversations", exact: true }),
-      ).toHaveCount(0);
-      await expect(
-        a
-          .getByRole("dialog")
-          .getByRole("button", { name: "Archive", exact: true }),
       ).toHaveCount(0);
       await a
         .getByRole("button", { name: "Toggle Essentials", exact: true })
@@ -81,10 +74,12 @@ Deno.test({
         .last()
         .click();
       await expect(
-        a.locator(".sidebar-titlebar, .topbar").getByRole("button", {
-          name: "Toggle conversation pin",
-          exact: true,
-        }),
+        a
+          .locator(".sidebar-titlebar, .topbar, .nav-footer")
+          .getByRole("button", {
+            name: "Toggle conversation pin",
+            exact: true,
+          }),
       ).toHaveCount(0);
       await a.screenshot({
         path: `${Deno.env.get("TMPDIR")}/essentials-desktop.png`,
@@ -93,6 +88,11 @@ Deno.test({
         .getByRole("button", { name: "Archive conversation", exact: true })
         .click();
       await expect(tile).toHaveCount(0);
+      await a.getByRole("button", { name: "Archived", exact: true }).click();
+      await a
+        .locator(".archive-list")
+        .getByRole("button", { name: "Fixture conversation", exact: true })
+        .click();
       await a
         .getByRole("button", { name: "Unarchive conversation", exact: true })
         .click();

@@ -95,9 +95,7 @@ Deno.test({
       ).toBeFocused();
       await page.keyboard.press("Escape");
       await page.setViewportSize({ width: 390, height: 844 });
-      await page
-        .getByRole("button", { name: "Conversation actions", exact: true })
-        .click();
+      await page.locator(".thread-row.selected > .icon-button").click();
       await expect(menu).toBeVisible();
       await expect(
         menu.getByRole("button", { name: "Toggle pinned", exact: true }),

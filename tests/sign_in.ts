@@ -24,10 +24,20 @@ export async function openSettings(page: Page) {
       .click();
   }
   if (!(await page.locator(".settings-dialog").isVisible())) {
-    await page
+    const button = page
       .getByRole("button", { name: "Settings", exact: true })
-      .first()
-      .click();
+      .first();
+    const sheet = page.getByRole("button", {
+      name: "Open conversations",
+      exact: true,
+    });
+    if (
+      !(await button.isVisible().catch(() => false)) &&
+      (await sheet.isVisible().catch(() => false))
+    ) {
+      await sheet.click();
+    }
+    await button.click();
   }
   const picker = page.getByRole("button", {
     name: "Settings sections",

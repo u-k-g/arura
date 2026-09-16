@@ -20,7 +20,7 @@ Deno.test({
       await page.goto(url);
       await signIn(page, "Automation test");
       await page
-        .locator(".sidebar-titlebar, .topbar")
+        .locator(".sidebar-titlebar, .topbar, .nav-footer")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
@@ -74,7 +74,7 @@ Deno.test({
       await expect(card).toHaveCount(0);
       await page.getByRole("button", { name: "Threads", exact: true }).click();
       await page
-        .locator(".sidebar-titlebar, .topbar")
+        .locator(".sidebar-titlebar, .topbar, .nav-footer")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();

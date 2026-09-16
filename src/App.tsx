@@ -56,13 +56,27 @@ export default function App() {
       preferences.setItem("arura.sidebarCollapsed", String(!value));
       return !value;
     });
+  const narrowQuery = matchMedia(
+    "(max-width: 720px), (pointer: coarse) and (hover: none)",
+  );
+  const [narrow, setNarrow] = createSignal(narrowQuery.matches);
+  onMount(() => {
+    const update = () => setNarrow(narrowQuery.matches);
+    update();
+    narrowQuery.addEventListener("change", update);
+    onCleanup(() => narrowQuery.removeEventListener("change", update));
+  });
   const [menuAnchor, setMenuAnchor] = createSignal<{ x: number; y: number }>();
   const [iconPicker, setIconPicker] = createSignal<Conversation>();
+  const [iconSearch, setIconSearch] = createSignal("");
+  createEffect(() => {
+    iconPicker();
+    setIconSearch("");
+  });
   const savedView = preferences.getItem("arura.view") ?? "";
-  const initialView =
-    savedView.split("?")[0] === "resources:files"
-      ? "resources:artifacts"
-      : savedView;
+  const initialView = savedView.split("?")[0] === "resources:files"
+    ? "resources:artifacts"
+    : savedView;
   if (initialView !== savedView) preferences.setItem("arura.view", initialView);
   const [view, setView] = createSignal(initialView);
   const [sheet, setSheet] = createSignal(false),
@@ -105,10 +119,11 @@ export default function App() {
     setSearchError("");
     const timer = setTimeout(async () => {
       const cacheKey = `search:${query}`;
-      const cached =
-        await loadCache<{ key: string; title: string; profile: string }[]>(
-          cacheKey,
-        );
+      const cached = await loadCache<
+        { key: string; title: string; profile: string }[]
+      >(
+        cacheKey,
+      );
       if (disposed) return;
       if (cached) setMatches(cached);
       if (!online) return;
@@ -159,8 +174,9 @@ export default function App() {
   const [archiveReady, setArchiveReady] = createSignal(false);
   const [menu, setMenu] = createSignal<Conversation>(),
     [folderName, setFolderName] = createSignal<string | null>(null);
-  const [activeConversation, setActiveConversation] =
-    createSignal<Conversation | null>(null);
+  const [activeConversation, setActiveConversation] = createSignal<
+    Conversation | null
+  >(null);
   createEffect(() => {
     const key = view();
     connected();
@@ -304,8 +320,8 @@ export default function App() {
   const chats = () => (workspace()?.conversations ?? []) as Conversation[];
   const selected = () =>
     chats().find((c) => c.key === view()) ??
-    archived().find((c) => c.key === view()) ??
-    activeConversation();
+      archived().find((c) => c.key === view()) ??
+      activeConversation();
   const unread = (conversation: Conversation) => {
     const state = workspace()?.reads?.find(
       (item) => item.key === conversation.key,
@@ -328,7 +344,7 @@ export default function App() {
     };
     document.addEventListener("visibilitychange", markVisible);
     onCleanup(() =>
-      document.removeEventListener("visibilitychange", markVisible),
+      document.removeEventListener("visibilitychange", markVisible)
     );
   });
   const viewedRevision = createMemo(() => {
@@ -400,6 +416,16 @@ export default function App() {
         run: () => void newChat(currentProfile()),
       },
       {
+        id: "folder",
+        label: "New folder",
+        icon: "folder",
+        group: "Actions",
+        run: () => {
+          setPalette(false);
+          setFolderName("");
+        },
+      },
+      {
         id: "sidebar",
         label: collapsed() ? "Expand sidebar" : "Collapse sidebar",
         icon: "menu",
@@ -440,7 +466,7 @@ export default function App() {
   const recentConversations = createMemo(() =>
     chats()
       .filter((c) => c.section === "recent" && !c.backgroundSession)
-      .sort((a, b) => b.activityAt - a.activityAt),
+      .sort((a, b) => b.activityAt - a.activityAt)
   );
   const [ageNow, setAgeNow] = createSignal(Date.now());
   const ageTimer = setInterval(() => setAgeNow(Date.now()), 60_000);
@@ -477,13 +503,11 @@ export default function App() {
             "archive-warning": ageStatus(c) === "warning",
             "archive-overdue": ageStatus(c) === "overdue",
           }}
-          title={
-            ageStatus(c) === "overdue"
-              ? "Due for automatic archive"
-              : ageStatus(c) === "warning"
-                ? "Automatic archive within one day"
-                : undefined
-          }
+          title={ageStatus(c) === "overdue"
+            ? "Due for automatic archive"
+            : ageStatus(c) === "warning"
+            ? "Automatic archive within one day"
+            : undefined}
         >
           {Math.max(0, Math.floor((ageNow() - c.activityAt) / 86400000)) || ""}
           {ageNow() - c.activityAt >= 86400000 ? "d" : "now"}
@@ -511,33 +535,25 @@ export default function App() {
           <>
             <IconButton
               icon="archive"
-              label={
-                c().section === "archived"
-                  ? "Unarchive conversation"
-                  : "Archive conversation"
-              }
-              disabled={
-                c().section !== "archived" && (c().running || c().pendingInput)
-              }
+              label={c().section === "archived"
+                ? "Unarchive conversation"
+                : "Archive conversation"}
+              disabled={c().section !== "archived" &&
+                (c().running || c().pendingInput)}
               onClick={() => void run(() => archiveConversation(c()))}
             />
           </>
         )}
       </Show>
+    </>
+  );
+  const navigationActions = () => (
+    <>
       <IconButton
         icon="search"
         label="Search conversations"
         onClick={() => setPalette(true)}
       />
-      <Show when={selected()}>
-        {(c) => (
-          <IconButton
-            icon="more-horiz"
-            label="Conversation actions"
-            onClick={(event) => openMenu(c(), event)}
-          />
-        )}
-      </Show>
     </>
   );
   const navigation = () => (
@@ -549,7 +565,12 @@ export default function App() {
           label="Collapse sidebar"
           onClick={toggleSidebar}
         />
-        {conversationActions()}
+        <IconButton
+          icon="folder"
+          label="New folder"
+          onClick={() => setFolderName("")}
+        />
+        {navigationActions()}
       </header>
       <nav class="sidebar-sections" aria-label="Main navigation">
         <For
@@ -576,8 +597,7 @@ export default function App() {
                     route === "threads"
                       ? (preferences.getItem("arura.lastConversation") ?? "")
                       : route,
-                  )
-                }
+                  )}
               >
                 <Icon name={icon} />
               </button>
@@ -587,9 +607,6 @@ export default function App() {
       </nav>
       <div class="nav-scroll">
         <Show when={chats().some((c) => c.section === "essential")}>
-          <div class="section-heading">
-            <span>Essentials</span>
-          </div>
           <div class="essentials">
             <For
               each={chats()
@@ -616,14 +633,6 @@ export default function App() {
             </For>
           </div>
         </Show>
-        <div class="section-heading">
-          <span>Pinned</span>
-          <IconButton
-            icon="plus"
-            label="New folder"
-            onClick={() => setFolderName("")}
-          />
-        </div>
         <For
           each={chats()
             .filter((c) => c.section === "pinned" && !c.folderId)
@@ -657,7 +666,7 @@ export default function App() {
                     const name = await ask("Folder name", folder.name);
                     if (name?.trim()) {
                       void run(() =>
-                        mutate("workspace.folder", { id: folder._id, name }),
+                        mutate("workspace.folder", { id: folder._id, name })
                       );
                     }
                   }}
@@ -671,9 +680,8 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: 1,
-                      }),
-                    )
-                  }
+                      })
+                    )}
                 />
                 <IconButton
                   icon="nav-arrow-down"
@@ -685,9 +693,8 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: -1,
-                      }),
-                    )
-                  }
+                      })
+                    )}
                 />
                 <button
                   type="button"
@@ -704,7 +711,7 @@ export default function App() {
                         mutate("workspace.folder", {
                           id: folder._id,
                           remove: true,
-                        }),
+                        })
                       );
                     }
                   }}
@@ -722,9 +729,12 @@ export default function App() {
             </details>
           )}
         </For>
-        <div class="section-heading">
-          <span>Sessions</span>
-        </div>
+        <Show
+          when={chats().some((c) => c.section === "pinned") ||
+            workspace()?.folders.length}
+        >
+          <div class="pinned-divider" role="separator" />
+        </Show>
         <For each={recentConversations()}>{row}</For>
         <Show when={workspace()?.recentHasMore}>
           <button
@@ -736,18 +746,20 @@ export default function App() {
             Show 100 more conversations
           </button>
         </Show>
-        <div class="archive">
-          <button
-            type="button"
-            class="section-heading"
-            aria-expanded={archiveOpen()}
-            onClick={() => setArchiveOpen((x) => !x)}
-          >
-            <Icon name="archive" />
-            <span>Archived</span>
-            <Icon name="nav-arrow-down" />
-          </button>
-          <Show when={archiveOpen()}>
+      </div>
+      <div class="archive">
+        <button
+          type="button"
+          class="archive-toggle"
+          aria-expanded={archiveOpen()}
+          onClick={() => setArchiveOpen((x) => !x)}
+        >
+          <span>Archived</span>
+          <span class="archive-rule" />
+          <Icon name="nav-arrow-down" />
+        </button>
+        <Show when={archiveOpen()}>
+          <div class="archive-list">
             <Show when={!archiveReady()}>
               <p class="archive-status" role="status">
                 {connected()
@@ -778,9 +790,8 @@ export default function App() {
                         mutate("workspace.move", {
                           key: c.key,
                           section: "recent",
-                        }),
-                      )
-                    }
+                        })
+                      )}
                   />
                 </div>
               )}
@@ -794,8 +805,8 @@ export default function App() {
                 Show 10 more
               </button>
             </Show>
-          </Show>
-        </div>
+          </div>
+        </Show>
       </div>
       <footer class="nav-footer">
         <div class="profile-actions">
@@ -827,24 +838,26 @@ export default function App() {
             onClick={() => navigate("settings")}
           />
         </div>
-        <button
-          type="button"
-          class="gateway-status"
-          onClick={() => navigate("resources:status")}
-        >
-          <span
-            class="connection"
-            classList={{
-              offline: !connected() || !workspace()?.connection?.online,
-            }}
+        <div class="sidebar-bottom-row">
+          <button
+            type="button"
+            class="gateway-status"
+            onClick={() => navigate("resources:status")}
           >
-            <i />
-            Gateway{" "}
-            {workspace()?.connection?.online && connected()
-              ? "connected"
-              : "disconnected"}
-          </span>
-        </button>
+            <span
+              class="connection"
+              classList={{
+                offline: !connected() || !workspace()?.connection?.online,
+              }}
+            >
+              <i />
+              Gateway {workspace()?.connection?.online && connected()
+                ? "connected"
+                : "disconnected"}
+            </span>
+          </button>
+          <div class="thread-actions">{conversationActions()}</div>
+        </div>
       </footer>
     </div>
   );
@@ -911,23 +924,26 @@ export default function App() {
       }
     >
       <div class="app-shell" classList={{ "sidebar-collapsed": collapsed() }}>
-        <aside class="desktop-navigation">
-          <Show
-            when={!collapsed()}
-            fallback={
-              <div class="sidebar-titlebar collapsed-controls">
-                <IconButton
-                  icon="sidebar-collapse"
-                  label="Expand sidebar"
-                  onClick={toggleSidebar}
-                />
-                {conversationActions()}
-              </div>
-            }
-          >
-            {navigation()}
-          </Show>
-        </aside>
+        <Show when={!narrow()}>
+          <aside class="desktop-navigation">
+            <Show
+              when={!collapsed()}
+              fallback={
+                <div class="sidebar-titlebar collapsed-controls">
+                  <IconButton
+                    icon="sidebar-collapse"
+                    label="Expand sidebar"
+                    onClick={toggleSidebar}
+                  />
+                  {navigationActions()}
+                  {conversationActions()}
+                </div>
+              }
+            >
+              {navigation()}
+            </Show>
+          </aside>
+        </Show>
         <main class="main-view">
           <header class="topbar mobile-only">
             <IconButton
@@ -936,6 +952,8 @@ export default function App() {
               label="Open conversations"
               onClick={() => setSheet(true)}
             />
+            <Show when={narrow() && selected()}>{(c) => row(c())}</Show>
+            {navigationActions()}
             {conversationActions()}
           </header>
           <SettingsFrame view={view()} navigate={navigate}>
@@ -976,13 +994,11 @@ export default function App() {
                             when={view() === "resources:platforms"}
                             fallback={
                               <Show
-                                when={
-                                  ![
-                                    "resources:skills",
-                                    "resources:toolsets",
-                                    "resources:mcp",
-                                  ].includes(view())
-                                }
+                                when={![
+                                  "resources:skills",
+                                  "resources:toolsets",
+                                  "resources:mcp",
+                                ].includes(view())}
                                 fallback={
                                   <Capabilities
                                     section={view().slice(10)}
@@ -1090,19 +1106,31 @@ export default function App() {
             title="Choose an Essentials icon"
             close={() => setIconPicker(undefined)}
           >
+            <input
+              type="search"
+              class="filter"
+              aria-label="Search icons"
+              placeholder="Search icons…"
+              value={iconSearch()}
+              onInput={(event) => setIconSearch(event.currentTarget.value)}
+            />
             <div class="essential-icon-picker">
-              <For each={essentialIcons}>
+              <For
+                each={essentialIcons.filter(([icon, label]) =>
+                  (icon + " " + label)
+                    .toLowerCase()
+                    .includes(iconSearch().trim().toLowerCase())
+                )}
+              >
                 {([icon, label]) => (
                   <button
                     type="button"
                     aria-label={label}
                     title={label}
-                    aria-pressed={
-                      (workspace()?.conversations.find(
-                        (item) => item.key === conversation().key,
-                      )?.essentialIcon ??
-                        (conversation().bot ? "bot" : "chat-bubble")) === icon
-                    }
+                    aria-pressed={(workspace()?.conversations.find(
+                      (item) => item.key === conversation().key,
+                    )?.essentialIcon ??
+                      (conversation().bot ? "bot" : "chat-bubble")) === icon}
                     onClick={() =>
                       void run(async () => {
                         await mutate("workspace.setEssentialIcon", {
@@ -1110,25 +1138,31 @@ export default function App() {
                           icon,
                         });
                         setIconPicker(undefined);
-                      })
-                    }
+                      })}
                   >
                     <Icon name={icon} />
                   </button>
                 )}
               </For>
             </div>
+            <Show
+              when={!essentialIcons.some(([icon, label]) =>
+                (icon + " " + label)
+                  .toLowerCase()
+                  .includes(iconSearch().trim().toLowerCase())
+              )}
+            >
+              <p>No icons found.</p>
+            </Show>
           </Dialog>
         )}
       </Show>
       <Show
-        when={
-          menu() &&
+        when={menu() &&
           (workspace()?.conversations.find(
             (item) => item.key === menu()?.key,
           ) ??
-            menu())
-        }
+            menu())}
       >
         {(c) => (
           <Dialog
@@ -1140,16 +1174,13 @@ export default function App() {
             <div class="action-list">
               <button
                 type="button"
-                disabled={
-                  c().section !== "archived" &&
-                  (c().running || c().pendingInput)
-                }
+                disabled={c().section !== "archived" &&
+                  (c().running || c().pendingInput)}
                 onClick={() =>
                   void run(async () => {
                     await archiveConversation(c());
                     setMenu(undefined);
-                  })
-                }
+                  })}
               >
                 <Icon name="archive" />
                 {c().section === "archived" ? "Unarchive" : "Archive"}
@@ -1163,8 +1194,7 @@ export default function App() {
                       unread: !unread(c()),
                     });
                     setMenu(undefined);
-                  })
-                }
+                  })}
               >
                 <Icon name="chat-bubble" />
                 {unread(c()) ? "Mark as read" : "Mark as unread"}
@@ -1176,8 +1206,7 @@ export default function App() {
                     await navigator.clipboard.writeText(c().sourceId);
                     setMenu(undefined);
                     inform("Session ID copied");
-                  })
-                }
+                  })}
               >
                 <Icon name="page" />
                 Copy session ID
@@ -1207,8 +1236,7 @@ export default function App() {
                             direction,
                           });
                           setMenu(undefined);
-                        })
-                      }
+                        })}
                     >
                       Move {direction === -1 ? "up" : "down"}
                     </button>
@@ -1232,8 +1260,7 @@ export default function App() {
                           section: c().section === section ? "recent" : section,
                         });
                         setMenu(undefined);
-                      })
-                    }
+                      })}
                   >
                     <Icon name={section === "essential" ? "star" : "pin"} />
                     {label}
@@ -1252,8 +1279,7 @@ export default function App() {
                           folderId: f._id,
                         });
                         setMenu(undefined);
-                      })
-                    }
+                      })}
                   >
                     <Icon name="folder" />
                     Move to {f.name}
@@ -1276,9 +1302,11 @@ export default function App() {
                 </button>
               </Show>
               <a
-                href={`/api/download?type=conversation&id=${encodeURIComponent(
-                  c().sourceId,
-                )}&profile=${encodeURIComponent(c().profile)}`}
+                href={`/api/download?type=conversation&id=${
+                  encodeURIComponent(
+                    c().sourceId,
+                  )
+                }&profile=${encodeURIComponent(c().profile)}`}
                 download=""
               >
                 <Icon name="download" />

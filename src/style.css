@@ -223,14 +223,13 @@ small {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  padding: 16px 0;
-  border-bottom: var(--hairline) solid var(--line);
+  padding: 8px 0 12px;
 }
 .essentials > button {
   flex: 1 0 48px;
   min-width: 44px;
   height: 44px;
-  border: var(--hairline) solid var(--line);
+  border: 0;
   background: var(--panel);
   display: flex;
   align-items: center;

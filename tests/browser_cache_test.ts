@@ -62,7 +62,7 @@ Deno.test({
       await page.reload();
       await expect(
         page
-          .locator(".sidebar-titlebar, .topbar")
+          .locator(".sidebar-titlebar, .topbar, .nav-footer")
           .getByRole("button", { name: "New conversation", exact: true })
           .first(),
       ).toBeVisible();
@@ -92,7 +92,7 @@ Deno.test({
         metadata: true,
       });
       await page
-        .locator(".sidebar-titlebar, .topbar")
+        .locator(".sidebar-titlebar, .topbar, .nav-footer")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();

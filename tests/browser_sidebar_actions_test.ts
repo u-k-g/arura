@@ -3,7 +3,8 @@ import { signIn } from "./sign_in.ts";
 import { requireValue } from "./require_value.ts";
 
 Deno.test({
-  name: "sidebar settings, artifacts, profile selection, and archive navigation",
+  name:
+    "sidebar settings, artifacts, profile selection, and archive navigation",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -20,12 +21,12 @@ Deno.test({
       await expect(page.locator(".main-view > .topbar")).toBeHidden();
       await expect(
         page
-          .locator(".sidebar-titlebar")
+          .locator(".thread-actions")
           .getByRole("button", { name: "New conversation", exact: true }),
       ).toBeVisible();
       await expect(
         page
-          .locator(".sidebar-titlebar")
+          .locator(".thread-actions")
           .getByRole("button", { name: "Archive conversation", exact: true }),
       ).toBeVisible();
       await page
@@ -66,7 +67,7 @@ Deno.test({
       );
       expect(removed.ok()).toBe(false);
       await page.evaluate(() =>
-        localStorage.setItem("arura.view", "resources:files?path=%2Ftmp"),
+        localStorage.setItem("arura.view", "resources:files?path=%2Ftmp")
       );
       await page.reload();
       await expect(
@@ -109,9 +110,7 @@ Deno.test({
           exact: true,
         }),
       ).toBeVisible();
-      await page
-        .getByRole("button", { name: "Conversation actions", exact: true })
-        .click();
+      await page.locator(".thread-row.selected > .icon-button").click();
       await page.getByRole("button", { name: "Archive", exact: true }).click();
       await expect
         .poll(() => page.evaluate(() => localStorage.getItem("arura.view")))
@@ -154,12 +153,10 @@ Deno.test({
         .poll(() =>
           page.evaluate(
             () => JSON.parse(localStorage.getItem("arura.view") || "[]")[0],
-          ),
+          )
         )
         .toBe("sidebar-profile");
-      await page
-        .getByRole("button", { name: "Conversation actions", exact: true })
-        .click();
+      await page.locator(".thread-row.selected > .icon-button").click();
       await page
         .getByRole("button", { name: "Delete conversation", exact: true })
         .click();

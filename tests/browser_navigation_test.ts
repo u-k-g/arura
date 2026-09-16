@@ -23,7 +23,7 @@ Deno.test({
     }
     async function newChat(page: Page) {
       await page
-        .locator(".sidebar-titlebar, .topbar")
+        .locator(".sidebar-titlebar, .topbar, .nav-footer")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
@@ -71,9 +71,7 @@ Deno.test({
         requireValue(original, "original"),
       );
       const title = `Garden notes ${crypto.randomUUID().slice(0, 6)}`;
-      await a
-        .getByRole("button", { name: "Conversation actions", exact: true })
-        .click();
+      await a.locator(".thread-row.selected > .icon-button").click();
       void onceActionDialog(a, (dialog) => dialog.accept(title));
       await a.getByRole("button", { name: "Rename", exact: true }).click();
       await expect(
@@ -159,9 +157,7 @@ Deno.test({
         .getByRole("button", { name: "Close", exact: true })
         .click();
       await a.getByRole("button", { name: title, exact: true }).click();
-      await a
-        .getByRole("button", { name: "Conversation actions", exact: true })
-        .click();
+      await a.locator(".thread-row.selected > .icon-button").click();
       void onceActionDialog(a, (dialog) => dialog.accept());
       await a
         .getByRole("button", { name: "Delete conversation", exact: true })

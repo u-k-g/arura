@@ -22,7 +22,7 @@ Deno.test({
       await page.goto(url);
       await signIn(page, "Conversation lifecycle test");
       await page
-        .locator(".sidebar-titlebar, .topbar")
+        .locator(".sidebar-titlebar, .topbar, .nav-footer")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
@@ -169,7 +169,7 @@ Deno.test({
         );
       }
       await a
-        .locator(".sidebar-titlebar, .topbar")
+        .locator(".sidebar-titlebar, .topbar, .nav-footer")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
@@ -458,7 +458,7 @@ Deno.test({
       );
       await signIn(page, "Run controls");
       await page
-        .locator(".sidebar-titlebar, .topbar")
+        .locator(".sidebar-titlebar, .topbar, .nav-footer")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
