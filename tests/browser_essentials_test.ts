@@ -1,6 +1,6 @@
+import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
-
 Deno.test({
   name:
     "Essentials icons sync, fill the sidebar, and toggle placement with top-bar archive",
@@ -19,7 +19,12 @@ Deno.test({
           [b, "Essentials second device"],
         ] as const
       ) {
-        await page.goto(Deno.env.get("ARURA_TEST_URL")!);
+        await page.goto(
+          requireValue(
+            Deno.env.get("ARURA_TEST_URL"),
+            'Deno.env.get("ARURA_TEST_URL")',
+          ),
+        );
         await signIn(page, name);
         await page
           .getByRole("button", { name: "Fixture conversation", exact: true })
@@ -49,7 +54,12 @@ Deno.test({
       expect(await tile.getAttribute("title")).toBe("Fixture conversation");
       const box = await tile.boundingBox();
       const container = await a.locator(".essentials").boundingBox();
-      expect(Math.abs(box!.width - container!.width)).toBeLessThan(2);
+      expect(
+        Math.abs(
+          requireValue(box, "box").width -
+            requireValue(container, "container").width,
+        ),
+      ).toBeLessThan(2);
       await tile.click({ button: "right" });
       await a.getByRole("button", { name: "Change icon", exact: true }).click();
       await a
@@ -66,7 +76,9 @@ Deno.test({
           .getByRole("dialog")
           .getByRole("button", { name: "Star", exact: true }),
       ).toHaveAttribute("aria-pressed", "true");
-      await b.getByRole("button", { name: "Close", exact: true }).last()
+      await b
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
         .click();
       await expect(
         a.locator(".topbar").getByRole("button", {
@@ -121,7 +133,9 @@ Deno.test({
       await a.screenshot({
         path: `${Deno.env.get("TMPDIR")}/essentials-mobile.png`,
       });
-      await a.getByRole("button", { name: "Close", exact: true }).last()
+      await a
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
         .click();
       await actions();
       await a

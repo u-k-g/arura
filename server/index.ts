@@ -57,7 +57,7 @@ async function authenticated(request: Request) {
     .get("cookie")
     ?.split(";")
     .map((x) => x.trim())
-    .find((x) => x.startsWith(cookieName + "="))
+    .find((x) => x.startsWith(`${cookieName}=`))
     ?.slice(cookieName.length + 1);
   if (!raw) throw new Error("Authorization required");
   const d = await convex.query(anyApi.devices.resolve, {
@@ -219,14 +219,6 @@ async function reconcile() {
           });
         } catch (error) {
           report(error);
-          await convex.mutation(anyApi.workspace.ingest, {
-            notice: {
-              id: `organization:${item.key}:${item.organizationRevision}`,
-              title:
-                "Pin/archive change is waiting for Hermes. Arura will retry.",
-              conversation: item.key,
-            },
-          });
         }
       }
       const conversations = await hermes.list();
@@ -332,18 +324,7 @@ hermes.on("connection", (online: boolean) => {
   if (online) void reconcile().catch(report);
 });
 hermes.on("fault", report);
-hermes.on("complete", (key: string, turn: Turn) => {
-  void convex
-    .mutation(anyApi.workspace.ingest, {
-      notice: {
-        id: `${key}:${turn.startedAt}`,
-        conversation: key,
-        title: turn.state === "complete"
-          ? "Reply ready"
-          : "Hermes needs attention",
-      },
-    })
-    .catch(report);
+hermes.on("complete", (key: string) => {
   void syncHistory(key).catch(report);
   activeCommands.delete(key);
 });
@@ -445,9 +426,9 @@ async function processCommands() {
           let prompt = payload.text;
           let shouldSubmit = true;
           if (prompt.startsWith("/") && !payload.edit) {
-            const [, name, arg = ""] = prompt
-              .trim()
-              .match(/^\/(\S+)(?:\s+([\s\S]*))?$/)!;
+            const [, name, arg = ""] =
+              prompt.trim().match(/^\/(\S+)(?:\s+([\s\S]*))?$/) ?? [];
+            if (!name) throw new Error("Enter a command after /");
             try {
               result = await hermes.call("command.dispatch", {
                 session_id,
@@ -497,7 +478,7 @@ async function processCommands() {
           try {
             result = await hermes.rest(
               `/api/sessions/${encodeURIComponent(id)}${
-                kind === "delete" ? "?" + new URLSearchParams({ profile }) : ""
+                kind === "delete" ? `?${new URLSearchParams({ profile })}` : ""
               }`,
               kind === "delete" ? "DELETE" : "PATCH",
               kind === "rename" ? { title: payload.title, profile } : undefined,
@@ -790,8 +771,8 @@ async function handle(request: Request, ip: string): Promise<Response> {
       name ||= `${browser} on ${platform}`;
     } else if (typeof body.code === "string" && name) {
       // Keep already-loaded clients compatible while they update.
-      bootstrap = Boolean(process.env.ARURA_ACCESS_KEY) &&
-        equal(body.code, process.env.ARURA_ACCESS_KEY!);
+      const accessKey = process.env.ARURA_ACCESS_KEY;
+      bootstrap = Boolean(accessKey && equal(body.code, accessKey));
     } else {
       return json({ error: "Enter your Hermes username and password" }, 400);
     }
@@ -907,7 +888,8 @@ async function handle(request: Request, ip: string): Promise<Response> {
       runtimeWatches.delete(key);
       runtimeWatches.set(key, { conversation, method, params, observers });
       if (runtimeWatches.size > 100) {
-        runtimeWatches.delete(runtimeWatches.keys().next().value!);
+        const oldest = runtimeWatches.keys().next().value;
+        if (oldest !== undefined) runtimeWatches.delete(oldest);
       }
       await convex.mutation(anyApi.workspace.saveRuntimeView, {
         key,
@@ -1186,14 +1168,18 @@ async function handle(request: Request, ip: string): Promise<Response> {
           400,
         );
       }
-      const result = await hermes.call(spec.rpc, {
-        ...body,
-        ...spec.rpcParams,
-        ...(conversation
-          ? { session_id: await hermes.attach(conversation) }
-          : {}),
-        profile: url.searchParams.get("profile") ?? "default",
-      });
+      const result = await hermes.call(
+        spec.rpc,
+        {
+          ...body,
+          ...spec.rpcParams,
+          ...(conversation
+            ? { session_id: await hermes.attach(conversation) }
+            : {}),
+          profile: url.searchParams.get("profile") ?? "default",
+        },
+        spec.timeoutMs,
+      );
       if (request.method !== "GET") {
         await convex.mutation(anyApi.workspace.ingest, { changed: true });
       }
@@ -1321,7 +1307,7 @@ async function handle(request: Request, ip: string): Promise<Response> {
     /\/$/,
     "",
   );
-  let file = resolve(root, "." + decodeURIComponent(path));
+  let file = resolve(root, `.${decodeURIComponent(path)}`);
   if (file !== root && !file.startsWith(root + sep)) {
     return new Response("Not found", { status: 404 });
   }
@@ -1343,7 +1329,7 @@ async function handle(request: Request, ip: string): Promise<Response> {
     return new Response(body, {
       headers: {
         "content-type": type[extname(file)] ?? "application/octet-stream",
-        "cache-control": file.includes(sep + "assets" + sep)
+        "cache-control": file.includes(`${sep}assets${sep}`)
           ? "public, max-age=31536000, immutable"
           : "no-cache",
         "x-content-type-options": "nosniff",

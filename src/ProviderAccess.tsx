@@ -24,12 +24,12 @@ type Flow = {
 const webUrl = (value?: string) =>
   value && /^https?:\/\//i.test(value) ? value : undefined;
 
-export default function ProviderAccess() {
+export default function ProviderAccess(props: { profile?: string } = {}) {
   const [providers, setProviders] = createSignal<Provider[]>([]);
   const [flow, setFlow] = createSignal<Flow>();
   const [error, setError] = createSignal("");
   async function refresh() {
-    const value = await resource("providers");
+    const value = await resource("providers", { profile: props.profile });
     setProviders(
       (value.providers ?? []).filter(
         (provider: Provider) => !/^(nous|hermes[-_]cloud)$/.test(provider.id),
@@ -51,6 +51,7 @@ export default function ProviderAccess() {
         polling = true;
         try {
           const value = await resource("providerPoll", {
+            profile: props.profile,
             id: current.provider,
             session: current.session_id,
           });
@@ -74,7 +75,11 @@ export default function ProviderAccess() {
   async function close() {
     const current = flow();
     if (current && (!current.status || current.status === "pending")) {
-      await resource("providerCancel", { session: current.session_id }, {});
+      await resource(
+        "providerCancel",
+        { profile: props.profile, session: current.session_id },
+        {},
+      );
     }
     setFlow(undefined);
   }
@@ -103,7 +108,7 @@ export default function ProviderAccess() {
                   void run(async () => {
                     const value = await resource(
                       "providerStart",
-                      { id: provider.id },
+                      { profile: props.profile, id: provider.id },
                       {},
                     );
                     if (value.flow !== "device_code") {
@@ -136,7 +141,7 @@ export default function ProviderAccess() {
                     }
                     await resource(
                       "providerDisconnect",
-                      { id: provider.id },
+                      { profile: props.profile, id: provider.id },
                       {},
                     );
                     await refresh();

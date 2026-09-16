@@ -206,10 +206,11 @@ export default function MixtureModels() {
           : old.active_preset,
       };
     });
-    setSelected(config()!.default_preset);
+    setSelected(config()?.default_preset ?? "");
   }
   async function save() {
-    const value = config()!;
+    const value = config();
+    if (!value) throw new Error("Wait for the mixture configuration to load");
     for (const [key, preset] of Object.entries(value.presets)) {
       if (
         !preset.reference_models.length ||

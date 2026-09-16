@@ -8,7 +8,6 @@ export type Workspace = {
   reads?: Doc<"conversationReads">[];
   conversations: Doc<"conversations">[];
   folders: Doc<"folders">[];
-  notices: Doc<"notices">[];
   connection: Doc<"connection"> | null;
   settings: Record<string, unknown> & {
     hiddenModels?: string[];

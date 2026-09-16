@@ -144,14 +144,6 @@ export const renamed = mutation({
       ) {
         await ctx.db.patch(command._id, { conversation: target });
       }
-      for (
-        const notice of await ctx.db
-          .query("notices")
-          .withIndex("conversation", (q) => q.eq("conversation", row.key))
-          .collect()
-      ) {
-        await ctx.db.patch(notice._id, { conversation: target });
-      }
     }
   },
 });

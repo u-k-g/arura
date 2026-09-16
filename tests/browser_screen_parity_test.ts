@@ -1,6 +1,6 @@
+import { requireValue } from "./require_value.ts";
 import { chromium, expect } from "@playwright/test";
 import { openSettings, signIn } from "./sign_in.ts";
-
 Deno.test({
   name:
     "empty chat submits once, settings retain navigation, and tables have horizontal rules",
@@ -14,7 +14,12 @@ Deno.test({
       viewport: { width: 1440, height: 900 },
     });
     try {
-      await page.goto(Deno.env.get("ARURA_TEST_URL")!);
+      await page.goto(
+        requireValue(
+          Deno.env.get("ARURA_TEST_URL"),
+          'Deno.env.get("ARURA_TEST_URL")',
+        ),
+      );
       await signIn(page, "Screen comparison");
       await expect(
         page.getByRole("heading", { name: "HERMES AGENT" }),
@@ -86,8 +91,9 @@ Deno.test({
         .locator(".markdown table")
         .first()
         .evaluate((table) => {
-          const cell = table.querySelector("td")!,
-            numeric = table.querySelector("td[align]")!;
+          const cell = table.querySelector("td"),
+            numeric = table.querySelector("td[align]");
+          if (!cell || !numeric) throw new Error("Missing table cells");
           return {
             outer: getComputedStyle(table).borderTopWidth,
             vertical: getComputedStyle(cell).borderRightWidth,

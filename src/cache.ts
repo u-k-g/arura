@@ -61,12 +61,12 @@ export async function draftAttachments(
 ) {
   if (attachments !== undefined) {
     attachmentDrafts.set(key, attachments);
-    await saveCache("attachments:" + key, attachments);
+    await saveCache(`attachments:${key}`, attachments);
     return attachments;
   }
   return (
     attachmentDrafts.get(key) ??
-      (await loadCache<DraftAttachment[]>("attachments:" + key)) ??
+      (await loadCache<DraftAttachment[]>(`attachments:${key}`)) ??
       []
   );
 }

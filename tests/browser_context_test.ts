@@ -1,6 +1,6 @@
+import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
-
 Deno.test({
   name:
     "attached context stays out of messages, copied text and editing while Hermes retains it",
@@ -33,7 +33,12 @@ Deno.test({
         { id: 901, role: "user", content: raw },
         { id: 902, role: "assistant", content: "A short summary." },
       ]);
-      await page.goto(Deno.env.get("ARURA_TEST_URL")!);
+      await page.goto(
+        requireValue(
+          Deno.env.get("ARURA_TEST_URL"),
+          'Deno.env.get("ARURA_TEST_URL")',
+        ),
+      );
       await signIn(page, "Context test");
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })

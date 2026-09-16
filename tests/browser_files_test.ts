@@ -1,7 +1,7 @@
+import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { Buffer } from "node:buffer";
 import { chromium, expect, type Page } from "@playwright/test";
-
 Deno.test({
   name:
     "uploads round-trip through the host and concurrent file edits preserve the losing draft",
@@ -11,7 +11,10 @@ Deno.test({
       headless: true,
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     async function device(name: string) {
       const page = await browser.newPage();
       await page.goto(url);
@@ -35,9 +38,10 @@ Deno.test({
       });
       const input = a.getByLabel("Message Hermes", { exact: true });
       await expect(input).toHaveText(/Attached file:/);
-      const path = (await input.innerText()).match(
-        /\[Attached file: (.+)\]/,
-      )![1];
+      const path = requireValue(
+        (await input.innerText()).match(/\[Attached file: (.+)\]/),
+        "(await input.innerText()).match(\n        /\\[Attached file: (.+)\\]/,\n      )",
+      )[1];
       const downloaded = await b.request.get(
         `${url}/api/download?${new URLSearchParams({ path })}`,
       );
@@ -65,15 +69,16 @@ Deno.test({
         );
       }, png);
       await expect(input).toHaveText(/pasted\.png/);
-      const imagePath = (await input.innerText()).match(
-        /\[Attached file: (.+pasted\.png)\]/,
-      )![1];
+      const imagePath = requireValue(
+        (await input.innerText()).match(/\[Attached file: (.+pasted\.png)\]/),
+        "(await input.innerText()).match(\n        /\\[Attached file: (.+pasted\\.png)\\]/,\n      )",
+      )[1];
       const imageDownload = await b.request.get(
         `${url}/api/download?${new URLSearchParams({ path: imagePath })}`,
       );
       expect(imageDownload.status()).toBe(200);
       expect((await imageDownload.body()).toString("base64")).toBe(png);
-      const edit = async function (page: Page, text: string) {
+      const edit = async (page: Page, text: string) => {
         await page.getByRole("button", { name: "Files", exact: true }).click();
         await page
           .locator(".resource-card")

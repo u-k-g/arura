@@ -327,10 +327,7 @@ small {
   padding: 4px;
   min-width: 25px;
 }
-.thread-row:hover > .icon-button,
-.thread-row:focus-within > .icon-button {
-  opacity: 1;
-}
+
 .folder summary {
   display: flex;
   align-items: center;
@@ -339,10 +336,7 @@ small {
   padding: 6px 8px;
   font-size: 14px;
 }
-.folder summary > .icon {
-  width: 13px;
-  height: 13px;
-}
+
 .folder .thread-row {
   margin-left: 16px;
 }
@@ -851,10 +845,7 @@ small {
   border-bottom: var(--hairline) solid var(--line);
   padding: 6px 8px;
 }
-.settings-grid > button .icon {
-  color: var(--muted);
-  margin-right: 5px;
-}
+
 .settings-grid > button > span:last-child:not(.icon) {
   margin-left: auto;
 }
@@ -884,24 +875,6 @@ small {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 25px;
-}
-.notification-card {
-  display: flex;
-  gap: 15px;
-  text-align: left;
-  justify-content: flex-start;
-  width: 100%;
-  margin: 10px 0;
-  padding: 12px;
-  border-radius: 8px;
-}
-.notification-card small {
-  display: block;
-  font-size: 10px;
-  margin-top: 6px;
-}
-.notification-card.unread {
-  border-color: var(--accent);
 }
 .page-heading {
   display: flex;
@@ -1175,12 +1148,16 @@ dialog::backdrop {
   }
 }
 @media (max-width: 720px), (pointer: coarse) and (hover: none) {
+  .icon-button {
+    min-width: 40px;
+    min-height: 40px;
+  }
   .app-shell {
     display: block;
   }
-  .desktop-navigation,
-  .desktop-only {
-    display: none !important;
+  .app-shell .desktop-navigation,
+  :root .desktop-only {
+    display: none;
   }
   .mobile-only {
     display: inline-flex;
@@ -1292,9 +1269,6 @@ dialog::backdrop {
     display: inline-block;
     margin-top: 5px;
   }
-  .notification-card {
-    min-height: 70px;
-  }
   .page-heading h1 {
     font-size: 24px;
   }
@@ -1383,16 +1357,12 @@ dialog::backdrop {
   .field textarea {
     font-size: 16px;
   }
-  .icon-button {
-    min-width: 40px;
-    min-height: 40px;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   * {
-    scroll-behavior: auto !important;
-    animation: none !important;
-    transition: none !important;
+    scroll-behavior: auto;
+    animation: none;
+    transition: none;
   }
 }
 
@@ -1441,16 +1411,6 @@ progress {
 }
 .completion-list [aria-selected="true"] {
   background: var(--surface);
-}
-
-.notification-count {
-  min-width: 1.25rem;
-  border-radius: 1rem;
-  padding: 0.05rem 0.3rem;
-  font-size: 0.7rem;
-  text-align: center;
-  background: var(--accent);
-  color: var(--canvas);
 }
 
 .graph-toolbar {
@@ -1749,4 +1709,17 @@ progress {
 .badge.is-disabled {
   color: var(--muted);
   background: color-mix(in srgb, var(--muted) 8%, transparent);
+}
+.folder summary > .icon {
+  width: 13px;
+  height: 13px;
+}
+.thread-row:hover > .icon-button,
+.thread-row:focus-within > .icon-button {
+  opacity: 1;
+}
+
+.settings-grid > button .icon {
+  color: var(--muted);
+  margin-right: 5px;
 }

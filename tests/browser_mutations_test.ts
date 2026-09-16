@@ -1,9 +1,9 @@
+import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
-
 Deno.test({
   name:
     "editing an earlier message replaces its continuation; branching preserves the original",
@@ -14,7 +14,10 @@ Deno.test({
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
     const page = await browser.newPage();
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     try {
       await page.goto(url);
       await signIn(page, "Conversation lifecycle test");
@@ -89,12 +92,12 @@ Deno.test({
           .locator(".markdown")
           .filter({ hasText: "Received: Only in the branch" }),
       ).toBeVisible();
-      const [profile, id] = JSON.parse(originalKey!);
+      const [profile, id] = JSON.parse(
+        requireValue(originalKey, "originalKey"),
+      );
       const original = await page.request.get(
         `${url}/api/download?type=conversation&profile=${
-          encodeURIComponent(
-            profile,
-          )
+          encodeURIComponent(profile)
         }&id=${encodeURIComponent(id)}`,
       );
       expect(original.ok()).toBe(true);
@@ -117,7 +120,6 @@ Deno.test({
     }
   },
 });
-
 Deno.test({
   name:
     "mobile approvals, clarification and secrets resolve across devices without caching the secret",
@@ -135,7 +137,10 @@ Deno.test({
     });
     const a = await desktop.newPage(),
       b = await mobile.newPage();
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     try {
       for (const page of [a, b]) {
         await page.goto(url);
@@ -159,7 +164,10 @@ Deno.test({
       const auth = await (await a.request.get(`${url}/auth/token`)).json();
       const client = new ConvexHttpClient(bootstrap.convexUrl);
       client.setAuth(auth.token);
-      await b.evaluate((key) => localStorage.setItem("arura.view", key!), key);
+      await b.evaluate((key) => {
+        if (!key) throw new Error("Missing conversation key");
+        localStorage.setItem("arura.view", key);
+      }, key);
       await b.reload();
       await expect(
         b.getByLabel("Message Hermes", { exact: true }),
@@ -259,8 +267,11 @@ Deno.test({
       });
       expect(
         pending.commands.find(
-          (command: { payload?: { text?: string } }) =>
-            command.payload?.text === "Queued after questions",
+          (command: {
+            payload?: {
+              text?: string;
+            };
+          }) => command.payload?.text === "Queued after questions",
         )?.status,
       ).toBe("queued");
       for (const id of backlog) {
@@ -400,7 +411,6 @@ Deno.test({
     }
   },
 });
-
 Deno.test({
   name:
     "steering preserves a rejected draft and stopping settles the run before queued work starts",
@@ -412,7 +422,12 @@ Deno.test({
     });
     const page = await browser.newPage();
     try {
-      await page.goto(Deno.env.get("ARURA_TEST_URL")!);
+      await page.goto(
+        requireValue(
+          Deno.env.get("ARURA_TEST_URL"),
+          'Deno.env.get("ARURA_TEST_URL")',
+        ),
+      );
       await signIn(page, "Run controls");
       await page
         .locator(".topbar")

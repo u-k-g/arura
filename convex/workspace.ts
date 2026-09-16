@@ -95,11 +95,6 @@ export const overview = query({
         (a, b) => a.rank - b.rank,
       ),
       settings,
-      notices: await ctx.db
-        .query("notices")
-        .withIndex("created")
-        .order("desc")
-        .take(40),
       connection: await ctx.db
         .query("connection")
         .withIndex("key", (q) => q.eq("key", "hermes"))
@@ -377,13 +372,6 @@ export const modelVisibility = mutation({
     else await ctx.db.insert("settings", { key: "hiddenModels", value });
   },
 });
-export const readNotice = mutation({
-  args: { id: v.id("notices") },
-  handler: async (ctx, args) => {
-    await device(ctx);
-    await ctx.db.patch(args.id, { read: true });
-  },
-});
 export const sweep = internalMutation({
   args: { cursor: v.optional(v.string()) },
   handler: async (ctx, args) => {
@@ -430,7 +418,6 @@ export const ingest = mutation({
     turn: v.optional(v.any()),
     online: v.optional(v.boolean()),
     error: v.optional(v.string()),
-    notice: v.optional(v.any()),
     changed: v.optional(v.boolean()),
     deletedKeys: v.optional(v.array(v.string())),
   },
@@ -552,26 +539,6 @@ export const ingest = mutation({
     }
     if (args.turn) {
       const t = args.turn;
-      for (const interaction of t.interactions ?? []) {
-        const id = `${t.conversation}:input:${interaction.id}`;
-        const existing = await ctx.db
-          .query("notices")
-          .withIndex("id", (q) => q.eq("id", id))
-          .unique();
-        if (!existing) {
-          await ctx.db.insert("notices", {
-            id,
-            title: interaction.kind === "approval"
-              ? "Approval needed"
-              : interaction.kind === "clarify"
-              ? "Hermes has a question"
-              : "Input needed",
-            conversation: t.conversation,
-            createdAt: Date.now(),
-            read: false,
-          });
-        }
-      }
       const old = await ctx.db
         .query("turns")
         .withIndex("conversation", (q) => q.eq("conversation", t.conversation))
@@ -589,22 +556,6 @@ export const ingest = mutation({
           running: t.state === "running",
           pendingInput: t.interactions.length > 0,
           activityAt: Date.now(),
-        });
-      }
-    }
-    if (args.notice) {
-      const n = args.notice;
-      const existing = await ctx.db
-        .query("notices")
-        .withIndex("id", (q) => q.eq("id", n.id))
-        .unique();
-      if (!existing) {
-        await ctx.db.insert("notices", {
-          id: n.id,
-          title: n.title,
-          conversation: n.conversation,
-          createdAt: Date.now(),
-          read: false,
         });
       }
     }

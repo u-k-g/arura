@@ -143,18 +143,24 @@ export default function Clarification(props: {
     >
       <For each={props.interaction.questions?.map((question) => question.id)}>
         {(id) => (
-          <Question
-            batch
-            question={props.interaction.questions!.find(
+          <Show
+            when={props.interaction.questions?.find(
               (question) => question.id === id,
-            )!}
-            submit={(answer) =>
-              props.respond({
-                request_id: props.interaction.id,
-                question_id: id,
-                answer,
-              })}
-          />
+            )}
+          >
+            {(question) => (
+              <Question
+                batch
+                question={question()}
+                submit={(answer) =>
+                  props.respond({
+                    request_id: props.interaction.id,
+                    question_id: id,
+                    answer,
+                  })}
+              />
+            )}
+          </Show>
         )}
       </For>
     </Show>

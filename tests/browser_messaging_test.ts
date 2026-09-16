@@ -1,7 +1,7 @@
+import { requireValue } from "./require_value.ts";
 import { chromium, expect } from "@playwright/test";
 import { signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
-
 Deno.test({
   name:
     "messaging matches Hermes platform navigation and keeps credential and access actions scoped",
@@ -15,7 +15,12 @@ Deno.test({
       viewport: { width: 1280, height: 800 },
     });
     try {
-      await page.goto(Deno.env.get("ARURA_TEST_URL")!);
+      await page.goto(
+        requireValue(
+          Deno.env.get("ARURA_TEST_URL"),
+          'Deno.env.get("ARURA_TEST_URL")',
+        ),
+      );
       await signIn(page, "Messaging test");
       await page
         .getByRole("button", { name: "Messaging", exact: true })

@@ -5,6 +5,7 @@ export type Field = {
   required?: boolean;
 };
 export type Operation = {
+  timeoutMs?: number;
   path: string;
   rpc?: string;
   rpcParams?: Record<string, unknown>;
@@ -234,6 +235,13 @@ export const operations: Record<string, Operation> = {
       { key: "bearer_token", label: "Header bearer token", type: "password" },
     ],
   },
+  reloadMcp: {
+    path: "",
+    method: "POST",
+    rpc: "reload.mcp",
+    timeoutMs: 60000,
+    rpcParams: { confirm: true },
+  },
   saveMcp: { path: "/api/mcp/servers", method: "PUT" },
   deleteMcp: { path: "/api/mcp/servers/:id", method: "DELETE" },
   testMcp: { path: "/api/mcp/servers/:id/test", method: "POST" },
@@ -336,6 +344,6 @@ export function operationRequest(
       query.set(key, String(value));
     }
   }
-  if (query.size) path += "?" + query;
+  if (query.size) path += `?${query}`;
   return { ...op, path, method: op.method ?? "GET" };
 }

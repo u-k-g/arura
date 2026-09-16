@@ -251,7 +251,7 @@ export default function Chat(props: {
     void draft(key).then((value) => {
       if (props.conversation === key && text() === "") setText(value ?? "");
     });
-    void loadCache<Transcript>("chat:" + key).then((value) => {
+    void loadCache<Transcript>(`chat:${key}`).then((value) => {
       if (
         value &&
         props.conversation === key &&
@@ -326,7 +326,7 @@ export default function Chat(props: {
             });
           }
         }
-        void saveCache("chat:" + key, value);
+        void saveCache(`chat:${key}`, value);
         if (prepended) {
           requestAnimationFrame(() => {
             if (props.conversation === key && scroller) {
@@ -827,10 +827,10 @@ export default function Chat(props: {
                         {" "}
                         for {elapsed(
                           group === settledHistoryGroup()
-                            ? turn()!.startedAt
+                            ? (turn()?.startedAt ?? 0)
                             : (group.prompt?.createdAt ?? 0),
                           group === settledHistoryGroup()
-                            ? (turn()!.finishedAt ?? clock())
+                            ? (turn()?.finishedAt ?? clock())
                             : (group.answer?.createdAt ?? 0),
                         )}
                       </Show>

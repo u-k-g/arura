@@ -1,6 +1,6 @@
+import { requireValue } from "./require_value.ts";
 import { openSettings, signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
-
 Deno.test({
   name: "Hermes layout and shared pin/archive state in both directions",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
@@ -13,7 +13,10 @@ Deno.test({
       viewport: { width: 1360, height: 900 },
       colorScheme: "dark",
     });
-    const hermes = Deno.env.get("HERMES_URL")!;
+    const hermes = requireValue(
+      Deno.env.get("HERMES_URL"),
+      'Deno.env.get("HERMES_URL")',
+    );
     const originalConfig = await (await fetch(`${hermes}/api/config`)).json();
     const rows = await (
       await fetch(`${hermes}/api/sessions?profile=default`)
@@ -37,7 +40,12 @@ Deno.test({
     };
     try {
       await metadata({ pinned: true, archived: false });
-      await page.goto(Deno.env.get("ARURA_TEST_URL")!);
+      await page.goto(
+        requireValue(
+          Deno.env.get("ARURA_TEST_URL"),
+          'Deno.env.get("ARURA_TEST_URL")',
+        ),
+      );
       await signIn(page, "Hermes layout review");
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })
@@ -86,9 +94,9 @@ Deno.test({
         page.getByRole("button", { name: "Model", exact: true }),
       ).toBeVisible();
       const composer = await page.locator(".composer").boundingBox();
-      expect(composer!.height).toBeLessThan(65);
+      expect(requireValue(composer, "composer").height).toBeLessThan(65);
       const sidebar = await page.locator(".desktop-navigation").boundingBox();
-      expect(sidebar!.width).toBe(247);
+      expect(requireValue(sidebar, "sidebar").width).toBe(247);
       const prompt =
         "Compare the two options.\n\n| Option | Benefit |\n| --- | --- |\n| One | Less weight |\n| Two | More tread |\n\nThe choice depends on the course and conditions.";
       await page.getByLabel("Message Hermes", { exact: true }).fill(prompt);
@@ -179,7 +187,10 @@ Deno.test({
         })
         .toEqual({ auto_archive: false, auto_archive_days: 21 });
     } finally {
-      const url = Deno.env.get("ARURA_TEST_URL")!;
+      const url = requireValue(
+        Deno.env.get("ARURA_TEST_URL"),
+        'Deno.env.get("ARURA_TEST_URL")',
+      );
       const restored = await page.request.put(
         `${url}/api/resource/saveConfig`,
         {

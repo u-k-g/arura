@@ -1,3 +1,4 @@
+import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 Deno.test({
@@ -13,7 +14,12 @@ Deno.test({
       viewport: { width: 1280, height: 800 },
     });
     try {
-      await page.goto(Deno.env.get("ARURA_TEST_URL")!);
+      await page.goto(
+        requireValue(
+          Deno.env.get("ARURA_TEST_URL"),
+          'Deno.env.get("ARURA_TEST_URL")',
+        ),
+      );
       await signIn(page, "Queue keyboard test");
       await page
         .locator(".topbar")
@@ -72,7 +78,10 @@ Deno.test({
         "third\nwith a second line",
       );
       expect(
-        (await page.locator(".queued-message").last().boundingBox())!.height,
+        requireValue(
+          await page.locator(".queued-message").last().boundingBox(),
+          '(await page.locator(".queued-message").last().boundingBox())',
+        ).height,
       ).toBeLessThanOrEqual(32);
       await page.screenshot({
         path: `${Deno.env.get("TMPDIR")}/queue-desktop.png`,

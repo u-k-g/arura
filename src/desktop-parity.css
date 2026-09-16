@@ -189,6 +189,10 @@
 .resource-master-detail .resource-card h3 {
   font-size: 14px;
 }
+.model-assignment h4 {
+  margin: 0 0 10px;
+  text-transform: capitalize;
+}
 .resource-master-detail .resource-card h4 {
   font-size: 10px;
   text-transform: uppercase;
@@ -399,6 +403,10 @@
   font-size: 12px;
   text-align: left;
 }
+.artifact-toolbar > span {
+  margin-inline: auto;
+  white-space: nowrap;
+}
 .job-history button > span {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -512,14 +520,129 @@
   white-space: nowrap;
   border: 0;
 }
-.artifact-toolbar > span {
-  margin-inline: auto;
-  white-space: nowrap;
-}
+
 .artifact-toolbar .text-button {
   flex: none;
   white-space: nowrap;
 }
 .settings-section-picker {
   align-self: flex-start;
+}
+
+.settings-disclosure {
+  border-top: 1px solid var(--line);
+  padding: 12px 0;
+}
+.settings-disclosure > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+.settings-disclosure[open] > summary {
+  margin-bottom: 12px;
+}
+.model-assignment {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.model-assignment-fields {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+.model-assignment label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+}
+.model-assignment-fields label {
+  flex: 1;
+  min-width: 0;
+}
+.model-assignment input,
+.model-assignment select {
+  width: 100%;
+  min-width: 0;
+}
+.model-assignment > label {
+  margin-top: 8px;
+}
+.model-settings-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 0;
+}
+.model-settings-links button {
+  font-size: 12px;
+}
+@media (max-width: 720px) {
+  .model-assignment-fields {
+    flex-wrap: wrap;
+  }
+  .model-assignment-fields label {
+    flex-basis: 100%;
+  }
+}
+.inline-file-editor {
+  height: 320px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.inline-file-editor .code-editor {
+  flex: 1;
+  min-height: 0;
+}
+.inline-file-editor .cm-editor {
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+.resource-dialog {
+  width: min(1100px, calc(100vw - 96px));
+  height: min(760px, calc(100dvh - 96px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  border-radius: 4px;
+}
+.resource-dialog > .dialog-inner {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+.resource-dialog > .dialog-inner > header {
+  padding: 10px 16px;
+  margin: 0;
+  border-bottom: 1px solid var(--line);
+}
+.resource-dialog > .dialog-inner > header h2 {
+  font-size: 14px;
+}
+.resource-dialog .resource-page {
+  flex: 1;
+  min-height: 0;
+  padding: 16px;
+}
+.resource-dialog .page-heading h1 {
+  display: none;
+}
+.resource-dialog .page-heading {
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+@media (max-width: 720px) {
+  .resource-dialog {
+    width: 100%;
+    height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+  }
+  .resource-dialog .resource-page {
+    padding: 12px;
+  }
 }

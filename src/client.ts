@@ -107,13 +107,13 @@ export async function start() {
           ).values(),
         ],
         recentHasMore: ordered.length
-          ? !ordered.at(-1)!.isDone
+          ? !ordered.at(-1)?.isDone
           : base.recentHasMore,
       };
       setWorkspace(value);
       void saveCache("workspace", value);
     };
-    const truncate = function (after: number) {
+    const truncate = (after: number) => {
       for (const [index, stop] of stops) {
         if (index > after) {
           stop();
@@ -122,11 +122,13 @@ export async function start() {
         }
       }
     };
-    const follow = function (index: number, cursor: string) {
+    const follow = (index: number, cursor: string) => {
+      const activeClient = client;
+      if (!activeClient) return;
       let previousCursor: string | undefined;
       stops.set(
         index,
-        client!.onUpdate(
+        activeClient.onUpdate(
           anyApi.workspace.recent,
           { cursor },
           (result) => {

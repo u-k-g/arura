@@ -74,7 +74,7 @@ export const queue = query({
             q.neq(q.field("kind"), "send"),
             q.not(
               q.or(
-                ...args.blocked!.map((key) =>
+                ...(args.blocked ?? []).map((key) =>
                   q.eq(q.field("conversation"), key)
                 ),
               ),
@@ -90,7 +90,7 @@ export const claim = mutation({
   handler: async (ctx, args) => {
     await adapter(ctx);
     const c = await ctx.db.get(args.id);
-    if (!c || c.status !== "queued") return null;
+    if (c?.status !== "queued") return null;
     const d = await ctx.db
       .query("devices")
       .withIndex("id", (q) => q.eq("id", c.device))
@@ -153,7 +153,7 @@ export const edit = mutation({
   handler: async (ctx, args) => {
     await device(ctx);
     const c = await ctx.db.get(args.id);
-    if (!c || c.status !== "queued") {
+    if (c?.status !== "queued") {
       throw new Error("This message has already been dispatched");
     }
     if (c.kind !== "send") {

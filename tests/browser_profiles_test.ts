@@ -1,9 +1,9 @@
+import { requireValue } from "./require_value.ts";
 import { openSettings, signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
 import { identity } from "../server/identity.ts";
-
 Deno.test({
   name:
     "profile rename preserves folders, open conversations and drafts; clones and deletion remain independent",
@@ -13,7 +13,10 @@ Deno.test({
       headless: true,
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     const cleanup: string[] = [];
     try {
       const a = await browser.newPage(),
@@ -72,7 +75,10 @@ Deno.test({
       await expect(
         a.getByLabel("Message Hermes", { exact: true }),
       ).toBeVisible();
-      const key = (await a.evaluate(() => localStorage.getItem("arura.view")))!;
+      const key = requireValue(
+        await a.evaluate(() => localStorage.getItem("arura.view")),
+        '(await a.evaluate(() => localStorage.getItem("arura.view")))',
+      );
       const bootstrap = await (
         await a.request.get(`${url}/api/bootstrap`)
       ).json();

@@ -1,6 +1,6 @@
+import { requireValue } from "./require_value.ts";
 import { openSettings, signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
-
 Deno.test({
   name:
     "backup progress is shared and completed archives download using the returned path",
@@ -10,9 +10,12 @@ Deno.test({
       headless: true,
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     try {
-      const device = async function (name: string) {
+      const device = async (name: string) => {
         const page = await browser.newPage();
         await page.goto(url);
         await signIn(page, name);
@@ -42,7 +45,13 @@ Deno.test({
         a.getByRole("status").filter({ hasText: "Backup ready" }),
       ).toBeVisible();
       const result = await b.request.get(
-        new URL((await link.getAttribute("href"))!, url).href,
+        new URL(
+          requireValue(
+            await link.getAttribute("href"),
+            '(await link.getAttribute("href"))',
+          ),
+          url,
+        ).href,
       );
       expect(result.status()).toBe(200);
       expect(await result.text()).toBe("PK-fixture-archive");

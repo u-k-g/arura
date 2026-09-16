@@ -1,9 +1,9 @@
+import { requireValue } from "./require_value.ts";
 import type { Workspace } from "../shared/contracts.ts";
 import { strict as assert } from "node:assert";
 import { ConvexClient, ConvexHttpClient } from "convex/browser";
 import { anyApi as api } from "convex/server";
 import { identity } from "../server/identity.ts";
-
 async function until(check: () => boolean) {
   const end = Date.now() + 10000;
   while (!check()) {
@@ -13,13 +13,15 @@ async function until(check: () => boolean) {
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
 }
-
 Deno.test({
   name:
     "self-hosted Convex: two-device sync, command claims, invite reuse, and live revocation",
   ignore: !Deno.env.get("CONVEX_SELF_HOSTED_URL"),
   async fn() {
-    const url = Deno.env.get("CONVEX_SELF_HOSTED_URL")!;
+    const url = requireValue(
+      Deno.env.get("CONVEX_SELF_HOSTED_URL"),
+      'Deno.env.get("CONVEX_SELF_HOSTED_URL")',
+    );
     const signer = await identity();
     const adapter = new ConvexHttpClient(url);
     adapter.setAuth(await signer.sign("arura:adapter"));
@@ -51,7 +53,6 @@ Deno.test({
         deviceId: "",
         conversations: [],
         folders: [],
-        notices: [],
         connection: null,
         settings: {},
         recentCursor: "",
@@ -294,8 +295,15 @@ Deno.test({
       assert(archiveKeys.every((key) => loadedKeys.has(key)));
       const admin = new ConvexHttpClient(url);
       // This key exists only in the isolated test stack; ordinary devices cannot run internal sweeps.
-      (admin as unknown as { setAdminAuth(key: string): void }).setAdminAuth(
-        Deno.env.get("CONVEX_SELF_HOSTED_ADMIN_KEY")!,
+      (
+        admin as unknown as {
+          setAdminAuth(key: string): void;
+        }
+      ).setAdminAuth(
+        requireValue(
+          Deno.env.get("CONVEX_SELF_HOSTED_ADMIN_KEY"),
+          'Deno.env.get("CONVEX_SELF_HOSTED_ADMIN_KEY")',
+        ),
       );
       const prefix = crypto.randomUUID();
       const archiveCases = Array.from({ length: 1005 }, (_, i) => ({
@@ -335,7 +343,7 @@ Deno.test({
         rank: Number.MAX_SAFE_INTEGER,
       });
       await admin.mutation(api.workspace.sweep, {});
-      const expectArchived = async function (key: string) {
+      const expectArchived = async (key: string) => {
         const deadline = Date.now() + 10000;
         while (
           (await a.query(api.workspace.byKey, { key })).section !== "archived"

@@ -241,8 +241,9 @@ export default function RunControls(props: {
                   </Show>
                   <Show when={value().next_due_at}>
                     <p>
-                      Next run:{" "}
-                      {new Date(value().next_due_at! * 1000).toLocaleString()}
+                      Next run: {new Date(
+                        (value().next_due_at ?? 0) * 1000,
+                      ).toLocaleString()}
                     </p>
                   </Show>
                   <Show when={value().paused_reason}>
@@ -266,7 +267,7 @@ export default function RunControls(props: {
                         Waiting {wait().type === "until"
                           ? `until ${
                             new Date(
-                              wait().until_at! * 1000,
+                              (wait().until_at ?? 0) * 1000,
                             ).toLocaleString()
                           }`
                           : `for ${wait().type} ${wait().target}`}{" "}

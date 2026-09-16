@@ -25,7 +25,6 @@ const groups = [
       ["devices", "Access & devices", "computer"],
       ["storage", "Storage & offline", "download"],
       ["navigation", "Conversations & archive", "archive"],
-      ["notifications", "Notifications", "bell"],
       ["appearance", "Appearance", "settings"],
     ],
   },
@@ -114,12 +113,11 @@ export default function Settings(props: {
           "devices",
           "storage",
           "navigation",
-          "notifications",
           "appearance",
           "maintenance",
         ].includes(id)
-        ? "settings:" + id
-        : "resources:" + id,
+        ? `settings:${id}`
+        : `resources:${id}`,
     );
   const title = () =>
     groups.flatMap((g) => g.items).find((x) => x[0] === props.section)?.[1] ??
@@ -308,34 +306,6 @@ export default function Settings(props: {
             conversation list. Restoring one starts a new inactivity window.
           </p>
         </Show>
-        <Show when={props.section === "notifications"}>
-          <p class="subtitle">
-            Silent updates from Hermes. No sounds or external push service.
-          </p>
-          <For each={workspace()?.notices ?? []}>
-            {(n) => (
-              <button
-                type="button"
-                class="notification-card"
-                data-notice-id={n._id}
-                classList={{ unread: !n.read }}
-                onClick={() => {
-                  void run(() => mutate("workspace.readNotice", { id: n._id }));
-                  if (n.conversation) props.navigate(n.conversation);
-                }}
-              >
-                <Icon name="bell" />
-                <span>
-                  {n.title}
-                  <small>{new Date(n.createdAt).toLocaleString()}</small>
-                </span>
-              </button>
-            )}
-          </For>
-          <Show when={!workspace()?.notices?.length}>
-            <p>Completion and input alerts will appear here.</p>
-          </Show>
-        </Show>
         <Show when={props.section === "appearance"}>
           <Field label="Theme">
             <select
@@ -367,7 +337,7 @@ export default function Settings(props: {
                 preferences.setItem("arura.textSize", e.currentTarget.value);
                 document.documentElement.style.setProperty(
                   "--message-size",
-                  e.currentTarget.value + "px",
+                  `${e.currentTarget.value}px`,
                 );
               }}
             />

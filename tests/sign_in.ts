@@ -17,6 +17,12 @@ export async function signIn(page: Page, name: string) {
 }
 
 export async function openSettings(page: Page) {
+  if (await page.locator(".resource-dialog").isVisible()) {
+    await page
+      .locator(".resource-dialog > .dialog-inner > header")
+      .getByRole("button", { name: "Close", exact: true })
+      .click();
+  }
   if (!(await page.locator(".settings-dialog").isVisible())) {
     await page
       .getByRole("button", { name: "Settings", exact: true })

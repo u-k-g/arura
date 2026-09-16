@@ -83,11 +83,12 @@ export class Hermes extends EventEmitter {
     });
   }
   async login() {
-    if (!process.env.HERMES_USERNAME) return;
+    const username = process.env.HERMES_USERNAME;
+    if (!username) return;
     if (this.authPromise) return await this.authPromise;
     this.authPromise = (async () => {
       const r = await this.passwordLogin(
-        process.env.HERMES_USERNAME!,
+        username,
         process.env.HERMES_PASSWORD ?? "",
       );
       if (!r.ok) throw new Error(`Hermes authorization failed (${r.status})`);
@@ -250,7 +251,8 @@ export class Hermes extends EventEmitter {
     params: Record<string, unknown> = {},
     timeout = 30000,
   ): Promise<RpcResult> {
-    if (!this.online || this.socket?.readyState !== WebSocket.OPEN) {
+    const socket = this.socket;
+    if (!this.online || socket?.readyState !== WebSocket.OPEN) {
       return Promise.reject(new Error("Hermes is disconnected"));
     }
     const id = ++this.counter;
@@ -264,7 +266,7 @@ export class Hermes extends EventEmitter {
         );
       }, timeout);
       this.pending.set(id, { resolve, reject, timer });
-      this.socket!.send(JSON.stringify({ jsonrpc: "2.0", id, method, params }));
+      socket.send(JSON.stringify({ jsonrpc: "2.0", id, method, params }));
     });
   }
   private receive(frame: RpcFrame) {
@@ -443,7 +445,8 @@ export class Hermes extends EventEmitter {
       const last_seen = this.seq.get(sid) ?? 0;
       let events: RpcFrame[] = [];
       try {
-        const key = this.reverse.get(sid)!;
+        const key = this.reverse.get(sid);
+        if (!key) continue;
         const [profile, sourceId] = JSON.parse(key);
         // Rebinding is required: a surviving Hermes run still owns the old socket.
         const resumed = await this.call("session.resume", {

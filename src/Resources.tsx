@@ -82,6 +82,9 @@ import {
   pairingRows,
   platformBody,
 } from "../shared/resource-forms.ts";
+const ModelSettings = lazy(() => import("./ModelSettings.tsx"));
+const ProfileInstructions = lazy(() => import("./ProfileInstructions.tsx"));
+const McpConfiguration = lazy(() => import("./McpConfiguration.tsx"));
 const JobHistory = lazy(() => import("./JobHistory.tsx"));
 const ProfileAvatar = lazy(() => import("./ProfileAvatar.tsx"));
 const RuntimeSettings = lazy(() => import("./RuntimeSettings.tsx"));
@@ -149,7 +152,6 @@ const surfaces: Record<string, Surface> = {
       ["Appearance", "botAppearance"],
       ["Avatar", "botAvatar"],
       ["Description", "profileDescription"],
-      ["Instructions", "soul"],
       ["Model", "profileModel"],
       ["Rename", "editProfile"],
       ["Delete", "deleteProfile"],
@@ -164,7 +166,6 @@ const surfaces: Record<string, Surface> = {
       ["Run now", "runJob"],
       ["Pause", "pauseJob"],
       ["Resume", "resumeJob"],
-      ["Run history", "jobRuns"],
       ["Edit", "saveJob"],
       ["Delete", "deleteJob"],
     ],
@@ -514,7 +515,7 @@ function Editor(props: {
                   <Editor
                     value={record(value())}
                     change={update}
-                    prefix={(props.prefix ? props.prefix + "." : "") + key}
+                    prefix={(props.prefix ? `${props.prefix}.` : "") + key}
                   />
                 </details>
               </Show>
@@ -532,7 +533,9 @@ export default function Resources(props: {
   newChat: (profile?: string) => Promise<void>;
 }) {
   const scoped = () =>
-    ["skills", "toolsets", "mcp", "jobs"].includes(props.name);
+    ["skills", "toolsets", "mcp", "jobs", "models", "auxiliary"].includes(
+      props.name,
+    );
   const [resourceProfile, setResourceProfile] = createSignal("default");
   const [profiles, setProfiles] = createSignal<string[]>(["default"]);
   createEffect(() => {
@@ -776,7 +779,7 @@ export default function Resources(props: {
       setDetail(undefined);
       setToolConfig(undefined);
       if (props.name === "jobs" && scheduleDraft()) {
-        const fields = operations.createJob.fields!;
+        const fields = operations.createJob.fields ?? [];
         setForm({
           operation: "createJob",
           params: {},
@@ -856,10 +859,10 @@ export default function Resources(props: {
     setPreview("");
     setPreviewError("");
     setPreviewLoading(false);
-    if (!item || !["profiles", "skills"].includes(name)) return;
+    if (!item || name !== "skills") return;
     let disposed = false;
     setPreviewLoading(true);
-    void resource(name === "profiles" ? "soul" : "skill", {
+    void resource("skill", {
       id: rowId(item),
       name: rowId(item),
       ...(scoped() ? { profile: resourceProfile() } : {}),
@@ -939,7 +942,9 @@ export default function Resources(props: {
                 role="switch"
                 aria-checked={Boolean(item.enabled)}
                 aria-label={`${item.enabled ? "Disable" : "Enable"} ${
-                  rowTitle(item)
+                  rowTitle(
+                    item,
+                  )
                 }`}
                 checked={Boolean(item.enabled)}
                 disabled={changingRows().has(rowId(item))}
@@ -964,7 +969,17 @@ export default function Resources(props: {
       </For>
     </nav>
   );
+  const [actionPending, setActionPending] = createSignal(false);
   async function action(operation: string, item: ResourceRow = {}) {
+    if (actionPending()) return;
+    setActionPending(true);
+    try {
+      await performAction(operation, item);
+    } finally {
+      setActionPending(false);
+    }
+  }
+  async function performAction(operation: string, item: ResourceRow = {}) {
     const id = String(
       (props.name === "webhooks" ? item.name : item.id) ??
         item.name ??
@@ -1047,11 +1062,13 @@ export default function Resources(props: {
           ? { platform: item.platform, user_id: item.user_id }
           : { ...item },
       );
+      if (operation === "deleteMcp") await resource("reloadMcp", params, {});
       await refresh();
       return;
     }
     if (operation.startsWith("toggle")) {
       await resource(operation, params, { name: id, enabled: !item.enabled });
+      if (operation === "toggleMcp") await resource("reloadMcp", params, {});
       await refresh();
       return;
     }
@@ -1067,7 +1084,19 @@ export default function Resources(props: {
         "approvePairing",
       ].includes(operation)
     ) {
-      setDetail(await resource(operation, params, { ...item }));
+      const result = await resource(operation, params, { ...item });
+      if (result.ok === false) {
+        throw new Error(result.error ?? "Hermes did not accept the action");
+      }
+      if (["runJob", "pauseJob", "resumeJob"].includes(operation)) {
+        inform(
+          operation === "runJob"
+            ? "Job triggered"
+            : operation === "pauseJob"
+            ? "Schedule paused"
+            : "Schedule resumed",
+        );
+      } else setDetail(result);
       await refresh();
       return;
     }
@@ -1245,21 +1274,28 @@ export default function Resources(props: {
     if (f.operation === "createWebhook" && result.secret) {
       setWebhookSecret(result);
     }
+    if (f.operation === "addMcp") await resource("reloadMcp", f.params, {});
     inform("Saved");
-    await refresh();
     if (
       ["createJob", "createProfile", "createWebhook", "addMcp"].includes(
         f.operation,
       )
     ) {
-      const created = rows().find(
-        (item) =>
-          rowId(item) === String(result.id ?? result.name ?? "") ||
-          item.name === f.values.name,
+      // Select the returned identity before refreshing: an event-driven fetch can
+      // supersede this read, and the new row may not be in the cache yet.
+      setSelectedId(
+        String(
+          result.id ??
+            result.name ??
+            record(result.job).id ??
+            f.values.name ??
+            "",
+        ),
       );
-      if (created) setSelectedId(rowId(created));
     }
+    await refresh();
   }
+
   async function saveTextFile() {
     const current = file();
     if (!current) return;
@@ -1361,7 +1397,10 @@ export default function Resources(props: {
             <button
               type="button"
               class="primary"
-              onClick={() => void run(() => action(surface().create!))}
+              onClick={() => {
+                const create = surface().create;
+                if (create) void run(() => action(create));
+              }}
             >
               <Icon name="plus" />
               Add
@@ -1399,7 +1438,10 @@ export default function Resources(props: {
         <p>Loading from Hermes…</p>
       </Show>
       <Show when={props.name === "models"}>
-        <div class="settings-grid">
+        <Show keyed when={resourceProfile()}>
+          {(profile) => <ModelSettings profile={profile} />}
+        </Show>
+        <div class="model-settings-links">
           <For
             each={[
               ["endpoints", "Custom inference endpoints"],
@@ -1413,21 +1455,25 @@ export default function Resources(props: {
             {([id, label]) => (
               <button
                 type="button"
-                onClick={() => props.navigate("resources:" + id)}
+                onClick={() => props.navigate(`resources:${id}`)}
               >
                 {label}
               </button>
             )}
           </For>
         </div>
-        <button
-          type="button"
-          class="primary"
-          onClick={() => void run(() => action("setModel"))}
-        >
-          Choose default model
-        </button>
-        <ProviderAccess />
+        <details class="settings-disclosure">
+          <summary>Provider accounts</summary>
+          <Show keyed when={resourceProfile()}>
+            {(profile) => <ProviderAccess profile={profile} />}
+          </Show>
+        </details>
+      </Show>
+      <Show when={props.name === "mcp"}>
+        <details class="settings-disclosure">
+          <summary>Edit configuration</summary>
+          <McpConfiguration profile={resourceProfile()} changed={refresh} />
+        </details>
       </Show>
       <Show when={props.name === "fallbacks"}>
         <FallbackModels />
@@ -1567,6 +1613,7 @@ export default function Resources(props: {
       </Show>
       <Show
         when={![
+          "models",
           "graph",
           "fallbacks",
           "moa",
@@ -1596,7 +1643,7 @@ export default function Resources(props: {
                 class="mobile-only resource-picker"
                 onClick={() => setPicker(true)}
               >
-                {selectedRow() ? rowTitle(selectedRow()!) : surface().title}
+                {rowTitle(selectedRow() ?? { title: surface().title })}
                 <Icon name="nav-arrow-down" />
               </button>
             </Show>
@@ -1609,7 +1656,11 @@ export default function Resources(props: {
                       .includes(filter().toLowerCase())
                   )
                   : masterDetail()
-                  ? selectedRow() ? [selectedRow()!] : []
+                  ? selectedRow()
+                    ? rows().filter(
+                      (row) => rowId(row) === rowId(selectedRow() ?? {}),
+                    )
+                    : []
                   : rows()}
               >
                 {(item) => (
@@ -1701,7 +1752,8 @@ export default function Resources(props: {
                         {String(item.prompt ?? "")}
                       </pre>
                     </Show>
-                    <Show when={["profiles", "skills"].includes(props.name)}>
+
+                    <Show when={props.name === "skills"}>
                       <h4>
                         {props.name === "profiles" ? "SOUL.md" : "Instructions"}
                       </h4>
@@ -1770,15 +1822,18 @@ export default function Resources(props: {
                         {([label, op]) => (
                           <button
                             type="button"
+                            disabled={actionPending()}
                             onClick={() => void run(() => action(op, item))}
                           >
                             {label}
                           </button>
                         )}
                       </For>
-                      <button type="button" onClick={() => setDetail(item)}>
-                        Details
-                      </button>
+                      <Show when={!["profiles", "jobs"].includes(props.name)}>
+                        <button type="button" onClick={() => setDetail(item)}>
+                          Details
+                        </button>
+                      </Show>
                     </div>
                     <Show when={props.name === "jobs"}>
                       <JobHistory
@@ -1790,6 +1845,9 @@ export default function Resources(props: {
                   </article>
                 )}
               </For>
+              <Show when={props.name === "profiles" && selectedRow()}>
+                {(profile) => <ProfileInstructions name={rowId(profile())} />}
+              </Show>
               <Show when={!rows().length && !loading() && !error()}>
                 <Empty title="Nothing here yet" />
               </Show>

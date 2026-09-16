@@ -97,7 +97,9 @@ export default function Artifacts(props: { navigate: (view: string) => void }) {
                     <a
                       class="artifact-name"
                       href={`/api/download?path=${
-                        encodeURIComponent(file.path)
+                        encodeURIComponent(
+                          file.path,
+                        )
                       }`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -125,7 +127,9 @@ export default function Artifacts(props: { navigate: (view: string) => void }) {
                       aria-label={`Download ${file.name}`}
                       title="Download"
                       href={`/api/download?path=${
-                        encodeURIComponent(file.path)
+                        encodeURIComponent(
+                          file.path,
+                        )
                       }`}
                       download=""
                     >

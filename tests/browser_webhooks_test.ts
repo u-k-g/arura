@@ -1,7 +1,7 @@
+import { requireValue } from "./require_value.ts";
 import { openSettings, signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect } from "@playwright/test";
-
 Deno.test({
   name:
     "webhook creation reveals its secret once while shared listings and caches omit it",
@@ -11,7 +11,10 @@ Deno.test({
       headless: true,
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     try {
       const page = await browser.newPage();
       await page.goto(url);
@@ -37,7 +40,9 @@ Deno.test({
         await page.request.get(`${url}/api/resource/webhooks`)
       ).json();
       expect(JSON.stringify(listing)).not.toContain("ONE_TIME_WEBHOOK_SECRET");
-      await created.getByRole("button", { name: "Close", exact: true }).last()
+      await created
+        .getByRole("button", { name: "Close", exact: true })
+        .last()
         .click();
       const card = page
         .locator(".resource-card")

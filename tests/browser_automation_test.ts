@@ -1,7 +1,7 @@
+import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect } from "@playwright/test";
-
 Deno.test({
   name:
     "contextual skill and schedule suggestions lead to editable schedules with lifecycle controls",
@@ -12,7 +12,10 @@ Deno.test({
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
     const page = await browser.newPage();
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     try {
       await page.goto(url);
       await signIn(page, "Automation test");
@@ -58,21 +61,19 @@ Deno.test({
         );
       await card.getByRole("button", { name: "Pause", exact: true }).click();
       await expect.poll(async () => (await state()).enabled).toBe(false);
-      await page.getByRole("button", { name: "Close", exact: true }).last()
-        .click();
       await card.getByRole("button", { name: "Resume", exact: true }).click();
       await expect.poll(async () => (await state()).enabled).toBe(true);
-      await page.getByRole("button", { name: "Close", exact: true }).last()
-        .click();
       await card.getByRole("button", { name: "Run now", exact: true }).click();
       await expect
         .poll(async () => Boolean((await state()).last_run_at))
         .toBe(true);
-      await page.getByRole("button", { name: "Close", exact: true }).last()
-        .click();
       void onceActionDialog(page, (dialog) => dialog.accept());
       await card.getByRole("button", { name: "Delete", exact: true }).click();
       await expect(card).toHaveCount(0);
+      await page
+        .locator(".resource-dialog > .dialog-inner > header")
+        .getByRole("button", { name: "Close", exact: true })
+        .click();
       await page
         .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })

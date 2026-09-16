@@ -1,5 +1,5 @@
+import { requireValue } from "./require_value.ts";
 import { chromium, expect } from "@playwright/test";
-
 Deno.test({
   name:
     "cache upgrade retains drafts and quota recovery evicts replaceable content",
@@ -10,9 +10,12 @@ Deno.test({
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
     const page = await browser.newPage();
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     try {
-      await page.route(url + "/", (route) =>
+      await page.route(`${url}/`, (route) =>
         route.fulfill({
           contentType: "text/html",
           body: "<html><body>Cache migration fixture</body></html>",
@@ -22,7 +25,10 @@ Deno.test({
         headers: { origin: url },
         data: {
           name: "Cache pressure",
-          code: Deno.env.get("ARURA_TEST_ACCESS_KEY")!,
+          code: requireValue(
+            Deno.env.get("ARURA_TEST_ACCESS_KEY"),
+            'Deno.env.get("ARURA_TEST_ACCESS_KEY")',
+          ),
         },
       });
       expect(authorized.ok()).toBe(true);
@@ -52,7 +58,7 @@ Deno.test({
         });
         db.close();
       });
-      await page.unroute(url + "/");
+      await page.unroute(`${url}/`);
       await page.reload();
       await expect(
         page
@@ -143,7 +149,7 @@ Deno.test({
                 request.onsuccess = () => resolve(request.result);
               });
             const values = await Promise.all([
-              get("drafts", localStorage.getItem("arura.view")!),
+              get("drafts", localStorage.getItem("arura.view") ?? ""),
               get("cache", "chat:old"),
               get("cache", "attachments:protected"),
             ]);

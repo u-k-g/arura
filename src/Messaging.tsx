@@ -457,7 +457,8 @@ export default function Messaging() {
                     )}
                   </For>
                   <Show
-                    when={p().docs_url && /^https?:\/\//.test(p().docs_url!)}
+                    when={p().docs_url &&
+                      /^https?:\/\//.test(p().docs_url ?? "")}
                   >
                     <section>
                       <h2>Get credentials</h2>

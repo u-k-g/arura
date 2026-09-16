@@ -217,7 +217,7 @@ export default function App() {
           setArchiveReady(true);
         }
       });
-      const follow = function (index: number, cursor: string | null) {
+      const follow = (index: number, cursor: string | null) => {
         let nextCursor: string | undefined;
         stops.set(
           index,
@@ -314,16 +314,18 @@ export default function App() {
       document.removeEventListener("visibilitychange", markVisible)
     );
   });
-  const viewedRevision = createMemo(() =>
-    selected() ? `${selected()!.key}:${selected()!.activityAt}` : ""
-  );
+  const viewedRevision = createMemo(() => {
+    const current = selected();
+    return current ? `${current.key}:${current.activityAt}` : "";
+  });
   createEffect(() => {
     viewedRevision();
     const online = connected();
     untrack(() => {
-      if (online && document.visibilityState === "visible" && selected()) {
+      const current = selected();
+      if (online && document.visibilityState === "visible" && current) {
         void mutate("workspace.markRead", {
-          key: selected()!.key,
+          key: current.key,
           unread: false,
         }).catch(() => {});
       }
@@ -892,24 +894,10 @@ export default function App() {
               )}
             </Show>
             <IconButton
-              icon="bell"
-              label="Notifications"
-              onClick={() => navigate("settings:notifications")}
-            />
-            <IconButton
               icon="settings"
               label="Settings"
               onClick={() => navigate("settings")}
             />
-            <Show when={workspace()?.notices?.some((n) => !n.read)}>
-              <span
-                class="notification-count"
-                role="status"
-                aria-label="Unread notifications"
-              >
-                {workspace()?.notices?.filter((n) => !n.read).length}
-              </span>
-            </Show>
           </header>
           <Show
             when={!creatingChat()}
@@ -1103,7 +1091,7 @@ export default function App() {
       <Show
         when={menu() &&
           (workspace()?.conversations.find(
-            (item) => item.key === menu()!.key,
+            (item) => item.key === menu()?.key,
           ) ??
             menu())}
       >

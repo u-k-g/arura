@@ -1,20 +1,26 @@
+import { requireValue } from "./require_value.ts";
 import { strict as assert } from "node:assert";
 import { join } from "node:path";
 import { Hermes } from "../server/hermes.ts";
 import { operationRequest } from "../shared/resources.ts";
 import { configPatch } from "../shared/resource-forms.ts";
-
 Deno.test({
   name:
     "isolated upstream Hermes: profile, schedule, skill, memory, MCP, endpoint and webhook contracts",
   ignore: !Deno.env.get("ARURA_ISOLATED_HERMES_HOME"),
   async fn(t) {
-    const home = Deno.env.get("ARURA_ISOLATED_HERMES_HOME")!;
+    const home = requireValue(
+      Deno.env.get("ARURA_ISOLATED_HERMES_HOME"),
+      'Deno.env.get("ARURA_ISOLATED_HERMES_HOME")',
+    );
     assert(
       home.startsWith("/var/tmp/"),
       "Runtime acceptance requires a disposable Hermes home",
     );
-    const tokenFile = Deno.env.get("ARURA_ISOLATED_HERMES_TOKEN_FILE")!;
+    const tokenFile = requireValue(
+      Deno.env.get("ARURA_ISOLATED_HERMES_TOKEN_FILE"),
+      'Deno.env.get("ARURA_ISOLATED_HERMES_TOKEN_FILE")',
+    );
     Deno.env.set("HERMES_TOKEN", await Deno.readTextFile(tokenFile));
     const hermes = new Hermes();
     const roster = await hermes.rest("/api/profiles");
@@ -353,9 +359,11 @@ Deno.test({
                 },
               ];
               return new Response(
-                chunks
-                  .map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`)
-                  .join("") + "data: [DONE]\n\n",
+                `${
+                  chunks
+                    .map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`)
+                    .join("")
+                }data: [DONE]\n\n`,
                 { headers: { "content-type": "text/event-stream" } },
               );
             }

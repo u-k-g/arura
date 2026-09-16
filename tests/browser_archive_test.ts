@@ -1,6 +1,6 @@
+import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
-
 Deno.test({
   name: "archive reconnects after cached startup on desktop and mobile",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
@@ -10,7 +10,10 @@ Deno.test({
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
     const page = await browser.newPage();
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     const source = `${Deno.env.get("HERMES_URL")}/api/sessions/fixture-chat`;
     const archive = async (archived: boolean) => {
       const response = await fetch(source, {
@@ -85,7 +88,6 @@ Deno.test({
             )?.archived;
           })
           .toBe(false);
-
         await expect(page.locator(".archive-status:visible")).toHaveText(
           "No archived conversations.",
         );

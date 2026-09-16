@@ -1,3 +1,4 @@
+import { requireValue } from "./require_value.ts";
 import { record } from "../shared/contracts.ts";
 type Row = {
   tool_call_id?: string;
@@ -79,11 +80,25 @@ export function hermesFixture(
   let memoryContent = "Prefers perennial flowers.";
   let memoryWrites = 0;
   let providerConnected = false;
-  const messaging = new Map<string, { enabled: boolean; token: string }>();
+  const messaging = new Map<
+    string,
+    {
+      enabled: boolean;
+      token: string;
+    }
+  >();
   let pendingMessaging = true;
   let approvedMessaging = false;
   const providerFlow = crypto.randomUUID();
+  let defaultModel = { provider: "fixture", model: "fixture-model" };
   let modelConfig: Record<string, unknown> = {
+    mcp_servers: {
+      fixture: {
+        command: "fixture-mcp",
+        enabled: true,
+        env: { KEEP: "preserve" },
+      },
+    },
     fallback_providers: [
       { provider: "old", model: "old-model", key_env: "SAVED_KEY" },
     ],
@@ -188,16 +203,23 @@ export function hermesFixture(
     string,
     Record<
       string,
-      { status?: string; subgoals?: string[]; [key: string]: unknown }
+      {
+        status?: string;
+        subgoals?: string[];
+        [key: string]: unknown;
+      }
     >
   >();
   const sessionSettings = new Map<string, Record<string, string>>();
   const controlledRuns = new Map<
     string,
-    { finish: () => void; steering: string[] }
+    {
+      finish: () => void;
+      steering: string[];
+    }
   >();
   async function answer(sid: string, text: string) {
-    const s = sessions.get(sid)!;
+    const s = requireValue(sessions.get(sid), "sessions.get(sid)");
     s.pendingPersistence = false;
     s.messages.push({ id: rowId++, role: "user", content: text });
     event("message.start", sid, {});
@@ -344,7 +366,10 @@ export function hermesFixture(
             const s = create();
             s.hidden = Boolean(params.hidden);
             s.profile = params.profile ?? "default";
-            subscriptions.get(socket)!.add(s.id);
+            requireValue(
+              subscriptions.get(socket),
+              "subscriptions.get(socket)",
+            ).add(s.id);
             result = { session_id: s.id, stored_session_id: s.id };
           } else if (method === "session.list") {
             result = {
@@ -425,7 +450,10 @@ export function hermesFixture(
               );
               return;
             }
-            subscriptions.get(socket)!.add(params.session_id);
+            requireValue(
+              subscriptions.get(socket),
+              "subscriptions.get(socket)",
+            ).add(params.session_id);
             result = {
               session_id: params.session_id,
               session_key: params.session_id,
@@ -452,7 +480,10 @@ export function hermesFixture(
             result = { status: "interrupted" };
           } else if (method === "prompt.submit") {
             if (params.truncate_before_row_id !== undefined) {
-              const session = sessions.get(params.session_id)!;
+              const session = requireValue(
+                sessions.get(params.session_id),
+                "sessions.get(params.session_id)",
+              );
               const index = session.messages.findIndex(
                 (row) =>
                   String(row.id) === String(params.truncate_before_row_id),
@@ -519,7 +550,10 @@ export function hermesFixture(
               epoch,
             };
           } else if (method === "session.branch") {
-            const source = sessions.get(params.session_id)!;
+            const source = requireValue(
+              sessions.get(params.session_id),
+              "sessions.get(params.session_id)",
+            );
             const branch = create();
             // Hermes branches visible user/assistant text, not tool-result rows.
             branch.messages = source.messages
@@ -1106,6 +1140,14 @@ export function hermesFixture(
         }
       }
       if (path === "/api/mcp/servers") {
+        if (request.method === "PUT") {
+          const body = await request.json();
+          if (!body.servers || Array.isArray(body.servers)) {
+            return new Response("Expected servers map", { status: 400 });
+          }
+          modelConfig.mcp_servers = body.servers;
+          return json({ ok: true });
+        }
         return json({
           servers: {
             fixture: { name: "fixture", enabled: true, auth: "oauth" },
@@ -1171,8 +1213,19 @@ export function hermesFixture(
           content: memoryContent,
         });
       }
+      if (path === "/api/model/options") {
+        return json({
+          providers: [
+            {
+              slug: "fixture",
+              name: "Fixture provider",
+              models: ["fixture-model", "fixture-alternative"],
+            },
+          ],
+        });
+      }
       if (path === "/api/model/info") {
-        return json({ provider: "fixture", model: "fixture-model" });
+        return json(defaultModel);
       }
       if (path === "/api/model/moa") {
         if (request.method === "PUT") {
@@ -1198,6 +1251,13 @@ export function hermesFixture(
       }
       if (path === "/api/model/set") {
         const body = await request.json();
+        if (body.scope === "main") {
+          if (body.provider !== "fixture" || !body.model) {
+            return new Response("Invalid model assignment", { status: 400 });
+          }
+          defaultModel = { provider: body.provider, model: body.model };
+          return json({ ok: true });
+        }
         if (body.scope !== "auxiliary" || body.task !== "title") {
           return new Response("Incorrect auxiliary scope", { status: 400 });
         }

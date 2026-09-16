@@ -1,5 +1,5 @@
+import { requireValue } from "./require_value.ts";
 import { chromium, expect } from "@playwright/test";
-
 Deno.test({
   name: "Hermes password sign-in: rejection, autofill, and browser session",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
@@ -10,7 +10,12 @@ Deno.test({
     });
     const page = await browser.newPage();
     try {
-      await page.goto(Deno.env.get("ARURA_TEST_URL")!);
+      await page.goto(
+        requireValue(
+          Deno.env.get("ARURA_TEST_URL"),
+          'Deno.env.get("ARURA_TEST_URL")',
+        ),
+      );
       const username = page.getByLabel("Username", { exact: true });
       const password = page.getByLabel("Password", { exact: true });
       await expect(username).toHaveAttribute("autocomplete", "username");

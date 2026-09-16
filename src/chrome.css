@@ -405,14 +405,7 @@ dialog.conversation-menu {
   font-size: 12px;
   border-radius: 3px;
 }
-.conversation-menu .action-list .icon {
-  width: 13px;
-  height: 13px;
-  color: var(--muted);
-}
-.conversation-menu .action-list .danger .icon {
-  color: inherit;
-}
+
 .conversation-menu .action-list a {
   color: inherit;
   text-decoration: none;
@@ -626,9 +619,6 @@ dialog.conversation-menu {
   background: var(--line);
   margin-left: 8px;
 }
-.navigation .section-heading > .icon-button {
-  order: 1;
-}
 
 .profile-actions .profile-name {
   flex: 1;
@@ -659,4 +649,58 @@ dialog.conversation-menu {
   min-height: 24px;
   padding: 2px;
   border: 0;
+}
+
+.sheet-handle {
+  display: none;
+}
+@media (max-width: 720px), (pointer: coarse) and (hover: none) {
+  .navigation-sheet > .dialog-inner > header {
+    touch-action: none;
+    user-select: none;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0;
+  }
+  .navigation-sheet .sheet-handle {
+    display: flex;
+    grid-column: 1 / -1;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    height: 24px;
+    min-height: 24px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    touch-action: none;
+    cursor: grab;
+  }
+  .sheet-handle span {
+    width: 32px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--muted);
+    opacity: 0.5;
+  }
+  .navigation-sheet .sheet-handle:active {
+    cursor: grabbing;
+  }
+  .navigation-sheet > .dialog-inner > header h2 {
+    min-width: 0;
+  }
+  .navigation-sheet .navigation {
+    overscroll-behavior-y: contain;
+  }
+}
+.conversation-menu .action-list .icon {
+  width: 13px;
+  height: 13px;
+  color: var(--muted);
+}
+.conversation-menu .action-list .danger .icon {
+  color: inherit;
+}
+.navigation .section-heading > .icon-button {
+  order: 1;
 }

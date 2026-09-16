@@ -1,17 +1,20 @@
+import { requireValue } from "./require_value.ts";
 import { openSettings, signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect, type Page } from "@playwright/test";
-
 Deno.test({
   name:
-    "conversation rename, context, independent views, notices and deletion work across devices",
+    "conversation rename, context, independent views and deletion work across devices",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
       headless: true,
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     async function device(name: string) {
       const page = await browser.newPage();
       await page.goto(url);
@@ -49,7 +52,9 @@ Deno.test({
       await expect(
         a.getByText("Session not found", { exact: true }),
       ).toHaveCount(0);
-      await expect(a.locator(".topbar")).not.toContainText(original!);
+      await expect(a.locator(".topbar")).not.toContainText(
+        requireValue(original, "original"),
+      );
       const title = `Garden notes ${crypto.randomUUID().slice(0, 6)}`;
       await a
         .getByRole("button", { name: "Conversation actions", exact: true })
@@ -76,7 +81,9 @@ Deno.test({
         .getByRole("button", { name: title, exact: true })
         .click();
       await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveText(
-        `@session:${JSON.parse(original!)[0]}/${JSON.parse(original!)[1]}`,
+        `@session:${JSON.parse(requireValue(original, "original"))[0]}/${
+          JSON.parse(requireValue(original, "original"))[1]
+        }`,
       );
       await a
         .getByRole("button", {
@@ -102,19 +109,9 @@ Deno.test({
           .locator(".markdown")
           .filter({ hasText: "Received: Summarize garden notes" }),
       ).toBeVisible();
-      await a
-        .getByRole("button", { name: "Notifications", exact: true })
-        .click();
-      await b
-        .getByRole("button", { name: "Notifications", exact: true })
-        .click();
-      const notification = a.locator(".notification-card.unread").first();
-      await expect(notification).toBeVisible();
-      const id = await notification.getAttribute("data-notice-id");
-      await a.locator(`.notification-card[data-notice-id="${id}"]`).click();
       await expect(
-        b.locator(`.notification-card[data-notice-id="${id}"]`),
-      ).not.toHaveClass(/unread/);
+        a.getByRole("button", { name: "Notifications", exact: true }),
+      ).toHaveCount(0);
       await a.getByLabel("More composer actions", { exact: true }).click();
       await a
         .getByRole("button", { name: "Delegated work", exact: true })

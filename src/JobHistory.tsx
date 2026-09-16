@@ -35,7 +35,9 @@ export default function JobHistory(props: {
   function date(value: unknown) {
     if (!value) return "";
     const parsed = new Date(
-      typeof value === "number" && value < 1e12 ? value * 1000 : String(value),
+      typeof value === "number"
+        ? value < 1e12 ? value * 1000 : value
+        : String(value),
     );
     return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleString();
   }

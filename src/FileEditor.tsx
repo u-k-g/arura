@@ -5,6 +5,7 @@ import { EditorView, lineNumbers } from "@codemirror/view";
 
 export default function FileEditor(props: {
   path: string;
+  label?: string;
   content: string;
   readOnly?: boolean;
   change: (text: string) => void;
@@ -83,7 +84,9 @@ export default function FileEditor(props: {
           EditorState.readOnly.of(Boolean(props.readOnly)),
           EditorView.editable.of(!props.readOnly),
         ]),
-        EditorView.contentAttributes.of({ "aria-label": "File content" }),
+        EditorView.contentAttributes.of({
+          "aria-label": props.label ?? "File content",
+        }),
         EditorView.theme({
           "&": {
             height: "100%",

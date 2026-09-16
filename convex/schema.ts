@@ -146,16 +146,6 @@ export default defineSchema({
   settings: defineTable({ key: v.string(), value: v.any() }).index("key", [
     "key",
   ]),
-  notices: defineTable({
-    id: v.string(),
-    title: v.string(),
-    conversation: v.optional(v.string()),
-    createdAt: v.number(),
-    read: v.boolean(),
-  })
-    .index("created", ["createdAt"])
-    .index("conversation", ["conversation"])
-    .index("id", ["id"]),
   connection: defineTable({
     key: v.string(),
     online: v.boolean(),

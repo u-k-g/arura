@@ -1,6 +1,6 @@
+import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
-
 Deno.test({
   name: "navigation rail, command palette and adaptive conversation menus",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
@@ -13,7 +13,12 @@ Deno.test({
       viewport: { width: 1280, height: 900 },
     });
     try {
-      await page.goto(Deno.env.get("ARURA_TEST_URL")!);
+      await page.goto(
+        requireValue(
+          Deno.env.get("ARURA_TEST_URL"),
+          'Deno.env.get("ARURA_TEST_URL")',
+        ),
+      );
       await signIn(page, "Navigation review");
       await expect(
         page.getByRole("heading", {
@@ -80,8 +85,10 @@ Deno.test({
         menu.getByRole("button", { name: "Toggle pinned", exact: true }),
       ).toHaveAttribute("aria-pressed", "true");
       const bounds = await menu.boundingBox();
-      expect(bounds!.width).toBeLessThan(320);
-      expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1280);
+      expect(requireValue(bounds, "bounds").width).toBeLessThan(320);
+      expect(
+        requireValue(bounds, "bounds").x + requireValue(bounds, "bounds").width,
+      ).toBeLessThanOrEqual(1280);
       await page.keyboard.press("End");
       await expect(
         menu.getByRole("button", { name: "Delete conversation", exact: true }),
@@ -96,8 +103,13 @@ Deno.test({
         menu.getByRole("button", { name: "Toggle pinned", exact: true }),
       ).toHaveAttribute("aria-pressed", "true");
       const mobile = await menu.boundingBox();
-      expect(mobile!.x).toBe(0);
-      expect(Math.round(mobile!.y + mobile!.height)).toBe(844);
+      expect(requireValue(mobile, "mobile").x).toBe(0);
+      expect(
+        Math.round(
+          requireValue(mobile, "mobile").y +
+            requireValue(mobile, "mobile").height,
+        ),
+      ).toBe(844);
       await page.screenshot({
         path: `${Deno.env.get("TMPDIR")}/chrome-mobile-menu.png`,
       });

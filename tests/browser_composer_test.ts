@@ -1,9 +1,9 @@
+import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { Buffer } from "node:buffer";
 import { chromium, expect } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
-
 Deno.test({
   name:
     "Lexical preserves prompt text, completion caret, reference undo, and draft isolation",
@@ -28,7 +28,7 @@ Deno.test({
             const request = db
               .transaction("drafts")
               .objectStore("drafts")
-              .get(localStorage.getItem("arura.view")!);
+              .get(localStorage.getItem("arura.view") ?? "");
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
           });
@@ -38,7 +38,12 @@ Deno.test({
       });
     }
     try {
-      await page.goto(Deno.env.get("ARURA_TEST_URL")!);
+      await page.goto(
+        requireValue(
+          Deno.env.get("ARURA_TEST_URL"),
+          'Deno.env.get("ARURA_TEST_URL")',
+        ),
+      );
       await signIn(page, "Composer test");
       const newChat = () =>
         page
@@ -51,7 +56,6 @@ Deno.test({
         name: "Message Hermes",
         exact: true,
       });
-
       // Completion replaces just the word before the caret, preserving the tail.
       await input.fill("Please /res tail");
       await input.press("Home");
@@ -65,7 +69,6 @@ Deno.test({
       await expect(input.locator(".composer-reference")).toHaveText(
         "/research",
       );
-
       // A context reference is one deletion, and Undo restores its exact text.
       const reference = "[Conversation: example — Garden notes]";
       await input.fill(reference);
@@ -75,7 +78,6 @@ Deno.test({
       await expect(input).toHaveText("");
       await input.press("ControlOrMeta+z");
       await expect(input.locator(".composer-reference")).toHaveText(reference);
-
       // Rich clipboard content remains literal prompt text, with no HTML editor state.
       await input.press("ControlOrMeta+a");
       await input.press("Backspace");
@@ -99,8 +101,7 @@ Deno.test({
       // Typing after restoring must retain every newline and Unicode character.
       await input.press("ControlOrMeta+End");
       await page.keyboard.insertText("after reload");
-      await expect.poll(savedDraft).toBe(prompt + "after reload");
-
+      await expect.poll(savedDraft).toBe(`${prompt}after reload`);
       // IME Enter never submits the partial composition.
       await input.dispatchEvent("keydown", {
         key: "Enter",
@@ -110,7 +111,6 @@ Deno.test({
       });
       await expect(input).toContainText("after reload");
       await expect(page.locator(".message.user")).toHaveCount(0);
-
       await newChat();
       await expect(input).toHaveText("");
       await input.press("ControlOrMeta+z");

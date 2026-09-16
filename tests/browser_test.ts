@@ -1,8 +1,8 @@
+import { requireValue } from "./require_value.ts";
 import { openSettings, signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { Buffer } from "node:buffer";
 import { chromium, expect } from "@playwright/test";
-
 Deno.test({
   name: "retained settings: models, OAuth, memory, bots, and runtime limits",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
@@ -12,7 +12,10 @@ Deno.test({
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
     const page = await browser.newPage();
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     try {
       await page.goto(url);
       await signIn(page, "Provider test");
@@ -20,6 +23,7 @@ Deno.test({
       await page
         .getByRole("button", { name: "Models & providers", exact: true })
         .click();
+      await page.getByText("Provider accounts", { exact: true }).click();
       await page.getByRole("button", { name: "Sign in", exact: true }).click();
       const auth = page.getByRole("dialog", { name: "Authorize provider" });
       await expect(auth.getByText("TEST-CODE", { exact: true })).toBeVisible();
@@ -244,7 +248,10 @@ Deno.test({
       const link = await mcp
         .getByRole("link", { name: "Open authorization page", exact: true })
         .getAttribute("href");
-      const state = new URL(link!).searchParams.get("state")!;
+      const state = requireValue(
+        new URL(requireValue(link, "link")).searchParams.get("state"),
+        'new URL(link!).searchParams.get("state")',
+      );
       const anonymous = await browser.newContext();
       try {
         expect(
@@ -258,9 +265,7 @@ Deno.test({
           (
             await anonymous.request.get(
               `${url}/api/mcp/oauth/callback/fixture?state=${
-                encodeURIComponent(
-                  state,
-                )
+                encodeURIComponent(state)
               }&code=fixture-code`,
             )
           ).status(),
@@ -269,9 +274,7 @@ Deno.test({
           (
             await anonymous.request.get(
               `${url}/api/mcp/oauth/callback/fixture?state=${
-                encodeURIComponent(
-                  state,
-                )
+                encodeURIComponent(state)
               }&code=fixture-code`,
             )
           ).status(),
@@ -371,7 +374,7 @@ Deno.test({
       const roster = await (
         await page.request.get(`${url}/api/resource/profileRoster`)
       ).json();
-      expect(JSON.parse(canonical!)[1]).toBe(
+      expect(JSON.parse(requireValue(canonical, "canonical"))[1]).toBe(
         roster.profiles[0].canonical_session.resolved_id,
       );
       expect(roster.profiles[0].ui_meta["hermes-bots"].imageKind).toBe("photo");
@@ -396,7 +399,6 @@ Deno.test({
     }
   },
 });
-
 Deno.test({
   name:
     "desktop and mobile browsers: stream, archive, offline reopen, and revoke",
@@ -419,7 +421,10 @@ Deno.test({
     const errors: string[] = [];
     a.on("pageerror", (e) => errors.push(e.message));
     b.on("pageerror", (e) => errors.push(e.message));
-    const url = Deno.env.get("ARURA_TEST_URL")!;
+    const url = requireValue(
+      Deno.env.get("ARURA_TEST_URL"),
+      'Deno.env.get("ARURA_TEST_URL")',
+    );
     const suffix = crypto.randomUUID().slice(0, 8);
     try {
       for (
@@ -753,7 +758,6 @@ Deno.test({
     }
   },
 });
-
 Deno.test({
   name: "storage-disabled browsers stay usable and keep drafts while open",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
@@ -779,7 +783,12 @@ Deno.test({
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     try {
-      await page.goto(Deno.env.get("ARURA_TEST_URL")!);
+      await page.goto(
+        requireValue(
+          Deno.env.get("ARURA_TEST_URL"),
+          'Deno.env.get("ARURA_TEST_URL")',
+        ),
+      );
       await signIn(page, "Storage-disabled browser");
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })
