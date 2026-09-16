@@ -51,9 +51,8 @@ a {
 a:hover {
   text-decoration: underline;
 }
-:focus-visible {
-  outline: 1px solid var(--muted);
-  outline-offset: 1px;
+:focus {
+  outline: none;
 }
 input,
 textarea,

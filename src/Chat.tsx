@@ -44,6 +44,7 @@ import {
   mutate,
   request,
   resource,
+  saveDraft,
   subscribe,
   watchRuntime,
   workspace,
@@ -101,6 +102,42 @@ export default function Chat(props: {
     [pages, setPages] = createSignal(1);
   const [queueOpen, setQueueOpen] = createSignal(true);
   const draftConfig = new Map<string, Record<string, unknown>>();
+  const profileOf = (key: string) =>
+    key ? (JSON.parse(key)[0] as string) : (props.profile ?? "default");
+  let draftSync: ReturnType<typeof setTimeout> | undefined;
+  let pendingDraft: { key: string; value: string } | undefined;
+  const writeDraft = (key: string, value: string) => {
+    void draft(key, value);
+    clearTimeout(draftSync);
+    if (pendingDraft && pendingDraft.key !== key) {
+      saveDraft(
+        profileOf(pendingDraft.key),
+        pendingDraft.key,
+        pendingDraft.value,
+      );
+    }
+    if (!value) {
+      pendingDraft = undefined;
+      saveDraft(profileOf(key), key, value);
+      return;
+    }
+    pendingDraft = { key, value };
+    draftSync = setTimeout(() => {
+      draftSync = undefined;
+      pendingDraft = undefined;
+      saveDraft(profileOf(key), key, value);
+    }, 400);
+  };
+  onCleanup(() => {
+    clearTimeout(draftSync);
+    if (pendingDraft) {
+      saveDraft(
+        profileOf(pendingDraft.key),
+        pendingDraft.key,
+        pendingDraft.value,
+      );
+    }
+  });
   const errorDismissed = (id: string) =>
     workspace()?.settings.dismissedErrors?.includes(id);
   const turnErrorId = (turn: Turn) =>
@@ -259,7 +296,14 @@ export default function Chat(props: {
       }
     });
     void draft(key).then((value) => {
-      if (props.conversation === key && text() === "") setText(value ?? "");
+      if (props.conversation !== key || text() !== "") return;
+      const remote = untrack(
+        () =>
+          workspace()?.drafts?.find(
+            (item) => item.key === key && item.profile === profileOf(key),
+          )?.text,
+      );
+      setText(value ?? remote ?? "");
     });
     void loadCache<Transcript>(`chat:${key}`).then((value) => {
       if (
@@ -370,7 +414,7 @@ export default function Chat(props: {
   });
   const changeText = (value: string) => {
     setText(value);
-    void draft(props.conversation, value);
+    writeDraft(props.conversation, value);
   };
   let submission: { signature: string; id: string } | undefined;
   async function send() {
@@ -403,6 +447,8 @@ export default function Chat(props: {
         // Preserve the unsent draft if submitting to the new session fails.
         await draft(key, value);
         await draftAttachments(key, uploads());
+        saveDraft(profileOf(key), key, value);
+        saveDraft(profileOf(""), "", "");
         for (const params of draftConfig.values()) {
           const result = await command("rpc", key, {
             method: "config.set",
@@ -443,6 +489,8 @@ export default function Chat(props: {
         await draftAttachments("", []);
         await draft(key, "");
         await draftAttachments(key, []);
+        saveDraft(profileOf(""), "", "");
+        saveDraft(profileOf(key), key, "");
         props.navigate(key);
       }
       // Acceptance into the durable queue is enough to compose the next turn.
@@ -459,6 +507,7 @@ export default function Chat(props: {
       } else if (props.conversation !== key && (await draft(key)) === value) {
         await draft(key, "");
         await draftAttachments(key, []);
+        saveDraft(profileOf(key), key, "");
       }
     } catch (error) {
       if (!originalKey && key) props.navigate(key);
@@ -500,7 +549,7 @@ export default function Chat(props: {
         if (props.conversation === key) {
           setUploads(attachments);
           changeText(value);
-        } else await draft(key, value);
+        } else writeDraft(key, value);
         setPendingUploads((items) =>
           items.filter((item) => item.id !== uploadId)
         );

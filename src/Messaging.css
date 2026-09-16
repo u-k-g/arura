@@ -230,10 +230,6 @@
 .messaging-toggle input:checked::before {
   transform: translateX(12px);
 }
-.messaging-toggle input:focus-visible {
-  outline: 1px solid var(--muted);
-  outline-offset: 1px;
-}
 .messaging-mobile-picker,
 .messaging-scrim {
   display: none;

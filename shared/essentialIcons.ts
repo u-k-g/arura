@@ -99,3 +99,28 @@ export const essentialIcons = [
   ["book-stack", "Book Stack"],
   ["open-book", "Open Book"],
 ] as const;
+
+const reservedIcons = new Set([
+  "attachment",
+  "bot",
+  "capabilities",
+  "chat-bubble",
+  "check",
+  "clock",
+  "cloud",
+  "computer",
+  "edit-pencil",
+  "folder",
+  "key",
+  "page",
+  "rocket",
+  "search",
+  "send",
+  "smartphone-device",
+  "star",
+  "terminal",
+]);
+
+export const essentialIconChoices = essentialIcons.filter(
+  ([icon]) => !reservedIcons.has(icon),
+);

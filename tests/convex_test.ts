@@ -52,6 +52,7 @@ Deno.test({
     let snapshot: Workspace = {
         deviceId: "",
         conversations: [],
+        drafts: [],
         folders: [],
         connection: null,
         settings: {},

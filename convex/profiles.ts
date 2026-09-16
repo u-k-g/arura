@@ -43,6 +43,27 @@ export const renamed = mutation({
   handler: async (ctx, { from, to, sourceIds }) => {
     await adapter(ctx);
     if (from === to) return;
+    const blankDraft = await ctx.db
+      .query("drafts")
+      .withIndex("profile", (q) => q.eq("profile", from).eq("key", ""))
+      .unique();
+    if (blankDraft) {
+      const existingBlank = await ctx.db
+        .query("drafts")
+        .withIndex("profile", (q) => q.eq("profile", to).eq("key", ""))
+        .unique();
+      if (existingBlank) {
+        if (existingBlank.text !== blankDraft.text) {
+          await ctx.db.patch(existingBlank._id, {
+            text: [existingBlank.text, blankDraft.text].join("\n\n"),
+            updatedAt: Date.now(),
+          });
+        }
+        await ctx.db.delete(blankDraft._id);
+      } else {
+        await ctx.db.patch(blankDraft._id, { profile: to });
+      }
+    }
     for (const sourceId of sourceIds) {
       const row = await ctx.db
         .query("conversations")
@@ -101,6 +122,31 @@ export const renamed = mutation({
           .unique();
         if (existingRead) await ctx.db.delete(read._id);
         else await ctx.db.patch(read._id, { key: target });
+      }
+      for (
+        const draftRow of await ctx.db
+          .query("drafts")
+          .withIndex(
+            "profile",
+            (q) => q.eq("profile", from).eq("key", row.key),
+          )
+          .collect()
+      ) {
+        const existingDraft = await ctx.db
+          .query("drafts")
+          .withIndex("profile", (q) => q.eq("profile", to).eq("key", target))
+          .unique();
+        if (existingDraft) {
+          if (existingDraft.text !== draftRow.text) {
+            await ctx.db.patch(existingDraft._id, {
+              text: [existingDraft.text, draftRow.text].join("\n\n"),
+              updatedAt: Date.now(),
+            });
+          }
+          await ctx.db.delete(draftRow._id);
+        } else {
+          await ctx.db.patch(draftRow._id, { profile: to, key: target });
+        }
       }
       // Public projections are rebuilt from Hermes; web-owned organization and
       // queued actions retain their identity.

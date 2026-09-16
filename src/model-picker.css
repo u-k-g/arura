@@ -20,6 +20,7 @@
 .model-picker-layout {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
+  height: min(380px, calc(42dvh + 80px));
   max-height: inherit;
 }
 .model-provider-rail {
@@ -29,7 +30,7 @@
   gap: 4px;
   padding: 8px 4px;
   border-right: 1px solid var(--line);
-  max-height: 440px;
+  min-height: 0;
   overflow-y: auto;
 }
 .model-provider-rail button {
@@ -92,8 +93,7 @@
   font-size: 13px;
 }
 .model-picker-list {
-  max-height: min(300px, 42dvh);
-  min-height: 60px;
+  min-height: 0;
   flex: 1 1 auto;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -171,8 +171,8 @@
   font-size: 12px;
 }
 @media (max-width: 720px), (pointer: coarse) and (hover: none) {
-  .model-picker-list {
-    max-height: min(300px, 38dvh);
+  .model-picker-layout {
+    height: min(380px, calc(38dvh + 80px));
   }
   .model-search input {
     font-size: 16px;

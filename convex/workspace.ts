@@ -116,6 +116,7 @@ export const overview = query({
       conversations: [...pinned, ...recent.page],
       recentCursor: recent.continueCursor,
       recentHasMore: !recent.isDone,
+      drafts: await ctx.db.query("drafts").collect(),
       folders: (await ctx.db.query("folders").collect()).sort(
         (a, b) => a.rank - b.rank,
       ),
@@ -290,6 +291,37 @@ export const setEssentialIcon = mutation({
       throw new Error("Conversation not found");
     }
     await ctx.db.patch(conversation._id, { essentialIcon: args.icon });
+  },
+});
+export const saveDraft = mutation({
+  args: { profile: v.string(), key: v.string(), text: v.string() },
+  handler: async (ctx, args) => {
+    await device(ctx);
+    const existing = await ctx.db
+      .query("drafts")
+      .withIndex(
+        "profile",
+        (q) => q.eq("profile", args.profile).eq("key", args.key),
+      )
+      .unique();
+    if (!args.text.trim()) {
+      if (existing) await ctx.db.delete(existing._id);
+      return;
+    }
+    if (existing) {
+      if (existing.text === args.text) return;
+      await ctx.db.patch(existing._id, {
+        text: args.text,
+        updatedAt: Date.now(),
+      });
+    } else {
+      await ctx.db.insert("drafts", {
+        profile: args.profile,
+        key: args.key,
+        text: args.text,
+        updatedAt: Date.now(),
+      });
+    }
   },
 });
 export const folder = mutation({
@@ -685,6 +717,7 @@ export const backup = query({
       version: 1,
       createdAt: Date.now(),
       conversations: await ctx.db.query("conversations").collect(),
+      drafts: await ctx.db.query("drafts").collect(),
       folders: await ctx.db.query("folders").collect(),
       conversationReads: await ctx.db.query("conversationReads").collect(),
       conversationAliases: await ctx.db.query("conversationAliases").collect(),

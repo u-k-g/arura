@@ -49,6 +49,12 @@ export default defineSchema({
   conversationAliases: defineTable({ key: v.string(), target: v.string() })
     .index("key", ["key"])
     .index("target", ["target"]),
+  drafts: defineTable({
+    profile: v.string(),
+    key: v.string(),
+    text: v.string(),
+    updatedAt: v.number(),
+  }).index("profile", ["profile", "key"]),
   conversations: defineTable({
     key: v.string(),
     profile: v.string(),

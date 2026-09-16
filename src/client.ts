@@ -214,6 +214,10 @@ export async function mutate(name: string, args: Record<string, unknown>) {
   const [module, method] = name.split(".");
   return await client.mutation(anyApi[module][method], args);
 }
+export function saveDraft(profile: string, key: string, text: string) {
+  if (!connected()) return;
+  void mutate("workspace.saveDraft", { profile, key, text }).catch(() => {});
+}
 export function subscribe<T>(
   module: string,
   name: string,

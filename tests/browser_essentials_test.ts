@@ -61,7 +61,7 @@ Deno.test({
       await a.getByRole("button", { name: "Change icon", exact: true }).click();
       await a
         .getByRole("dialog")
-        .getByRole("button", { name: "Star", exact: true })
+        .getByRole("button", { name: "Heart", exact: true })
         .click();
       await b
         .locator(".essentials")
@@ -71,7 +71,7 @@ Deno.test({
       await expect(
         b
           .getByRole("dialog")
-          .getByRole("button", { name: "Star", exact: true }),
+          .getByRole("button", { name: "Heart", exact: true }),
       ).toHaveAttribute("aria-pressed", "true");
       await b
         .getByRole("button", { name: "Close", exact: true })

@@ -702,6 +702,22 @@ dialog.conversation-menu {
 .session-age.archive-overdue {
   color: var(--danger);
 }
+.thread-row.draft .thread-select,
+.thread-row.draft .thread-select .icon,
+.thread-row.draft .draft-indicator {
+  color: var(--warning);
+}
+.thread-row.draft .session-dot {
+  background: var(--warning);
+}
+.draft-indicator {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+}
+.thread-select > span + .draft-indicator {
+  margin-left: auto;
+}
 
 .sidebar-titlebar > .gateway-status {
   padding: 2px 6px;

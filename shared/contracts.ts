@@ -7,6 +7,7 @@ export type Workspace = {
   readBaseline?: number;
   reads?: Doc<"conversationReads">[];
   conversations: Doc<"conversations">[];
+  drafts: Doc<"drafts">[];
   folders: Doc<"folders">[];
   connection: Doc<"connection"> | null;
   settings: Record<string, unknown> & {

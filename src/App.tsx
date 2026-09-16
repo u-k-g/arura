@@ -3,7 +3,7 @@ import SettingsFrame from "./SettingsFrame.tsx";
 import ActionDialog from "./ActionDialog.tsx";
 import { ask, confirmAction } from "./ActionDialog.tsx";
 import type { ConversationPage, Doc } from "../shared/contracts.ts";
-import { essentialIcons } from "../shared/essentialIcons.ts";
+import { essentialIconChoices } from "../shared/essentialIcons.ts";
 import {
   createEffect,
   createMemo,
@@ -26,6 +26,7 @@ import {
   mutate,
   notice,
   request,
+  saveDraft,
   start,
   subscribe,
   workspace,
@@ -196,11 +197,15 @@ export default function App() {
             const oldDraft = await draft(key);
             const newDraft = await draft(conversation.key);
             if (oldDraft && oldDraft !== newDraft) {
-              await draft(
-                conversation.key,
-                [newDraft, oldDraft].filter(Boolean).join("\n\n"),
-              );
+              const merged = [newDraft, oldDraft].filter(Boolean).join("\n\n");
+              await draft(conversation.key, merged);
               await draft(key, "");
+              saveDraft(conversation.profile, conversation.key, merged);
+              saveDraft(
+                (JSON.parse(key) as string[])[0] ?? conversation.profile,
+                key,
+                "",
+              );
             }
             const attachments = await draftAttachments(key);
             if (attachments.length) {
@@ -322,6 +327,12 @@ export default function App() {
     setSearch("");
   };
   const chats = () => (workspace()?.conversations ?? []) as Conversation[];
+  const draftFor = (key: string, profile: string) =>
+    workspace()?.drafts?.find(
+      (item) => item.key === key && item.profile === profile,
+    )?.text;
+  const draftPreview = (text: string) =>
+    text.trim().split("\n")[0]?.slice(0, 60) || "Draft";
   const selected = () =>
     chats().find((c) => c.key === view()) ??
       archived().find((c) => c.key === view()) ??
@@ -495,7 +506,11 @@ export default function App() {
   const row = (c: Conversation) => (
     <div
       class="thread-row"
-      classList={{ selected: view() === c.key, unread: Boolean(unread(c)) }}
+      classList={{
+        selected: view() === c.key,
+        unread: Boolean(unread(c)),
+        draft: Boolean(draftFor(c.key, c.profile)),
+      }}
     >
       <button
         type="button"
@@ -511,20 +526,29 @@ export default function App() {
       >
         <span class="session-dot" classList={{ running: c.running }} />
         <span>{c.title}</span>
-        <time
-          class="session-age"
-          classList={{
-            "archive-warning": ageStatus(c) === "warning",
-            "archive-overdue": ageStatus(c) === "overdue",
-          }}
-          title={ageStatus(c) === "overdue"
-            ? "Due for automatic archive"
-            : ageStatus(c) === "warning"
-            ? "Automatic archive within one day"
-            : undefined}
+        <Show
+          when={draftFor(c.key, c.profile)}
+          fallback={
+            <time
+              class="session-age"
+              classList={{
+                "archive-warning": ageStatus(c) === "warning",
+                "archive-overdue": ageStatus(c) === "overdue",
+              }}
+              title={ageStatus(c) === "overdue"
+                ? "Due for automatic archive"
+                : ageStatus(c) === "warning"
+                ? "Automatic archive within one day"
+                : undefined}
+            >
+              {ageLabel(c)}
+            </time>
+          }
         >
-          {ageLabel(c)}
-        </time>
+          <i class="draft-indicator" title="Draft saved">
+            <Icon name="edit-pencil" />
+          </i>
+        </Show>
         <Show when={c.running}>
           <i class="busy-dot" />
         </Show>
@@ -595,7 +619,7 @@ export default function App() {
           each={[
             ["threads", "Threads", "message-text"],
             ["resources:profiles", "Bots", "comp-align-bottom-solid"],
-            ["resources:jobs", "Cron jobs", "clock"],
+            ["resources:jobs", "Cron jobs", "timer"],
           ]}
         >
           {([route, label, icon]) => {
@@ -651,6 +675,33 @@ export default function App() {
             </For>
           </div>
         </Show>
+        <For each={(workspace()?.drafts ?? []).filter((d) => d.key === "")}>
+          {(d) => (
+            <div
+              class="thread-row draft"
+              classList={{
+                selected: view() === "" && chosenProfile() === d.profile,
+              }}
+            >
+              <button
+                type="button"
+                class="thread-select"
+                title={draftPreview(d.text)}
+                aria-label={`Draft: ${draftPreview(d.text)}`}
+                onClick={() => {
+                  setChosenProfile(d.profile);
+                  preferences.setItem("arura.profile", d.profile);
+                  navigate("");
+                }}
+              >
+                <i class="draft-indicator">
+                  <Icon name="edit-pencil" />
+                </i>
+                <span>{draftPreview(d.text)}</span>
+              </button>
+            </div>
+          )}
+        </For>
         <For
           each={chats()
             .filter((c) => c.section === "pinned" && !c.folderId)
@@ -1124,7 +1175,7 @@ export default function App() {
             />
             <div class="essential-icon-picker">
               <For
-                each={essentialIcons.filter(([icon, label]) =>
+                each={essentialIconChoices.filter(([icon, label]) =>
                   (icon + " " + label)
                     .toLowerCase()
                     .includes(iconSearch().trim().toLowerCase())
@@ -1154,7 +1205,7 @@ export default function App() {
               </For>
             </div>
             <Show
-              when={!essentialIcons.some(([icon, label]) =>
+              when={!essentialIconChoices.some(([icon, label]) =>
                 (icon + " " + label)
                   .toLowerCase()
                   .includes(iconSearch().trim().toLowerCase())
