@@ -374,7 +374,7 @@ export default function App() {
       {
         id: "new",
         label: "New conversation",
-        icon: "plus",
+        icon: "edit-pencil",
         group: "Actions",
         run: () => void newChat(currentProfile()),
       },
@@ -489,8 +489,8 @@ export default function App() {
       <nav class="sidebar-sections" aria-label="Main navigation">
         <For
           each={[
-            ["threads", "Threads", "chat-bubble"],
-            ["resources:profiles", "Bots", "bot"],
+            ["threads", "Threads", "message-text"],
+            ["resources:profiles", "Bots", "comp-align-bottom-solid"],
             ["resources:artifacts", "Artifacts", "page"],
             ["resources:jobs", "Cron jobs", "clock"],
           ]}
@@ -861,16 +861,10 @@ export default function App() {
                 onClick={toggleSidebar}
               />
             </Show>
-            <span class="view-title" aria-hidden="true" />
             <IconButton
-              icon="plus"
+              icon="edit-pencil"
               label="New conversation"
               onClick={() => void newChat(currentProfile())}
-            />
-            <IconButton
-              icon="search"
-              label="Search conversations"
-              onClick={() => setPalette(true)}
             />
             <Show when={selected()}>
               {(c) => (
@@ -884,12 +878,22 @@ export default function App() {
                       (c().running || c().pendingInput)}
                     onClick={() => void run(() => archiveConversation(c()))}
                   />
-                  <IconButton
-                    icon="more-horiz"
-                    label="Conversation actions"
-                    onClick={(event) => openMenu(c(), event)}
-                  />
                 </>
+              )}
+            </Show>
+            <span class="view-title" aria-hidden="true" />
+            <IconButton
+              icon="search"
+              label="Search conversations"
+              onClick={() => setPalette(true)}
+            />
+            <Show when={selected()}>
+              {(c) => (
+                <IconButton
+                  icon="more-horiz"
+                  label="Conversation actions"
+                  onClick={(event) => openMenu(c(), event)}
+                />
               )}
             </Show>
           </header>

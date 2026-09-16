@@ -493,6 +493,11 @@ small {
   padding: 8px 24px;
   margin: 0 auto;
 }
+.transcript-inner:not(:empty)::after {
+  content: "";
+  display: block;
+  height: 48px;
+}
 .message {
   margin: 0 0 16px;
   position: relative;
