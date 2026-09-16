@@ -1,6 +1,6 @@
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { record, records } from "../shared/contracts.ts";
-import { inform, resource, revision } from "./client.ts";
+import { inform, mutate, resource, revision, workspace } from "./client.ts";
 import { rejectAction } from "./ActionDialog.tsx";
 import { run } from "./ui.tsx";
 
@@ -269,6 +269,48 @@ export default function ModelSettings(props: { profile: string }) {
           />
         )}
       </Show>
+      <details class="settings-disclosure">
+        <summary>Customize model list</summary>
+        <p class="subtitle">
+          Choose which models appear in the picker. Changes sync across your
+          devices.
+        </p>
+        <For each={providers()}>
+          {(provider) => (
+            <fieldset class="model-visibility-group">
+              <legend>{provider.name || provider.id}</legend>
+              <For each={provider.models ?? []}>
+                {(model) => {
+                  const key = JSON.stringify([provider.id, model]);
+                  return (
+                    <label class="model-visibility">
+                      <input
+                        type="checkbox"
+                        aria-label={`${model} · ${
+                          provider.name || provider.id
+                        }`}
+                        checked={!workspace()?.settings.hiddenModels?.includes(
+                          key,
+                        )}
+                        onChange={(event) => {
+                          const hidden = !event.currentTarget.checked;
+                          void run(() =>
+                            mutate("workspace.modelVisibility", {
+                              model: key,
+                              hidden,
+                            })
+                          );
+                        }}
+                      />
+                      <span>{model}</span>
+                    </label>
+                  );
+                }}
+              </For>
+            </fieldset>
+          )}
+        </For>
+      </details>
       <details class="settings-disclosure">
         <summary>Helper models</summary>
         <For each={tasks().flatMap((task) => (task.task ? [task.task] : []))}>

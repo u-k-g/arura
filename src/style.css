@@ -52,8 +52,8 @@ a:hover {
   text-decoration: underline;
 }
 :focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline: 1px solid var(--muted);
+  outline-offset: 1px;
 }
 input,
 textarea,
@@ -1722,4 +1722,19 @@ progress {
 .settings-grid > button .icon {
   color: var(--muted);
   margin-right: 5px;
+}
+
+.model-visibility-group {
+  margin: 12px 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.model-visibility {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
 }

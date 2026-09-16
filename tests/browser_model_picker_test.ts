@@ -104,6 +104,8 @@ Deno.test({
         .click();
       await expect(mobile.locator(".model-choice")).toHaveCount(0);
       await a.getByRole("button", { name: "Model", exact: true }).click();
+      await expect(picker).toBeVisible();
+      await a.bringToFront();
       await a.keyboard.press("Escape");
       await expect(picker).toHaveCount(0);
       await expect(

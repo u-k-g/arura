@@ -231,8 +231,8 @@
   transform: translateX(12px);
 }
 .messaging-toggle input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
+  outline: 1px solid var(--muted);
+  outline-offset: 1px;
 }
 .messaging-mobile-picker,
 .messaging-scrim {

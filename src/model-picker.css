@@ -145,16 +145,6 @@
 .model-star.starred svg {
   fill: currentColor;
 }
-.model-visibility {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-  padding: 9px 10px;
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
 .model-picker-empty {
   padding: 12px;
   font-size: 12px;
@@ -179,12 +169,6 @@
   min-width: 105px;
   padding: 5px 8px;
   font-size: 12px;
-}
-.model-picker-footer .text-button {
-  justify-self: start;
-  font-size: 11px;
-  color: var(--muted);
-  padding: 2px 0;
 }
 @media (max-width: 720px), (pointer: coarse) and (hover: none) {
   .model-picker-list {

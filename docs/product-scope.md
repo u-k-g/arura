@@ -131,9 +131,10 @@ grace period.
   Hermes's canonical session title internally so bot discovery remains
   compatible.
 - The model picker opens as a compact popover anchored to its composer button,
-  with a left provider rail, searchable model list, per-model stars synchronized
-  across devices, and an always-visible reasoning effort selector. Keep
-  model-list customization available.
+  with a left rail containing only providers and Starred (no All models),
+  opening on the current provider, with a searchable model list, per-model stars
+  synchronized across devices, and an always-visible reasoning effort selector.
+  Keep model-list customization available.
 - **Pinned:** manually pinned entries and all folders. Folder contents count as
   pinned. Folders cannot live in any other section.
 - **Other entries:** below Pinned, no folders; autoarchive after seven days of

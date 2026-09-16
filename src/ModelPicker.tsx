@@ -42,22 +42,21 @@ export default function ModelPicker(props: {
     if (!anchor) return;
     const viewport = globalThis.visualViewport;
     const top = (viewport?.offsetTop ?? 0) + 8;
-    const bottom = (viewport?.offsetTop ?? 0) +
-      (viewport?.height ?? innerHeight) - 8;
+    const bottom =
+      (viewport?.offsetTop ?? 0) + (viewport?.height ?? innerHeight) - 8;
     const above = anchor.top - top - 6;
     const below = bottom - anchor.bottom - 6;
     const upward = above >= Math.min(400, below);
     panel.style.maxHeight = `${Math.max(120, upward ? above : below)}px`;
     const rect = panel.getBoundingClientRect();
-    panel.style.left = `${
-      Math.max(
-        8,
-        Math.min(anchor.right - rect.width, innerWidth - rect.width - 8),
-      )
-    }px`;
-    panel.style.top = `${
-      Math.max(top, upward ? anchor.top - rect.height - 6 : anchor.bottom + 6)
-    }px`;
+    panel.style.left = `${Math.max(
+      8,
+      Math.min(anchor.right - rect.width, innerWidth - rect.width - 8),
+    )}px`;
+    panel.style.top = `${Math.max(
+      top,
+      upward ? anchor.top - rect.height - 6 : anchor.bottom + 6,
+    )}px`;
   };
   onMount(() => {
     panel.showPopover();
@@ -75,11 +74,19 @@ export default function ModelPicker(props: {
     globalThis.removeEventListener("scroll", position, true);
     globalThis.visualViewport?.removeEventListener("resize", position);
     globalThis.visualViewport?.removeEventListener("scroll", position);
-    props.anchor?.focus({ preventScroll: true });
+    requestAnimationFrame(() => props.anchor?.focus({ preventScroll: true }));
   });
-  const [section, setSection] = createSignal("all");
+  const current =
+    props.models.find(
+      (entry) =>
+        props.current === modelLabel(entry) ||
+        props.current === entry.id ||
+        props.current === entry.model,
+    ) ?? props.models[0];
+  const [section, setSection] = createSignal(
+    current ? `provider:${current.provider ?? ""}` : "favorites",
+  );
   const [search, setSearch] = createSignal("");
-  const [customize, setCustomize] = createSignal(false);
   const [busy, setBusy] = createSignal(false);
   const favorites = createMemo(
     () => new Set(workspace()?.settings.modelFavorites ?? []),
@@ -95,15 +102,14 @@ export default function ModelPicker(props: {
   const filtered = createMemo(() =>
     props.models.filter(
       (entry) =>
-        (customize() || !hidden().has(modelKey(entry))) &&
-        (section() === "all" ||
-          (section() === "favorites"
-            ? favorites().has(modelKey(entry))
-            : section() === `provider:${entry.provider ?? ""}`)) &&
+        !hidden().has(modelKey(entry)) &&
+        (section() === "favorites"
+          ? favorites().has(modelKey(entry))
+          : section() === `provider:${entry.provider ?? ""}`) &&
         accessibleLabel(entry)
           .toLowerCase()
           .includes(search().trim().toLowerCase()),
-    )
+    ),
   );
   const perform = (action: () => Promise<void>) => {
     if (busy()) return;
@@ -123,15 +129,6 @@ export default function ModelPicker(props: {
     >
       <div class="model-picker-layout">
         <nav class="model-provider-rail" aria-label="Model providers">
-          <button
-            type="button"
-            title="All models"
-            aria-label="All models"
-            aria-pressed={section() === "all"}
-            onClick={() => setSection("all")}
-          >
-            <Icon name="menu" />
-          </button>
           <button
             type="button"
             title="Starred models"
@@ -184,47 +181,22 @@ export default function ModelPicker(props: {
                 <div
                   class="model-picker-row"
                   classList={{
-                    selected: props.current === modelLabel(entry) ||
+                    selected:
+                      props.current === modelLabel(entry) ||
                       props.current === entry.id ||
                       props.current === entry.model,
                   }}
                 >
-                  <Show
-                    when={customize()}
-                    fallback={
-                      <button
-                        type="button"
-                        class="model-choice"
-                        aria-label={accessibleLabel(entry)}
-                        disabled={busy()}
-                        onClick={() => perform(() => props.choose(entry))}
-                      >
-                        <span>{modelLabel(entry)}</span>
-                        <small>{providerLabel(entry)}</small>
-                      </button>
-                    }
+                  <button
+                    type="button"
+                    class="model-choice"
+                    aria-label={accessibleLabel(entry)}
+                    disabled={busy()}
+                    onClick={() => perform(() => props.choose(entry))}
                   >
-                    <label class="model-visibility">
-                      <input
-                        type="checkbox"
-                        aria-label={accessibleLabel(entry)}
-                        checked={!hidden().has(modelKey(entry))}
-                        onChange={(event) => {
-                          const hidden = !event.currentTarget.checked;
-                          void run(() =>
-                            mutate("workspace.modelVisibility", {
-                              model: modelKey(entry),
-                              hidden,
-                            })
-                          );
-                        }}
-                      />
-                      <span>
-                        {modelLabel(entry)}
-                        <small>{providerLabel(entry)}</small>
-                      </span>
-                    </label>
-                  </Show>
+                    <span>{modelLabel(entry)}</span>
+                    <small>{providerLabel(entry)}</small>
+                  </button>
                   <button
                     type="button"
                     class="model-star"
@@ -238,7 +210,7 @@ export default function ModelPicker(props: {
                         mutate("workspace.modelFavorite", {
                           model: modelKey(entry),
                           starred: !favorites().has(modelKey(entry)),
-                        })
+                        }),
                       );
                     }}
                   >
@@ -252,8 +224,8 @@ export default function ModelPicker(props: {
                 {search()
                   ? "No matching models."
                   : section() === "favorites"
-                  ? "Star models to keep them here."
-                  : "No visible models. Customize the list to show more."}
+                    ? "Star models to keep them here."
+                    : "No visible models. Manage the model list in Settings → Models & providers."}
               </p>
             </Show>
           </div>
@@ -294,13 +266,6 @@ export default function ModelPicker(props: {
                 </For>
               </select>
             </label>
-            <button
-              type="button"
-              class="text-button"
-              onClick={() => setCustomize((value) => !value)}
-            >
-              {customize() ? "Done customizing" : "Customize model list"}
-            </button>
           </footer>
         </div>
       </div>
