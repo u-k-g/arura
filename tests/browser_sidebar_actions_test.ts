@@ -3,8 +3,7 @@ import { signIn } from "./sign_in.ts";
 import { requireValue } from "./require_value.ts";
 
 Deno.test({
-  name:
-    "sidebar settings, host files, profile selection, and archive navigation",
+  name: "sidebar settings, artifacts, profile selection, and archive navigation",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -49,15 +48,31 @@ Deno.test({
           .getByRole("button", { name: "Settings", exact: true }),
       ).toBeVisible();
       await expect(page.getByLabel("Select profile")).toContainText("default");
-      const files = page.waitForRequest(
-        (request) => new URL(request.url()).pathname === "/api/resource/files",
-      );
-      await page.getByRole("button", { name: "Files", exact: true }).click();
-      expect(new URL((await files).url()).searchParams.get("path")).toBe("~");
-      await expect(page.getByLabel("Host directory")).toHaveValue("~");
       await expect(
-        page.getByText("Path is required", { exact: true }),
+        page.getByRole("button", { name: "Files", exact: true }),
       ).toHaveCount(0);
+      await page
+        .locator(".nav-footer")
+        .getByRole("button", { name: "Artifacts", exact: true })
+        .click();
+      await expect(
+        page.getByRole("searchbox", { name: "Search generated files" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Host files", exact: true }),
+      ).toHaveCount(0);
+      const removed = await page.request.get(
+        new URL("/api/resource/files?path=~", page.url()).href,
+      );
+      expect(removed.ok()).toBe(false);
+      await page.evaluate(() =>
+        localStorage.setItem("arura.view", "resources:files?path=%2Ftmp"),
+      );
+      await page.reload();
+      await expect(
+        page.getByRole("searchbox", { name: "Search generated files" }),
+      ).toBeVisible();
+      await page.screenshot({ path: "/var/tmp/arura-artifacts-footer.png" });
       await page.getByRole("button", { name: "Threads", exact: true }).click();
       const threadCount = await page
         .locator(".desktop-navigation .thread-row")
@@ -139,7 +154,7 @@ Deno.test({
         .poll(() =>
           page.evaluate(
             () => JSON.parse(localStorage.getItem("arura.view") || "[]")[0],
-          )
+          ),
         )
         .toBe("sidebar-profile");
       await page

@@ -29,7 +29,7 @@
 }
 .sidebar-sections {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 2px;
   margin: 0 4px 6px;
   border-bottom: 1px solid var(--line);

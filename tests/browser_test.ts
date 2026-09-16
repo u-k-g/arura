@@ -210,8 +210,7 @@ Deno.test({
         .getByRole("button", { name: "Export map snapshot", exact: true })
         .click();
       const download = await downloaded;
-      const snapshotPath =
-        `/var/tmp/arura-memory-map-${crypto.randomUUID()}.json`;
+      const snapshotPath = `/var/tmp/arura-memory-map-${crypto.randomUUID()}.json`;
       await download.saveAs(snapshotPath);
       const snapshot = JSON.parse(await Deno.readTextFile(snapshotPath));
       expect(snapshot.graph.memory).toBeUndefined();
@@ -264,22 +263,18 @@ Deno.test({
         expect(
           (
             await anonymous.request.get(
-              `${url}/api/mcp/oauth/callback/fixture?state=${
-                encodeURIComponent(
-                  state,
-                )
-              }&code=fixture-code`,
+              `${url}/api/mcp/oauth/callback/fixture?state=${encodeURIComponent(
+                state,
+              )}&code=fixture-code`,
             )
           ).status(),
         ).toBe(200);
         expect(
           (
             await anonymous.request.get(
-              `${url}/api/mcp/oauth/callback/fixture?state=${
-                encodeURIComponent(
-                  state,
-                )
-              }&code=fixture-code`,
+              `${url}/api/mcp/oauth/callback/fixture?state=${encodeURIComponent(
+                state,
+              )}&code=fixture-code`,
             )
           ).status(),
         ).toBe(404);
@@ -373,7 +368,7 @@ Deno.test({
         page.getByLabel("Message Hermes", { exact: true }),
       ).toBeVisible();
       const canonical = await page.evaluate(() =>
-        localStorage.getItem("arura.view")
+        localStorage.getItem("arura.view"),
       );
       const roster = await (
         await page.request.get(`${url}/api/resource/profileRoster`)
@@ -404,8 +399,7 @@ Deno.test({
   },
 });
 Deno.test({
-  name:
-    "desktop and mobile browsers: stream, archive, offline reopen, and revoke",
+  name: "desktop and mobile browsers: stream, archive, offline reopen, and revoke",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -431,12 +425,10 @@ Deno.test({
     );
     const suffix = crypto.randomUUID().slice(0, 8);
     try {
-      for (
-        const [page, name] of [
-          [a, "Desktop"],
-          [b, "Phone"],
-        ] as const
-      ) {
+      for (const [page, name] of [
+        [a, "Desktop"],
+        [b, "Phone"],
+      ] as const) {
         await page.goto(url);
         await signIn(page, `${name} ${suffix}`);
         await expect(page.locator(".app-shell")).toBeVisible({
@@ -683,60 +675,7 @@ Deno.test({
       await expect(b.getByLabel("Message Hermes", { exact: true })).toHaveText(
         "An offline draft",
       );
-      await a.getByRole("button", { name: "Files", exact: true }).click();
-      await a
-        .locator(".resource-card")
-        .filter({ hasText: "large.txt" })
-        .getByRole("button", { name: "Open", exact: true })
-        .click();
-      await expect(
-        a.getByRole("button", { name: "Save", exact: true }),
-      ).toBeDisabled();
-      await a
-        .getByRole("button", { name: "Close", exact: true })
-        .last()
-        .click();
-      await a
-        .locator(".resource-card")
-        .filter({ hasText: "notes.md" })
-        .getByRole("button", { name: "Open", exact: true })
-        .click();
-      const editor = a.getByLabel("File content", { exact: true });
-      await expect(editor).toContainText("Original host content");
-      await editor.click();
-      await a.keyboard.press("ControlOrMeta+a");
-      await a.keyboard.insertText("# Revised notes\n\nSaved through Arura.");
-      await a.getByRole("button", { name: "Save", exact: true }).click();
-      await expect(
-        a.getByRole("status").filter({ hasText: "File saved" }),
-      ).toBeVisible();
-      await a
-        .getByRole("button", { name: "Close", exact: true })
-        .last()
-        .click();
-      await a
-        .locator(".resource-card")
-        .filter({ hasText: "notes.md" })
-        .getByRole("button", { name: "Open", exact: true })
-        .click();
-      await expect(editor).toContainText("Saved through Arura.");
-      await editor.click();
-      await a.keyboard.press("ControlOrMeta+a");
-      await a
-        .getByRole("button", { name: "Attach selection", exact: true })
-        .click();
-      await a
-        .getByRole("dialog", { name: "Add selection to a conversation" })
-        .getByRole("button", { name: "Fixture conversation", exact: true })
-        .first()
-        .click();
-      await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveText(
-        /Saved through Arura/,
-      );
-      await a.getByRole("button", { name: "Files", exact: true }).click();
-      await a
-        .getByRole("button", { name: "Generated files", exact: true })
-        .click();
+      await a.getByRole("button", { name: "Artifacts", exact: true }).click();
       await expect(
         a.locator(".resource-card").filter({ hasText: "notes.md" }).first(),
       ).toBeVisible({ timeout: 15000 });

@@ -58,13 +58,6 @@ export default function Artifacts(props: { navigate: (view: string) => void }) {
             {data().hasMore ? "+" : ""}
           </small>
         </span>
-        <button
-          type="button"
-          class="text-button"
-          onClick={() => props.navigate("resources:files")}
-        >
-          Host files
-        </button>
       </header>
       <Show when={data().pending}>
         <p role="status">
@@ -75,7 +68,7 @@ export default function Artifacts(props: { navigate: (view: string) => void }) {
         </p>
       </Show>
       <Show when={!connected()}>
-        <p>Showing files saved on this device. Reconnect to open host files.</p>
+        <p>Showing files saved on this device. Reconnect to open files.</p>
       </Show>
       <div class="artifact-table-scroll">
         <table class="artifact-table">
@@ -96,11 +89,9 @@ export default function Artifacts(props: { navigate: (view: string) => void }) {
                   <td>
                     <a
                       class="artifact-name"
-                      href={`/api/download?path=${
-                        encodeURIComponent(
-                          file.path,
-                        )
-                      }`}
+                      href={`/api/download?path=${encodeURIComponent(
+                        file.path,
+                      )}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -126,11 +117,9 @@ export default function Artifacts(props: { navigate: (view: string) => void }) {
                       class="artifact-download"
                       aria-label={`Download ${file.name}`}
                       title="Download"
-                      href={`/api/download?path=${
-                        encodeURIComponent(
-                          file.path,
-                        )
-                      }`}
+                      href={`/api/download?path=${encodeURIComponent(
+                        file.path,
+                      )}`}
                       download=""
                     >
                       <Icon name="download" />

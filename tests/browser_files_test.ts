@@ -1,10 +1,9 @@
 import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { Buffer } from "node:buffer";
-import { chromium, expect, type Page } from "@playwright/test";
+import { chromium, expect } from "@playwright/test";
 Deno.test({
-  name:
-    "uploads round-trip through the host and concurrent file edits preserve the losing draft",
+  name: "file and pasted-image uploads round-trip through the host",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -55,9 +54,8 @@ Deno.test({
         clipboardData.items.add(
           new File(
             [
-              Uint8Array.from(
-                atob(data),
-                (character) => character.charCodeAt(0),
+              Uint8Array.from(atob(data), (character) =>
+                character.charCodeAt(0),
               ),
             ],
             "pasted.png",
@@ -78,79 +76,6 @@ Deno.test({
       );
       expect(imageDownload.status()).toBe(200);
       expect((await imageDownload.body()).toString("base64")).toBe(png);
-      const edit = async (page: Page, text: string) => {
-        await page.getByRole("button", { name: "Files", exact: true }).click();
-        await page
-          .locator(".resource-card")
-          .filter({ hasText: name })
-          .getByRole("button", { name: "Open", exact: true })
-          .click();
-        const editor = page.getByLabel("File content", { exact: true });
-        await expect(editor).toContainText(content);
-        await page
-          .getByRole("button", { name: "Find and replace", exact: true })
-          .click();
-        await page
-          .getByRole("textbox", { name: "Find in file", exact: true })
-          .fill("notes");
-        await page
-          .getByRole("textbox", { name: "Replace with", exact: true })
-          .fill("drafts");
-        await page
-          .getByRole("button", { name: "Replace all", exact: true })
-          .click();
-        await expect(editor).toContainText("Uploaded drafts");
-        await page
-          .getByRole("button", { name: "Find and replace", exact: true })
-          .click();
-        await editor.click();
-        await page.keyboard.press("ControlOrMeta+a");
-        await page.keyboard.insertText(text);
-      };
-      await edit(a, "First device revision");
-      await edit(b, "Second device draft");
-      await a.getByRole("button", { name: "Save", exact: true }).click();
-      await expect(
-        a.getByRole("status").filter({ hasText: "File saved" }),
-      ).toBeVisible();
-      await b.getByRole("button", { name: "Save", exact: true }).click();
-      const dialog = b.locator("dialog.action-dialog");
-      await expect(dialog).toContainText("changed on the host");
-      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
-      await expect(b.getByLabel("File content", { exact: true })).toContainText(
-        "Second device draft",
-      );
-      expect(
-        await (
-          await b.request.get(
-            `${url}/api/download?${new URLSearchParams({ path })}`,
-          )
-        ).text(),
-      ).toBe("First device revision");
-      // Simultaneous requests cannot both overwrite the same version.
-      const save = (page: Page, text: string) =>
-        page.request.post(`${url}/api/resource/saveFile`, {
-          headers: { origin: url },
-          data: {
-            path,
-            content: text,
-            expectedContent: "First device revision",
-          },
-        });
-      const responses = await Promise.all([
-        save(a, "Concurrent A"),
-        save(b, "Concurrent B"),
-      ]);
-      expect(responses.map((response) => response.status()).sort()).toEqual([
-        200,
-        409,
-      ]);
-      const stored = await (
-        await a.request.get(
-          `${url}/api/download?${new URLSearchParams({ path })}`,
-        )
-      ).text();
-      expect(["Concurrent A", "Concurrent B"]).toContain(stored);
     } finally {
       await browser.close();
     }

@@ -58,7 +58,13 @@ export default function App() {
     });
   const [menuAnchor, setMenuAnchor] = createSignal<{ x: number; y: number }>();
   const [iconPicker, setIconPicker] = createSignal<Conversation>();
-  const [view, setView] = createSignal(preferences.getItem("arura.view") ?? "");
+  const savedView = preferences.getItem("arura.view") ?? "";
+  const initialView =
+    savedView.split("?")[0] === "resources:files"
+      ? "resources:artifacts"
+      : savedView;
+  if (initialView !== savedView) preferences.setItem("arura.view", initialView);
+  const [view, setView] = createSignal(initialView);
   const [sheet, setSheet] = createSignal(false),
     [search, setSearch] = createSignal(""),
     [palette, setPalette] = createSignal(false);
@@ -99,11 +105,10 @@ export default function App() {
     setSearchError("");
     const timer = setTimeout(async () => {
       const cacheKey = `search:${query}`;
-      const cached = await loadCache<
-        { key: string; title: string; profile: string }[]
-      >(
-        cacheKey,
-      );
+      const cached =
+        await loadCache<{ key: string; title: string; profile: string }[]>(
+          cacheKey,
+        );
       if (disposed) return;
       if (cached) setMatches(cached);
       if (!online) return;
@@ -154,9 +159,8 @@ export default function App() {
   const [archiveReady, setArchiveReady] = createSignal(false);
   const [menu, setMenu] = createSignal<Conversation>(),
     [folderName, setFolderName] = createSignal<string | null>(null);
-  const [activeConversation, setActiveConversation] = createSignal<
-    Conversation | null
-  >(null);
+  const [activeConversation, setActiveConversation] =
+    createSignal<Conversation | null>(null);
   createEffect(() => {
     const key = view();
     connected();
@@ -300,8 +304,8 @@ export default function App() {
   const chats = () => (workspace()?.conversations ?? []) as Conversation[];
   const selected = () =>
     chats().find((c) => c.key === view()) ??
-      archived().find((c) => c.key === view()) ??
-      activeConversation();
+    archived().find((c) => c.key === view()) ??
+    activeConversation();
   const unread = (conversation: Conversation) => {
     const state = workspace()?.reads?.find(
       (item) => item.key === conversation.key,
@@ -324,7 +328,7 @@ export default function App() {
     };
     document.addEventListener("visibilitychange", markVisible);
     onCleanup(() =>
-      document.removeEventListener("visibilitychange", markVisible)
+      document.removeEventListener("visibilitychange", markVisible),
     );
   });
   const viewedRevision = createMemo(() => {
@@ -379,7 +383,6 @@ export default function App() {
   };
   const destinations = [
     { id: "settings", label: "Settings", icon: "settings" },
-    { id: "resources:files", label: "Host files", icon: "folder" },
     { id: "resources:artifacts", label: "Generated files", icon: "page" },
     { id: "resources:profiles", label: "Profiles & bots", icon: "chat-bubble" },
     { id: "resources:jobs", label: "Schedules", icon: "clock" },
@@ -437,7 +440,7 @@ export default function App() {
   const recentConversations = createMemo(() =>
     chats()
       .filter((c) => c.section === "recent" && !c.backgroundSession)
-      .sort((a, b) => b.activityAt - a.activityAt)
+      .sort((a, b) => b.activityAt - a.activityAt),
   );
   const [ageNow, setAgeNow] = createSignal(Date.now());
   const ageTimer = setInterval(() => setAgeNow(Date.now()), 60_000);
@@ -474,11 +477,13 @@ export default function App() {
             "archive-warning": ageStatus(c) === "warning",
             "archive-overdue": ageStatus(c) === "overdue",
           }}
-          title={ageStatus(c) === "overdue"
-            ? "Due for automatic archive"
-            : ageStatus(c) === "warning"
-            ? "Automatic archive within one day"
-            : undefined}
+          title={
+            ageStatus(c) === "overdue"
+              ? "Due for automatic archive"
+              : ageStatus(c) === "warning"
+                ? "Automatic archive within one day"
+                : undefined
+          }
         >
           {Math.max(0, Math.floor((ageNow() - c.activityAt) / 86400000)) || ""}
           {ageNow() - c.activityAt >= 86400000 ? "d" : "now"}
@@ -506,11 +511,14 @@ export default function App() {
           <>
             <IconButton
               icon="archive"
-              label={c().section === "archived"
-                ? "Unarchive conversation"
-                : "Archive conversation"}
-              disabled={c().section !== "archived" &&
-                (c().running || c().pendingInput)}
+              label={
+                c().section === "archived"
+                  ? "Unarchive conversation"
+                  : "Archive conversation"
+              }
+              disabled={
+                c().section !== "archived" && (c().running || c().pendingInput)
+              }
               onClick={() => void run(() => archiveConversation(c()))}
             />
           </>
@@ -548,7 +556,6 @@ export default function App() {
           each={[
             ["threads", "Threads", "message-text"],
             ["resources:profiles", "Bots", "comp-align-bottom-solid"],
-            ["resources:artifacts", "Artifacts", "page"],
             ["resources:jobs", "Cron jobs", "clock"],
           ]}
         >
@@ -569,7 +576,8 @@ export default function App() {
                     route === "threads"
                       ? (preferences.getItem("arura.lastConversation") ?? "")
                       : route,
-                  )}
+                  )
+                }
               >
                 <Icon name={icon} />
               </button>
@@ -649,7 +657,7 @@ export default function App() {
                     const name = await ask("Folder name", folder.name);
                     if (name?.trim()) {
                       void run(() =>
-                        mutate("workspace.folder", { id: folder._id, name })
+                        mutate("workspace.folder", { id: folder._id, name }),
                       );
                     }
                   }}
@@ -663,8 +671,9 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: 1,
-                      })
-                    )}
+                      }),
+                    )
+                  }
                 />
                 <IconButton
                   icon="nav-arrow-down"
@@ -676,8 +685,9 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: -1,
-                      })
-                    )}
+                      }),
+                    )
+                  }
                 />
                 <button
                   type="button"
@@ -694,7 +704,7 @@ export default function App() {
                         mutate("workspace.folder", {
                           id: folder._id,
                           remove: true,
-                        })
+                        }),
                       );
                     }
                   }}
@@ -768,8 +778,9 @@ export default function App() {
                         mutate("workspace.move", {
                           key: c.key,
                           section: "recent",
-                        })
-                      )}
+                        }),
+                      )
+                    }
                   />
                 </div>
               )}
@@ -806,9 +817,9 @@ export default function App() {
             }}
           />
           <IconButton
-            icon="folder"
-            label="Files"
-            onClick={() => navigate("resources:files")}
+            icon="page"
+            label="Artifacts"
+            onClick={() => navigate("resources:artifacts")}
           />
           <IconButton
             icon="settings"
@@ -828,7 +839,8 @@ export default function App() {
             }}
           >
             <i />
-            Gateway {workspace()?.connection?.online && connected()
+            Gateway{" "}
+            {workspace()?.connection?.online && connected()
               ? "connected"
               : "disconnected"}
           </span>
@@ -964,11 +976,13 @@ export default function App() {
                             when={view() === "resources:platforms"}
                             fallback={
                               <Show
-                                when={![
-                                  "resources:skills",
-                                  "resources:toolsets",
-                                  "resources:mcp",
-                                ].includes(view())}
+                                when={
+                                  ![
+                                    "resources:skills",
+                                    "resources:toolsets",
+                                    "resources:mcp",
+                                  ].includes(view())
+                                }
                                 fallback={
                                   <Capabilities
                                     section={view().slice(10)}
@@ -978,9 +992,6 @@ export default function App() {
                               >
                                 <Resources
                                   name={view().slice(10).split("?")[0]}
-                                  initialPath={new URLSearchParams(
-                                    view().split("?")[1] ?? "",
-                                  ).get("path") ?? ""}
                                   navigate={navigate}
                                   newChat={async (profile) => {
                                     const result = await command(
@@ -1086,10 +1097,12 @@ export default function App() {
                     type="button"
                     aria-label={label}
                     title={label}
-                    aria-pressed={(workspace()?.conversations.find(
-                      (item) => item.key === conversation().key,
-                    )?.essentialIcon ??
-                      (conversation().bot ? "bot" : "chat-bubble")) === icon}
+                    aria-pressed={
+                      (workspace()?.conversations.find(
+                        (item) => item.key === conversation().key,
+                      )?.essentialIcon ??
+                        (conversation().bot ? "bot" : "chat-bubble")) === icon
+                    }
                     onClick={() =>
                       void run(async () => {
                         await mutate("workspace.setEssentialIcon", {
@@ -1097,7 +1110,8 @@ export default function App() {
                           icon,
                         });
                         setIconPicker(undefined);
-                      })}
+                      })
+                    }
                   >
                     <Icon name={icon} />
                   </button>
@@ -1108,11 +1122,13 @@ export default function App() {
         )}
       </Show>
       <Show
-        when={menu() &&
+        when={
+          menu() &&
           (workspace()?.conversations.find(
             (item) => item.key === menu()?.key,
           ) ??
-            menu())}
+            menu())
+        }
       >
         {(c) => (
           <Dialog
@@ -1124,13 +1140,16 @@ export default function App() {
             <div class="action-list">
               <button
                 type="button"
-                disabled={c().section !== "archived" &&
-                  (c().running || c().pendingInput)}
+                disabled={
+                  c().section !== "archived" &&
+                  (c().running || c().pendingInput)
+                }
                 onClick={() =>
                   void run(async () => {
                     await archiveConversation(c());
                     setMenu(undefined);
-                  })}
+                  })
+                }
               >
                 <Icon name="archive" />
                 {c().section === "archived" ? "Unarchive" : "Archive"}
@@ -1144,7 +1163,8 @@ export default function App() {
                       unread: !unread(c()),
                     });
                     setMenu(undefined);
-                  })}
+                  })
+                }
               >
                 <Icon name="chat-bubble" />
                 {unread(c()) ? "Mark as read" : "Mark as unread"}
@@ -1156,7 +1176,8 @@ export default function App() {
                     await navigator.clipboard.writeText(c().sourceId);
                     setMenu(undefined);
                     inform("Session ID copied");
-                  })}
+                  })
+                }
               >
                 <Icon name="page" />
                 Copy session ID
@@ -1186,7 +1207,8 @@ export default function App() {
                             direction,
                           });
                           setMenu(undefined);
-                        })}
+                        })
+                      }
                     >
                       Move {direction === -1 ? "up" : "down"}
                     </button>
@@ -1210,7 +1232,8 @@ export default function App() {
                           section: c().section === section ? "recent" : section,
                         });
                         setMenu(undefined);
-                      })}
+                      })
+                    }
                   >
                     <Icon name={section === "essential" ? "star" : "pin"} />
                     {label}
@@ -1229,7 +1252,8 @@ export default function App() {
                           folderId: f._id,
                         });
                         setMenu(undefined);
-                      })}
+                      })
+                    }
                   >
                     <Icon name="folder" />
                     Move to {f.name}
@@ -1252,11 +1276,9 @@ export default function App() {
                 </button>
               </Show>
               <a
-                href={`/api/download?type=conversation&id=${
-                  encodeURIComponent(
-                    c().sourceId,
-                  )
-                }&profile=${encodeURIComponent(c().profile)}`}
+                href={`/api/download?type=conversation&id=${encodeURIComponent(
+                  c().sourceId,
+                )}&profile=${encodeURIComponent(c().profile)}`}
                 download=""
               >
                 <Icon name="download" />

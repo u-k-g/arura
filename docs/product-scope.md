@@ -40,8 +40,8 @@ and
 | 28             | Live voice conversations                                                                                       | Deferred.                                                                                                                                                                          |
 | 29             | Cross-conversation artifact library                                                                            | Retain generated-file browsing; no image-generation UI.                                                                                                                            |
 | 30–31          | File previews and saving/downloading                                                                           | Use browser/device handling, including normal PDF viewing in a browser tab.                                                                                                        |
-| 32             | Host directory browsing                                                                                        | Retain. This is the host filesystem, not arbitrary access to a phone's files.                                                                                                      |
-| 33–34          | Text-file viewer/editor; attach selected content/lines                                                         | Retain. Macro is the quality reference; current-view editing, no tabs/panes.                                                                                                       |
+| 32             | Host directory browsing                                                                                        | Exclude intentionally. No host directory browser; retain conversation artifacts and downloads. |
+| 33–34          | Text-file viewer/editor; attach selected content/lines                                                         | Exclude general host-file editing and attaching selections. Retain dedicated profile/configuration editors.                                                                                                       |
 | 35             | File checkpoints and rollback/rerun                                                                            | Exclude checkpoint UI. Message editing remains independent.                                                                                                                        |
 | 36             | Directory-based projects                                                                                       | Replace with logical conversation folders, unrelated to filesystem directories.                                                                                                    |
 | 37–38          | Working directories and Git discovery                                                                          | Exclude.                                                                                                                                                                           |
@@ -116,7 +116,9 @@ grace period.
 
 - Use Lexical for the chat composer, with selectable skill/command and context
   references. Keep drafts and Hermes messages as plain text. CodeMirror remains
-  the text-file editor; a visual rich-text document editor is not required.
+  the editor for configuration and profile instructions. General host-file
+  browsing and editing are intentionally excluded; a visual rich-text document
+  editor is not required.
 - **Essentials:** icon-only, manually chosen chats/bots, with names available as
   tooltips and accessible labels. Tiles flex and wrap to fill the available
   width. Context-menu icon choices sync across devices. No folders. Never
@@ -133,8 +135,8 @@ grace period.
   while running); with empty text it sends the first queued message now.
   Command+K opens the command palette. Other application shortcuts remain
   disabled.
-- Sidebar navigation has one horizontal icon-only row: Threads, Bots, Artifacts,
-  and Cron jobs. Each switches the main content; Bots and Cron jobs do not open
+- Sidebar navigation has one horizontal icon-only row: Threads, Bots, and Cron jobs.
+  Artifacts lives at the bottom of the sidebar beside Settings, replacing Files on host. Each switches the main content; Bots and Cron jobs do not open
   overlay dialogs. Threads returns to the last conversation. Mobile uses the
   same row in its navigation sheet and closes the sheet on selection.
 - Messaging setup lives in Settings, with no permanent sidebar shortcut.
