@@ -70,3 +70,19 @@ export function reasoningLevels(
       (order.indexOf(b) < 0 ? 99 : order.indexOf(b)),
   );
 }
+
+// The Go relay rejects a stale reasoning_effort on models without a reported
+// level (HTTP 500). "none" parses to disabled, which omits the wire field, so
+// switching to such a model must clear the session effort instead of leaving
+// the previous model's level in place. Scoped to the Go route: other providers
+// handle a generic effort without erroring, and their inventory reports real
+// capabilities through model.options.
+export function clearsStaleEffort(
+  provider: string,
+  model: string,
+  caps?: ReasoningCapabilities,
+): boolean {
+  const p = provider.toLowerCase().replaceAll("_", "-");
+  if (!["opencode-go", "opencode-go-sub", "go"].includes(p)) return false;
+  return !reasoningLevels(provider, model, caps)?.length;
+}

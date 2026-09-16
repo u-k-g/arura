@@ -2,6 +2,7 @@ import { toolPresentation } from "../shared/tool-presentation.ts";
 import { workGroup } from "../shared/model.ts";
 import { ask, confirmAction, rejectAction } from "./ActionDialog.tsx";
 import ModelPicker, { modelLabel, type ModelOption } from "./ModelPicker.tsx";
+import { clearsStaleEffort } from "../shared/model-reasoning.ts";
 import { record, type Transcript } from "../shared/contracts.ts";
 import {
   attachmentHref,
@@ -1611,6 +1612,32 @@ export default function Chat(props: {
             }
             setCurrentModel(modelLabel(m));
             setCurrentProvider(m.provider ?? "");
+            // Models without a reported level reject a stale effort, so clear
+            // it instead of sending the previous model's level. "none" parses
+            // to disabled, which omits the wire field. Best-effort: the model
+            // switch itself already succeeded.
+            if (
+              clearsStaleEffort(
+                m.provider ?? "",
+                m.id ?? m.model ?? "",
+                m.capabilities,
+              )
+            ) {
+              try {
+                await sessionRpc("config.set", {
+                  key: "reasoning",
+                  value: "none",
+                  scope: "session",
+                });
+                setCurrentEffort("none");
+              } catch (error) {
+                inform(
+                  error instanceof Error
+                    ? error.message
+                    : "Could not clear reasoning effort",
+                );
+              }
+            }
             await mutate("workspace.setting", {
               key: "chatModel",
               value: {

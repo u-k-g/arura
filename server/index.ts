@@ -18,6 +18,7 @@ import {
 } from "../shared/resources.ts";
 import { exportConversation } from "./export.ts";
 import { Hermes, HermesHttpError } from "./hermes.ts";
+import { clearsStaleEffort } from "../shared/model-reasoning.ts";
 import { equal, hash, identity, randomSecret } from "./identity.ts";
 
 const keys = await identity();
@@ -427,6 +428,31 @@ async function processCommands() {
           }
           let prompt = payload.text;
           let shouldSubmit = true;
+          // A persisted model without a reported reasoning level must not
+          // submit with a stale session effort (the Go relay answers HTTP
+          // 500). Runs before slash dispatch so an explicit /reasoning in
+          // this same turn still wins.
+          if (typeof payload.model?.value === "string") {
+            const parts = payload.model.value.split(/\s+/);
+            const flag = parts.indexOf("--provider");
+            if (
+              clearsStaleEffort(
+                flag >= 0 ? (parts[flag + 1] ?? "") : "",
+                parts[0] ?? "",
+              )
+            ) {
+              try {
+                await hermes.call("config.set", {
+                  session_id,
+                  key: "reasoning",
+                  value: "none",
+                  scope: "session",
+                });
+              } catch {
+                /* The submit fails on the stale effort anyway; don't mask it. */
+              }
+            }
+          }
           if (prompt.startsWith("/") && !payload.edit) {
             const [, name, arg = ""] =
               prompt.trim().match(/^\/(\S+)(?:\s+([\s\S]*))?$/) ?? [];
