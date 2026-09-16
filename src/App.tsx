@@ -478,6 +478,14 @@ export default function App() {
       ageNow(),
       workspace()?.settings.archiveEnabled !== false,
     );
+  const ageLabel = (c: Conversation) => {
+    const minutes = Math.floor(Math.max(0, ageNow() - c.activityAt) / 60_000);
+    if (minutes < 1) return "now";
+    if (minutes < 60) return `${minutes}m`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
+  };
   const row = (c: Conversation) => (
     <div
       class="thread-row"
@@ -509,8 +517,7 @@ export default function App() {
             ? "Automatic archive within one day"
             : undefined}
         >
-          {Math.max(0, Math.floor((ageNow() - c.activityAt) / 86400000)) || ""}
-          {ageNow() - c.activityAt >= 86400000 ? "d" : "now"}
+          {ageLabel(c)}
         </time>
         <Show when={c.running}>
           <i class="busy-dot" />
@@ -736,15 +743,15 @@ export default function App() {
         </For>
         <div class="pinned-divider">
           <IconButton
-            icon="edit-pencil"
-            label="New conversation"
-            onClick={() => void newChat(currentProfile())}
-          />
-          <IconButton
             icon="folder"
             class="pinned-divider-folder"
             label="New folder"
             onClick={() => setFolderName("")}
+          />
+          <IconButton
+            icon="edit-pencil"
+            label="New conversation"
+            onClick={() => void newChat(currentProfile())}
           />
         </div>
         <For each={recentConversations()}>{row}</For>

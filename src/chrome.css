@@ -115,9 +115,6 @@
   min-height: 24px;
   padding: 4px;
 }
-.thread-row:has(> .icon-button:hover) .session-age {
-  visibility: hidden;
-}
 .nav-footer {
   flex-direction: column;
   border: 0;
@@ -707,10 +704,11 @@ dialog.conversation-menu {
 }
 
 .sidebar-titlebar > .gateway-status {
-  margin-left: auto;
   padding: 2px 6px;
 }
-.sidebar-titlebar > button[aria-label="Search conversations"],
+.sidebar-titlebar > button[aria-label="Search conversations"] {
+  margin-left: auto;
+}
 .collapsed-controls > button[aria-label="Search conversations"] {
   margin-left: 0;
 }
@@ -821,4 +819,28 @@ dialog.conversation-menu {
 }
 .essential-icon-picker button:hover {
   background: var(--hover);
+}
+.nav-scroll .thread-row,
+.topbar > .thread-row {
+  position: relative;
+}
+.nav-scroll .thread-row > .icon-button,
+.topbar > .thread-row > .icon-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.nav-scroll .thread-row > .icon-button:last-child,
+.topbar > .thread-row > .icon-button:last-child {
+  right: 0;
+}
+.nav-scroll .thread-row > .icon-button:nth-last-child(2),
+.topbar > .thread-row > .icon-button:nth-last-child(2) {
+  right: 24px;
+}
+.nav-scroll .thread-row:hover .session-age,
+.nav-scroll .thread-row:focus-within .session-age,
+.topbar > .thread-row:hover .session-age,
+.topbar > .thread-row:focus-within .session-age {
+  visibility: hidden;
 }

@@ -25,6 +25,11 @@ function assertSession(
     throw new Error("Hermes did not return a session identifier");
   }
 }
+function epochMillis(value: unknown, fallbackSeconds = 0): number {
+  const raw = Number(value ?? fallbackSeconds);
+  if (!Number.isFinite(raw) || raw <= 0) return 0;
+  return raw < 1e12 ? raw * 1000 : raw;
+}
 export class HermesHttpError extends Error {
   constructor(
     message: string,
@@ -741,8 +746,10 @@ export class Hermes extends EventEmitter {
       bot: true,
       title: bot?.ui_meta?.["hermes-bots"]?.title || bot?.display_name ||
         profile,
-      activityAt:
-        Number(row.last_active ?? row.started_at ?? Date.now() / 1000) * 1000,
+      activityAt: epochMillis(
+        row.last_active ?? row.started_at,
+        Date.now() / 1000,
+      ),
     };
   }
   forgetProfile(profile: string) {
@@ -833,13 +840,12 @@ export class Hermes extends EventEmitter {
             ...(row.archived !== undefined
               ? { archived: Boolean(row.archived) }
               : {}),
-            activityAt: Number(
+            activityAt: epochMillis(
               row.last_active ??
                 row.last_activity ??
                 row.updated_at ??
-                row.started_at ??
-                0,
-            ) * 1000,
+                row.started_at,
+            ),
           });
         }
         if (
@@ -865,8 +871,9 @@ export class Hermes extends EventEmitter {
         title: profile.ui_meta?.["hermes-bots"]?.title ||
           profile.display_name ||
           profile.name,
-        activityAt:
-          Number(canonical?.last_active ?? canonical?.started_at ?? 0) * 1000,
+        activityAt: epochMillis(
+          canonical?.last_active ?? canonical?.started_at,
+        ),
       });
     }
     return [...all.values()];
