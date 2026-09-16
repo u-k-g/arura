@@ -158,7 +158,7 @@ const surfaces: Record<string, Surface> = {
     ],
   },
   jobs: {
-    title: "Schedules",
+    title: "Scheduled jobs",
     read: "jobs",
     create: "createJob",
     list: ["jobs"],
@@ -1002,6 +1002,7 @@ export default function Resources(props: {
               type="button"
               onClick={() => setBlueprint(item)}
             >
+              <Icon name="rocket" />
               {item.title}
             </button>
           )}
@@ -1429,14 +1430,22 @@ export default function Resources(props: {
         </Field>
       </Show>
       <div class="page-heading">
-        <h1>{surface().title}</h1>
+        <div>
+          <h1>{surface().title}</h1>
+          <Show when={props.name === "jobs"}>
+            <p class="job-count">
+              {dataRows(data(), surface().list).length}{" "}
+              {dataRows(data(), surface().list).length === 1 ? "job" : "jobs"}
+            </p>
+          </Show>
+        </div>
         <div>
           <IconButton
             icon="refresh"
             label="Refresh"
             onClick={() => void refresh()}
           />
-          <Show when={surface().create}>
+          <Show when={surface().create && props.name !== "jobs"}>
             <button
               type="button"
               class="primary"
@@ -1736,7 +1745,11 @@ export default function Resources(props: {
                           class="badge"
                           classList={{ "is-disabled": !item.enabled }}
                         >
-                          {item.enabled ? "Enabled" : "Disabled"}
+                          {props.name === "jobs"
+                            ? item.enabled ? "Scheduled" : "Paused"
+                            : item.enabled
+                            ? "Enabled"
+                            : "Disabled"}
                         </span>
                       </Show>
                       <Show when={props.name === "jobs"}>

@@ -12,6 +12,7 @@ import {
   userMessageText,
   visibleText,
   withoutReasoning,
+  workGroup,
 } from "../shared/model.ts";
 
 Deno.test("user message display hides expanded context and preserves unique references", () => {
@@ -357,4 +358,21 @@ Deno.test("archive age warnings share archive eligibility and restored inactivit
     );
   }
   equal(archiveAgeStatus(c, 30, now), undefined);
+});
+
+Deno.test("work stays with its answer when later events or prompts arrive", () => {
+  const groups = groupMessages([
+    { id: "prompt", role: "user", text: "Question", createdAt: 100 },
+    { id: "answer", role: "assistant", text: "Answer", createdAt: 200 },
+    {
+      id: "event",
+      role: "event",
+      text: "Background agent work finished",
+      createdAt: 201,
+    },
+    { id: "next", role: "user", text: "Next question", createdAt: 300 },
+  ]);
+  equal(workGroup(groups, { text: "Answer", startedAt: 110 }), groups[0]);
+  equal(workGroup(groups, { text: "", startedAt: 110 }), groups[0]);
+  equal(workGroup(groups, { text: "", startedAt: 310 }), groups[2]);
 });

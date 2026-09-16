@@ -50,3 +50,5 @@
 
 !public/hermes/*.png
 !public/hermes/LICENSE
+
+!src/provider-logos/LICENSE

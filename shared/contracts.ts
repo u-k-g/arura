@@ -12,6 +12,7 @@ export type Workspace = {
   settings: Record<string, unknown> & {
     hiddenModels?: string[];
     modelFavorites?: string[];
+    dismissedErrors?: string[];
     autoArchiveDays?: number;
     archiveDays?: number;
   };

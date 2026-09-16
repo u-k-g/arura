@@ -1,3 +1,4 @@
+import { toolPresentation } from "../shared/tool-presentation.ts";
 import { record, type RpcFrame, type RpcResult } from "../shared/contracts.ts";
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
@@ -393,9 +394,12 @@ export class Hermes extends EventEmitter {
       if (!entry) {
         turn.activity.push({
           id,
-          label: String(
-            payload.name ?? payload.tool ?? payload.tool_name ?? "Working",
-          ),
+          label: toolPresentation(
+            String(
+              payload.name ?? payload.tool ?? payload.tool_name ?? "Working",
+            ),
+            payload.arguments ?? payload.input ?? payload.args,
+          ).label,
           state: "running",
         });
       }
@@ -581,7 +585,9 @@ export class Hermes extends EventEmitter {
         text: visibleText(snapshot.assistant ?? ""),
         activity: preserveActivity ? (previous?.activity ?? []) : [],
         interactions: preserveActivity ? (previous?.interactions ?? []) : [],
-        recovering: this.recovering.has(result.session_id ?? ""),
+        // A fresh snapshot has recovered the visible progress. Polling may
+        // continue because snapshots have no cursor for safely merging deltas.
+        recovering: false,
         startedAt: Number(
           snapshot.started_at ?? result.turn_started_at ?? Date.now() / 1000,
         ) * 1000,
@@ -624,6 +630,7 @@ export class Hermes extends EventEmitter {
       const turn: Turn = {
         ...previous,
         state: "interrupted",
+        recovering: false,
         finishedAt: Date.now(),
         interactions: [],
       };
@@ -905,6 +912,65 @@ export class Hermes extends EventEmitter {
       }
     }
     return results;
+  }
+  async submitPrompt(
+    key: string,
+    params: Record<string, unknown>,
+    imagePaths: string[] = [],
+  ) {
+    const submit = (session_id: string) =>
+      this.call("prompt.submit", { ...params, session_id }, 1800000);
+    const sid = await this.attach(key);
+    try {
+      return await submit(sid);
+    } catch (error) {
+      if (
+        !params.confirm_truncate ||
+        params.truncate_before_row_id === undefined ||
+        !(error instanceof Error) ||
+        !/target user message is no longer in session history/i.test(
+          error.message,
+        )
+      ) {
+        throw error;
+      }
+      // A rejected edit has not submitted a turn. Verify the durable target
+      // before replacing a stale warm runtime; never guess another row/ordinal.
+      const history = await this.call("session.history", { session_id: sid });
+      const rows = Array.isArray(history.messages) ? history.messages : [];
+      if (
+        !rows.some(
+          (row: Record<string, unknown>) =>
+            row.role === "user" &&
+            String(row.row_id ?? row.id) ===
+              String(params.truncate_before_row_id),
+        )
+      ) {
+        throw error;
+      }
+      const active = await this.call("session.active_list", {});
+      const sessions = Array.isArray(active.sessions) ? active.sessions : [];
+      if (
+        !sessions.some(
+          (session: Record<string, unknown>) =>
+            session.id === sid && session.status === "idle",
+        )
+      ) {
+        throw error;
+      }
+      const closed = await this.call("session.close", { session_id: sid });
+      if (!closed.closed) throw error;
+      this.stopRecovery(sid);
+      this.runtime.delete(key);
+      this.reverse.delete(sid);
+      this.seq.delete(sid);
+      const restored = await this.attach(key);
+      for (const path of imagePaths) {
+        await this.call("image.attach", { session_id: restored, path });
+      }
+      this.emit("resync", key);
+      return await submit(restored);
+    }
   }
   async history(key: string, offset = 0) {
     const [profile, id] = JSON.parse(key);

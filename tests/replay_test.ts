@@ -142,7 +142,7 @@ for (const restart of [false, true]) {
       assistant = "Recovered progress continues";
       fixture.event("message.delta", created.sourceId, { text: " continues" });
       await until(() => turn?.text === "Recovered progress continues");
-      equal(turn?.recovering, true);
+      equal(turn?.recovering, false);
       fixture.event("message.complete", created.sourceId, {
         text: "Final answer",
       });

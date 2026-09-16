@@ -1,6 +1,8 @@
+import { toolPresentation } from "../shared/tool-presentation.ts";
+import { workGroup } from "../shared/model.ts";
 import { ask, confirmAction, rejectAction } from "./ActionDialog.tsx";
 import ModelPicker, { modelLabel, type ModelOption } from "./ModelPicker.tsx";
-import type { Transcript } from "../shared/contracts.ts";
+import { record, type Transcript } from "../shared/contracts.ts";
 import {
   attachmentHref,
   contextReference,
@@ -97,6 +99,13 @@ export default function Chat(props: {
     [sending, setSending] = createSignal(false),
     [pages, setPages] = createSignal(1);
   const [queueOpen, setQueueOpen] = createSignal(true);
+  const draftConfig = new Map<string, Record<string, unknown>>();
+  const errorDismissed = (id: string) =>
+    workspace()?.settings.dismissedErrors?.includes(id);
+  const turnErrorId = (turn: Turn) =>
+    JSON.stringify(["turn", props.conversation, turn.startedAt]);
+  const dismissError = (id: string) =>
+    void run(() => mutate("workspace.dismissError", { id }));
   const queued = () =>
     data()
       .commands.filter(
@@ -112,8 +121,7 @@ export default function Chat(props: {
   const [uploads, setUploads] = createSignal<
     { path: string; name: string; image: boolean }[]
   >([]);
-  const [tool, setTool] = createSignal<Message>(),
-    [models, setModels] = createSignal<ModelOption[]>([]),
+  const [models, setModels] = createSignal<ModelOption[]>([]),
     [model, setModel] = createSignal("");
   const [modelLoading, setModelLoading] = createSignal(false);
   let modelButton: HTMLButtonElement | undefined;
@@ -173,9 +181,19 @@ export default function Chat(props: {
       .test(
         value,
       );
-  let scroller!: HTMLDivElement;
+  let scroller!: HTMLElement;
   const [awayFromBottom, setAwayFromBottom] = createSignal(false);
   let needsInitialScroll = true;
+  let scrollFrame: number | undefined;
+  let scrollIntent = 0;
+  const userScroll = () => {
+    scrollIntent++;
+    if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
+    scrollFrame = undefined;
+  };
+  onCleanup(() => {
+    if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
+  });
   const scrollToLatest = () => {
     scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "instant" });
     setAwayFromBottom(false);
@@ -221,6 +239,7 @@ export default function Chat(props: {
     const key = props.conversation;
     const revision = ++transcriptRevision;
     needsInitialScroll = true;
+    draftConfig.clear();
     setAwayFromBottom(false);
     setData({ pages: [], commands: [], turn: null });
     setText("");
@@ -271,7 +290,10 @@ export default function Chat(props: {
         const previousOffset = data().pages.at(-1)?.offset ?? 0;
         const prepended = (value.pages.at(-1)?.offset ?? 0) > previousOffset;
         const viewportTop = scroller?.getBoundingClientRect().top ?? 0;
-        const anchor = prepended
+        const preservePosition = prepended || awayFromBottom();
+        const intent = scrollIntent;
+        const oldScrollTop = scroller?.scrollTop ?? 0;
+        const anchor = preservePosition
           ? Array.from(
             scroller?.querySelectorAll<HTMLElement>("[data-message-id]") ??
               [],
@@ -281,10 +303,7 @@ export default function Chat(props: {
           : undefined;
         const anchorId = anchor?.dataset.messageId;
         const anchorTop = anchor?.getBoundingClientRect().top ?? viewportTop;
-        const nearBottom = needsInitialScroll ||
-          !scroller ||
-          scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <
-            180;
+        const nearBottom = needsInitialScroll || !awayFromBottom();
         setData(value);
         if (
           value.pages.length >= count ||
@@ -315,25 +334,28 @@ export default function Chat(props: {
           }
         }
         void saveCache(`chat:${key}`, value);
-        if (prepended) {
-          requestAnimationFrame(() => {
-            if (props.conversation === key && scroller) {
-              const target = Array.from(
-                scroller.querySelectorAll<HTMLElement>("[data-message-id]"),
-              ).find((element) => element.dataset.messageId === anchorId);
-              if (target) {
-                // Anchor to a message, not estimated content-visibility heights.
-                target.scrollIntoView({ block: "start", behavior: "instant" });
-                scroller.scrollTop += target.getBoundingClientRect().top -
-                  anchorTop;
-              }
-            }
-          });
-        } else if (nearBottom) {
-          requestAnimationFrame(() => {
-            if (props.conversation === key) scrollToLatest();
-          });
-        }
+        if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
+        scrollFrame = requestAnimationFrame(() => {
+          scrollFrame = undefined;
+          if (
+            props.conversation !== key ||
+            !scroller ||
+            intent !== scrollIntent
+          ) {
+            return;
+          }
+          if (preservePosition) {
+            const target = Array.from(
+              scroller.querySelectorAll<HTMLElement>("[data-message-id]"),
+            ).find((element) => element.dataset.messageId === anchorId);
+            const shift = target
+              ? target.getBoundingClientRect().top - anchorTop
+              : undefined;
+            scroller.scrollTop = shift === undefined
+              ? oldScrollTop
+              : scroller.scrollTop + shift;
+          } else if (nearBottom) scrollToLatest();
+        });
       },
     );
     onCleanup(stop);
@@ -376,6 +398,27 @@ export default function Chat(props: {
         // Preserve the unsent draft if submitting to the new session fails.
         await draft(key, value);
         await draftAttachments(key, uploads());
+        for (const params of draftConfig.values()) {
+          const result = await command("rpc", key, {
+            method: "config.set",
+            params,
+          });
+          if (result.confirm_required) {
+            if (
+              await rejectAction(
+                String(result.confirm_message || "Use this model?"),
+              )
+            ) {
+              props.navigate(key);
+              return;
+            }
+            await command("rpc", key, {
+              method: "config.set",
+              params: { ...params, confirm_expensive_model: true },
+            });
+          }
+        }
+        draftConfig.clear();
       }
       const signature = JSON.stringify([key, payload]);
       if (submission?.signature !== signature) {
@@ -463,26 +506,11 @@ export default function Chat(props: {
       }
     }
   }
-  let draftConversation: Promise<string> | undefined;
-  async function sessionRpc(method: string, params: Record<string, unknown>) {
-    let key = props.conversation;
+  function sessionRpc(method: string, params: Record<string, unknown>) {
+    const key = props.conversation;
     if (!key) {
-      draftConversation ??= (async () => {
-        const created = await command("create", "", {
-          profile: props.profile ?? "default",
-        });
-        const next = String(created.key);
-        await draft(next, text());
-        await draftAttachments(next, uploads());
-        await draft("", "");
-        await draftAttachments("", []);
-        return next;
-      })().catch((error) => {
-        draftConversation = undefined;
-        throw error;
-      });
-      key = await draftConversation;
-      props.navigate(key);
+      draftConfig.set(String(params.key), params);
+      return Promise.resolve({} as Record<string, unknown>);
     }
     return command("rpc", key, { method, params });
   }
@@ -544,6 +572,10 @@ export default function Chat(props: {
       : undefined
   );
   const historyOwnsWork = () => Boolean(settledHistoryGroup()?.work.length);
+  const liveWorkGroup = createMemo(() => {
+    const current = turn();
+    return current ? workGroup(groups(), current) : undefined;
+  });
   const renderActivity = (activity: Turn["activity"][number]) => (
     <div class="activity">
       <Icon
@@ -553,7 +585,7 @@ export default function Chat(props: {
           ? "xmark"
           : "clock"}
       />
-      {activity.label}
+      {toolPresentation(activity.label).label}
     </div>
   );
   const renderLiveWork = (t: Turn) => (
@@ -580,16 +612,17 @@ export default function Chat(props: {
         fallback={
           <details class="past-tool">
             <summary>
-              {(message.tool ?? "Tool result").replaceAll("_", " ")}
+              {toolPresentation(
+                message.tool ?? "Tool result",
+                record(message.details).input,
+              ).label}
               <Icon name="nav-arrow-down" />
             </summary>
-            <button
-              type="button"
-              class="desktop-only text-button"
-              onClick={() => setTool(message)}
-            >
-              Inspect result
-            </button>
+            <div class="desktop-only tool-payload">
+              <pre>
+                {JSON.stringify(message.details ?? message.text, null, 2)}
+              </pre>
+            </div>
           </details>
         }
       >
@@ -738,7 +771,7 @@ export default function Chat(props: {
             />
           </Show>
           <IconButton
-            icon="chat-bubble"
+            icon="git-fork"
             label="Branch conversation"
             onClick={() =>
               void run(async () => {
@@ -763,14 +796,24 @@ export default function Chat(props: {
         void run(() => upload(e.dataTransfer?.files ?? null));
       }}
     >
-      <div
+      <section
         class="transcript"
+        aria-label="Conversation history"
         ref={scroller}
-        onScroll={() =>
-          setAwayFromBottom(
-            scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight >
-              180,
-          )}
+        onWheel={userScroll}
+        onTouchStart={userScroll}
+        onPointerDown={userScroll}
+        onKeyDown={userScroll}
+        onScroll={() => {
+          if (scrollFrame === undefined) {
+            setAwayFromBottom(
+              scroller.scrollHeight -
+                  scroller.scrollTop -
+                  scroller.clientHeight >
+                180,
+            );
+          }
+        }}
       >
         <Show when={!props.conversation}>
           <div class="new-session-welcome">
@@ -807,7 +850,7 @@ export default function Chat(props: {
                 <Show when={group.prompt}>
                   {(message) => renderMessage(message())}
                 </Show>
-                <Show when={index() === groups().length - 1 && turn()}>
+                <Show when={group === liveWorkGroup() && turn()}>
                   {(t) => renderLiveWork(t())}
                 </Show>
                 <Show
@@ -903,10 +946,15 @@ export default function Chat(props: {
                     </div>
                   )}
                 </Show>
-                <Show when={t().error}>
-                  <p class="error" role="alert">
+                <Show when={t().error && !errorDismissed(turnErrorId(t()))}>
+                  <div class="error dismissible-error" role="alert">
                     {t().error}
-                  </p>
+                    <IconButton
+                      icon="xmark"
+                      label="Dismiss error"
+                      onClick={() => dismissError(turnErrorId(t()))}
+                    />
+                  </div>
                 </Show>
                 <For each={t().interactions.map((item) => item.id)}>
                   {(id) => {
@@ -1018,12 +1066,19 @@ export default function Chat(props: {
             )}
           </For>
           <For
-            each={data().commands.filter((c) =>
-              ["unknown", "error"].includes(c.status)
+            each={data().commands.filter(
+              (c) =>
+                ["unknown", "error"].includes(c.status) &&
+                !errorDismissed(c._id),
             )}
           >
             {(c) => (
-              <div class="command-error" role="alert">
+              <div class="command-error dismissible-error" role="alert">
+                <IconButton
+                  icon="xmark"
+                  label="Dismiss error"
+                  onClick={() => dismissError(c._id)}
+                />
                 {c.error}
                 <Show when={c.kind === "send" && c.status === "error"}>
                   <button
@@ -1053,7 +1108,7 @@ export default function Chat(props: {
             )}
           </For>
         </div>
-      </div>
+      </section>
       <div class="compose-area">
         <div class="composer-attachments">
           <For each={pendingUploads()}>
@@ -1618,15 +1673,6 @@ export default function Chat(props: {
               </button>
             )}
           </For>
-        </Dialog>
-      </Show>
-      <Show when={tool()}>
-        <Dialog title="Tool result" close={() => setTool(undefined)}>
-          <pre>
-            {tool()?.details
-              ? JSON.stringify(tool()?.details, null, 2)
-              : tool()?.text}
-          </pre>
         </Dialog>
       </Show>
       <Show when={controls()}>

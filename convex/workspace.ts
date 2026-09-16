@@ -347,6 +347,23 @@ export const reorder = mutation({
     }
   },
 });
+export const dismissError = mutation({
+  args: { id: v.string() },
+  handler: async (ctx, args) => {
+    await device(ctx);
+    if (!args.id || args.id.length > 512) throw new Error("Invalid error ID");
+    const key = "dismissedErrors";
+    const old = await ctx.db
+      .query("settings")
+      .withIndex("key", (q) => q.eq("key", key))
+      .unique();
+    const ids: string[] = Array.isArray(old?.value) ? old.value : [];
+    if (ids.includes(args.id)) return;
+    const value = [...ids, args.id];
+    if (old) await ctx.db.patch(old._id, { value });
+    else await ctx.db.insert("settings", { key, value });
+  },
+});
 export const setting = mutation({
   args: { key: v.string(), value: v.any() },
   handler: async (ctx, args) => {

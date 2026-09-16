@@ -61,7 +61,10 @@ Deno.test({
           }
           if (label === "Cron jobs") {
             await expect(
-              page.getByRole("heading", { name: "Schedules", exact: true }),
+              page.getByRole("heading", {
+                name: "Scheduled jobs",
+                exact: true,
+              }),
             ).toBeVisible();
           }
           if (label === "Artifacts") {

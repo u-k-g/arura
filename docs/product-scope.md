@@ -97,6 +97,9 @@ supported state; Convex caches it for the UI. Pin/archive changes work in both
 directions with the old client. Essentials, folders and Arura ordering are
 web-only data.
 
+New conversation opens an unsaved blank composer. Opening it, choosing a model,
+or leaving it must not create a saved thread; create one on the first send.
+
 Organization writes use the same profile-scoped session PATCH API as desktop.
 Convex keeps pending writes until the host acknowledges their revision; an older
 snapshot cannot undo a pending action. Source changes arrive on session events

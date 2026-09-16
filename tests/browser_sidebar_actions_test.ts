@@ -26,7 +26,7 @@ Deno.test({
           .locator(".nav-footer")
           .getByRole("button", { name: "Settings", exact: true }),
       ).toBeVisible();
-      await expect(page.getByLabel("Select profile")).toHaveValue("default");
+      await expect(page.getByLabel("Select profile")).toContainText("default");
       const files = page.waitForRequest(
         (request) => new URL(request.url()).pathname === "/api/resource/files",
       );
@@ -37,12 +37,41 @@ Deno.test({
         page.getByText("Path is required", { exact: true }),
       ).toHaveCount(0);
       await page.getByRole("button", { name: "Threads", exact: true }).click();
+      const threadCount = await page
+        .locator(".desktop-navigation .thread-row")
+        .count();
       await page
         .getByRole("button", { name: "New conversation", exact: true })
         .click();
       await expect
         .poll(() => page.evaluate(() => localStorage.getItem("arura.view")))
-        .not.toBe('["default","fixture-chat"]');
+        .toBe("");
+      await page
+        .getByRole("button", { name: "Fixture conversation", exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", { name: "New conversation", exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "New conversation", exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", { name: "Conversation actions", exact: true }),
+      ).toHaveCount(0);
+      await expect(page.locator(".desktop-navigation .thread-row")).toHaveCount(
+        threadCount,
+      );
+      await page
+        .getByLabel("Message Hermes", { exact: true })
+        .fill("First message creates a thread");
+      await page
+        .getByRole("button", { name: "Send message", exact: true })
+        .click();
+      await expect(
+        page.getByText("Received: First message creates a thread", {
+          exact: true,
+        }),
+      ).toBeVisible();
       await page
         .getByRole("button", { name: "Conversation actions", exact: true })
         .click();
@@ -61,10 +90,28 @@ Deno.test({
         },
       );
       expect(created.ok()).toBe(true);
-      await page.reload();
-      await page.getByLabel("Select profile").selectOption("sidebar-profile");
+      await page.getByLabel("Select profile").click();
+      await expect(
+        page
+          .getByRole("dialog", { name: "Switch profile" })
+          .getByRole("button", { name: "sidebar-profile", exact: true }),
+      ).toBeVisible();
+      await page.screenshot({ path: "/var/tmp/arura-profile-picker.png" });
+      await page
+        .getByRole("dialog", { name: "Switch profile" })
+        .getByRole("button", { name: "sidebar-profile", exact: true })
+        .click();
       await page
         .getByRole("button", { name: "New conversation", exact: true })
+        .click();
+      await expect
+        .poll(() => page.evaluate(() => localStorage.getItem("arura.view")))
+        .toBe("");
+      await page
+        .getByLabel("Message Hermes", { exact: true })
+        .fill("Profile draft");
+      await page
+        .getByRole("button", { name: "Send message", exact: true })
         .click();
       await expect
         .poll(() =>

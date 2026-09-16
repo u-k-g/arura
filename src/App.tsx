@@ -1,3 +1,4 @@
+import ProfilePicker from "./ProfilePicker.tsx";
 import SettingsFrame from "./SettingsFrame.tsx";
 import ActionDialog from "./ActionDialog.tsx";
 import { ask, confirmAction } from "./ActionDialog.tsx";
@@ -25,7 +26,6 @@ import {
   mutate,
   notice,
   request,
-  resource,
   start,
   subscribe,
   workspace,
@@ -329,7 +329,6 @@ export default function App() {
   const [chosenProfile, setChosenProfile] = createSignal(
     preferences.getItem("arura.profile") || "default",
   );
-  const [profileNames, setProfileNames] = createSignal<string[]>(["default"]);
   const currentProfile = () => selected()?.profile ?? chosenProfile();
   createEffect(() => {
     const profile = selected()?.profile;
@@ -338,34 +337,11 @@ export default function App() {
       preferences.setItem("arura.profile", profile);
     }
   });
-  createEffect(() => {
-    if (!connected()) return;
-    let disposed = false;
-    void resource("profileRoster")
-      .then((result) => {
-        if (!disposed) {
-          setProfileNames(
-            (result.profiles ?? []).map((p: { name: string }) => p.name),
-          );
-        }
-      })
-      .catch(() => {});
-    onCleanup(() => {
-      disposed = true;
-    });
-  });
-  const [creatingChat, setCreatingChat] = createSignal(false);
-  async function newChat(profile = currentProfile()) {
-    if (creatingChat()) return;
-    setCreatingChat(true);
-    try {
-      await run(async () => {
-        const result = await command("create", "", { profile });
-        navigate(String(result.key));
-      });
-    } finally {
-      setCreatingChat(false);
-    }
+  function newChat(profile = currentProfile()) {
+    setChosenProfile(profile);
+    preferences.setItem("arura.profile", profile);
+    navigate("");
+    return Promise.resolve();
   }
   async function archiveConversation(conversation: Conversation) {
     const section = conversation.section === "archived" ? "recent" : "archived";
@@ -755,12 +731,10 @@ export default function App() {
       </div>
       <footer class="nav-footer">
         <div class="profile-actions">
-          <select
-            class="profile-name"
-            aria-label="Select profile"
-            value={currentProfile()}
-            onChange={(event) => {
-              const profile = event.currentTarget.value;
+          <ProfilePicker
+            current={currentProfile()}
+            manage={() => navigate("resources:profiles")}
+            choose={(profile) => {
               setChosenProfile(profile);
               preferences.setItem("arura.profile", profile);
               const latest = chats()
@@ -773,11 +747,7 @@ export default function App() {
                 .sort((a, b) => b.activityAt - a.activityAt)[0];
               navigate(latest?.key ?? "");
             }}
-          >
-            <For each={[...new Set([currentProfile(), ...profileNames()])]}>
-              {(name) => <option value={name}>{name}</option>}
-            </For>
-          </select>
+          />
           <IconButton
             icon="folder"
             label="Files"
@@ -895,7 +865,6 @@ export default function App() {
             <IconButton
               icon="plus"
               label="New conversation"
-              disabled={!connected()}
               onClick={() => void newChat(currentProfile())}
             />
             <IconButton
@@ -924,113 +893,104 @@ export default function App() {
               )}
             </Show>
           </header>
-          <Show
-            when={!creatingChat()}
-            fallback={
-              <div class="loading" role="status">
-                Opening new session…
-              </div>
-            }
-          >
-            <SettingsFrame view={view()} navigate={navigate}>
-              <Suspense fallback={<div class="loading">Opening…</div>}>
+          <SettingsFrame view={view()} navigate={navigate}>
+            <Suspense fallback={<div class="loading">Opening…</div>}>
+              <Show
+                when={view() !== "capabilities"}
+                fallback={<Capabilities navigate={navigate} />}
+              >
                 <Show
-                  when={view() !== "capabilities"}
-                  fallback={<Capabilities navigate={navigate} />}
-                >
-                  <Show
-                    when={view().startsWith("settings")}
-                    fallback={
-                      <Show
-                        when={view().startsWith("resources:")}
-                        fallback={
-                          <Show
-                            when={view()}
-                            fallback={
-                              <Chat
-                                conversation=""
-                                profile={chosenProfile()}
-                                title="New session"
-                                navigate={navigate}
-                              />
-                            }
-                          >
+                  when={view().startsWith("settings")}
+                  fallback={
+                    <Show
+                      when={view().startsWith("resources:")}
+                      fallback={
+                        <Show
+                          when={view()}
+                          fallback={
                             <Chat
-                              conversation={view()}
-                              title={selected()?.title ?? "Conversation"}
+                              conversation=""
+                              profile={chosenProfile()}
+                              title="New session"
                               navigate={navigate}
                             />
+                          }
+                        >
+                          <Chat
+                            conversation={view()}
+                            title={selected()?.title ?? "Conversation"}
+                            navigate={navigate}
+                          />
+                        </Show>
+                      }
+                    >
+                      <Show
+                        when={view() === "resources:artifacts"}
+                        fallback={
+                          <Show
+                            when={view() === "resources:platforms"}
+                            fallback={
+                              <Show
+                                when={![
+                                  "resources:skills",
+                                  "resources:toolsets",
+                                  "resources:mcp",
+                                ].includes(view())}
+                                fallback={
+                                  <Capabilities
+                                    section={view().slice(10)}
+                                    navigate={navigate}
+                                  />
+                                }
+                              >
+                                <Resources
+                                  name={view().slice(10).split("?")[0]}
+                                  initialPath={new URLSearchParams(
+                                    view().split("?")[1] ?? "",
+                                  ).get("path") ?? ""}
+                                  navigate={navigate}
+                                  newChat={async (profile) => {
+                                    const result = await command(
+                                      "openBot",
+                                      "",
+                                      {
+                                        profile,
+                                      },
+                                    );
+                                    navigate(String(result.key));
+                                  }}
+                                />
+                              </Show>
+                            }
+                          >
+                            <Messaging />
                           </Show>
                         }
                       >
-                        <Show
-                          when={view() === "resources:artifacts"}
-                          fallback={
-                            <Show
-                              when={view() === "resources:platforms"}
-                              fallback={
-                                <Show
-                                  when={![
-                                    "resources:skills",
-                                    "resources:toolsets",
-                                    "resources:mcp",
-                                  ].includes(view())}
-                                  fallback={
-                                    <Capabilities
-                                      section={view().slice(10)}
-                                      navigate={navigate}
-                                    />
-                                  }
-                                >
-                                  <Resources
-                                    name={view().slice(10).split("?")[0]}
-                                    initialPath={new URLSearchParams(
-                                      view().split("?")[1] ?? "",
-                                    ).get("path") ?? ""}
-                                    navigate={navigate}
-                                    newChat={async (profile) => {
-                                      const result = await command(
-                                        "openBot",
-                                        "",
-                                        {
-                                          profile,
-                                        },
-                                      );
-                                      navigate(String(result.key));
-                                    }}
-                                  />
-                                </Show>
-                              }
-                            >
-                              <Messaging />
-                            </Show>
-                          }
-                        >
-                          <Artifacts navigate={navigate} />
-                        </Show>
+                        <Artifacts navigate={navigate} />
                       </Show>
+                    </Show>
+                  }
+                >
+                  <Show
+                    when={view() !== "settings"}
+                    fallback={
+                      <Resources
+                        name="models"
+                        navigate={navigate}
+                        newChat={newChat}
+                      />
                     }
                   >
-                    <Show
-                      when={view() !== "settings"}
-                      fallback={
-                        <Resources
-                          name="models"
-                          navigate={navigate}
-                          newChat={newChat}
-                        />
-                      }
-                    >
-                      <Settings
-                        section={view().split(":")[1]}
-                        navigate={navigate}
-                      />
-                    </Show>
+                    <Settings
+                      section={view().split(":")[1]}
+                      navigate={navigate}
+                    />
                   </Show>
                 </Show>
-              </Suspense>
-            </SettingsFrame>
-          </Show>
+              </Show>
+            </Suspense>
+          </SettingsFrame>
         </main>
       </div>
       <Show when={sheet()}>

@@ -16,9 +16,9 @@ neutral light surfaces, black/gray dark surfaces, and amber accents.
 
 Intentional layout differences: New conversation is a plus icon in the top bar,
 and Capabilities is reached through Settings, not the sidebar tools list. The
-profile name is clickable without a preceding icon. The sidebar search field
-filters loaded sessions; its search icon and top-bar search open full history
-search. These controls remain usable without app keyboard shortcuts.
+profile name is clickable without a preceding icon. The top-bar search opens
+full history search; no sidebar search field. These controls remain usable
+without app keyboard shortcuts.
 
 Default message text is 13px with 1.5 line spacing; the per-browser size control
 ranges from 12–20px. Sidebar rows are 27px high with 12px labels, per-thread
@@ -82,3 +82,10 @@ The empty-chat wordmark uses Collapse Bold, as shipped in the MIT-licensed
 [`@nous-research/ui`](https://www.npmjs.com/package/@nous-research/ui) 0.18.2
 package used by Hermes desktop. The bundled display face and license live beside
 the existing local fonts.
+
+Provider marks are bundled SVG assets from
+[Lobe Icons](https://github.com/lobehub/lobe-icons/tree/master/packages/static-svg),
+under its
+[MIT license](https://github.com/lobehub/lobe-icons/blob/master/LICENSE),
+retained in the asset directory. They load from Arura, without external image
+requests. Unknown providers use full names.

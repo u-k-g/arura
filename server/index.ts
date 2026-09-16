@@ -459,8 +459,8 @@ async function processCommands() {
           }
           if (shouldSubmit) {
             activeCommands.add(key);
-            result = await hermes.call(
-              "prompt.submit",
+            result = await hermes.submitPrompt(
+              key,
               {
                 session_id,
                 text: prompt,
@@ -473,7 +473,12 @@ async function processCommands() {
                   : {}),
                 profile: JSON.parse(key)[0],
               },
-              1800000,
+              (payload.attachments ?? [])
+                .filter(
+                  (attachment: { image?: boolean; path?: string }) =>
+                    attachment.image && typeof attachment.path === "string",
+                )
+                .map((attachment: { path: string }) => attachment.path),
             );
           }
         } else if (kind === "rename" || kind === "delete") {

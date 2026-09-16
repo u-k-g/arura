@@ -62,6 +62,26 @@ export function groupMessages(messages: Message[]) {
   }
   return groups;
 }
+export function workGroup(
+  groups: ReturnType<typeof groupMessages>,
+  turn: Pick<Turn, "text" | "startedAt">,
+) {
+  const text = turn.text.replace(/\s+/g, "");
+  const answer = text &&
+    groups.findLast((group) =>
+      group.answer?.text.replace(/\s+/g, "").startsWith(text)
+    );
+  if (answer) return answer;
+  return (
+    groups.findLast(
+      (group) =>
+        group.prompt?.createdAt !== undefined &&
+        group.prompt.createdAt <= turn.startedAt,
+    ) ??
+      groups.findLast((group) => group.prompt) ??
+      groups.at(-1)
+  );
+}
 // A tool call and its result can fall on opposite history-page boundaries.
 export function mergeHistoryMessages(messages: Message[]): Message[] {
   const merged: Message[] = [];

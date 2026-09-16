@@ -1,3 +1,4 @@
+import ProviderLogo from "./ProviderLogo.tsx";
 import {
   createMemo,
   createSignal,
@@ -169,14 +170,7 @@ export default function ModelPicker(props: {
                 aria-pressed={section() === `provider:${id}`}
                 onClick={() => setSection(`provider:${id}`)}
               >
-                <span class="provider-monogram" aria-hidden="true">
-                  {label
-                    .split(/[\s-]+/)
-                    .map((word) => word[0])
-                    .slice(0, 2)
-                    .join("")
-                    .toUpperCase()}
-                </span>
+                <ProviderLogo provider={id} label={label} />
               </button>
             )}
           </For>

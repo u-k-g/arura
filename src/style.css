@@ -496,8 +496,6 @@ small {
 .message {
   margin: 0 0 16px;
   position: relative;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 150px;
 }
 .message-label {
   font-size: 12px;
@@ -757,6 +755,15 @@ small {
 .command-error {
   color: var(--danger);
   font-size: 13px;
+}
+.dismissible-error {
+  position: relative;
+  padding-right: 36px;
+}
+.dismissible-error > .icon-button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
 }
 .authorization {
   min-height: 100dvh;
@@ -1781,7 +1788,34 @@ progress {
 .work-summary > .activity {
   padding: 3px 0;
 }
-.history-work[open] {
+.work-summary {
   border-bottom: 1px solid var(--line);
   padding-bottom: 12px;
+}
+
+.tool-payload pre {
+  max-height: 280px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 6px 0 10px;
+  font-size: 11px;
+  padding: 10px;
+  background: var(--hover);
+  border: 1px solid var(--line);
+}
+.job-count {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 3px 0 0;
+}
+.jobs-page .resource-rail > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.jobs-page .resource-rail > button .icon {
+  width: 13px;
+  height: 13px;
+  flex: none;
 }
