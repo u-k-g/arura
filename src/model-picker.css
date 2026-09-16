@@ -153,8 +153,8 @@
 .model-picker-footer {
   flex-shrink: 0;
   display: grid;
-  gap: 7px;
-  padding: 10px 12px;
+  gap: 0;
+  padding: 4px 12px;
   border-top: 1px solid var(--line);
 }
 .model-picker-footer label {
@@ -167,7 +167,7 @@
 .model-picker-footer select {
   width: auto;
   min-width: 105px;
-  padding: 5px 8px;
+  padding: 3px 8px;
   font-size: 12px;
 }
 @media (max-width: 720px), (pointer: coarse) and (hover: none) {

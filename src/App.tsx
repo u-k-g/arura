@@ -460,38 +460,38 @@ export default function App() {
         />
       </header>
       <nav class="sidebar-sections" aria-label="Main navigation">
-        <button
-          type="button"
-          classList={{ active: !view().startsWith("resources:profiles") }}
-          onClick={() => navigate("")}
+        <For
+          each={[
+            ["threads", "Threads", "chat-bubble"],
+            ["resources:profiles", "Bots", "bot"],
+            ["resources:artifacts", "Artifacts", "page"],
+            ["resources:jobs", "Cron jobs", "clock"],
+          ]}
         >
-          Sessions
-        </button>
-        <button
-          type="button"
-          classList={{ active: view() === "resources:profiles" }}
-          onClick={() => navigate("resources:profiles")}
-        >
-          Bots
-        </button>
-      </nav>
-      <nav class="sidebar-actions" aria-label="Hermes tools">
-        <button
-          type="button"
-          classList={{ selected: view() === "resources:artifacts" }}
-          onClick={() => navigate("resources:artifacts")}
-        >
-          <Icon name="page" />
-          <span>Artifacts</span>
-        </button>
-        <button
-          type="button"
-          classList={{ selected: view() === "resources:jobs" }}
-          onClick={() => navigate("resources:jobs")}
-        >
-          <Icon name="clock" />
-          <span>Scheduled jobs</span>
-        </button>
+          {([route, label, icon]) => {
+            const active = () =>
+              route === "threads"
+                ? !view() || view().startsWith("[")
+                : view().split("?")[0] === route;
+            return (
+              <button
+                type="button"
+                title={label}
+                aria-label={label}
+                aria-current={active() ? "page" : undefined}
+                classList={{ active: active() }}
+                onClick={() =>
+                  navigate(
+                    route === "threads"
+                      ? (preferences.getItem("arura.lastConversation") ?? "")
+                      : route,
+                  )}
+              >
+                <Icon name={icon} />
+              </button>
+            );
+          }}
+        </For>
       </nav>
       <div class="nav-search">
         <IconButton

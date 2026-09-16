@@ -34,6 +34,26 @@ Deno.test({
         ).toBeVisible();
       }
       const picker = a.getByRole("dialog", { name: "Choose a model" });
+      await expect(
+        picker.getByRole("button", { name: "Starred models", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
+      let optionRequests = 0;
+      a.on("request", (request) => {
+        if (
+          request.url().endsWith("/api/query") &&
+          request.postDataJSON()?.method === "model.options"
+        ) {
+          optionRequests++;
+        }
+      });
+      await a.getByRole("button", { name: "Model", exact: true }).click();
+      await expect(picker).toHaveCount(0);
+      expect(optionRequests).toBe(0);
+      await a.getByRole("button", { name: "Model", exact: true }).click();
+      await expect(picker).toBeVisible();
+      await expect(
+        picker.getByRole("button", { name: "Starred models", exact: true }),
+      ).toHaveAttribute("aria-pressed", "true");
       const anchor = requireValue(
         await a
           .getByRole("button", { name: "Model", exact: true })

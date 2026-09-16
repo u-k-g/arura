@@ -82,28 +82,7 @@ export default function SettingsFrame(props: {
     </nav>
   );
   return (
-    <Show
-      when={inSettings(props.view)}
-      fallback={
-        <Show
-          when={["resources:profiles", "resources:jobs"].includes(props.view)}
-          fallback={props.children}
-        >
-          <Dialog
-            title={props.view === "resources:profiles"
-              ? "Profiles & bots"
-              : "Schedules"}
-            class="resource-dialog"
-            close={() =>
-              props.navigate(
-                preferences.getItem("arura.lastConversation") ?? "",
-              )}
-          >
-            {props.children}
-          </Dialog>
-        </Show>
-      }
-    >
+    <Show when={inSettings(props.view)} fallback={props.children}>
       <Dialog
         title="Settings"
         class="settings-dialog"

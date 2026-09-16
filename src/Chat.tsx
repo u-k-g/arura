@@ -114,6 +114,7 @@ export default function Chat(props: {
   const [tool, setTool] = createSignal<Message>(),
     [models, setModels] = createSignal<ModelOption[]>([]),
     [model, setModel] = createSignal("");
+  const [modelLoading, setModelLoading] = createSignal(false);
   let modelButton: HTMLButtonElement | undefined;
   const [currentModel, setCurrentModel] = createSignal("");
   const [currentEffort, setCurrentEffort] = createSignal("");
@@ -1324,7 +1325,14 @@ export default function Chat(props: {
               class="text-button composer-model"
               ref={modelButton}
               aria-label="Model"
-              onClick={() =>
+              aria-expanded={Boolean(model())}
+              popovertarget="conversation-model-picker"
+              disabled={modelLoading()}
+              onClick={() => {
+                // Native popover toggling exempts its invoker from light-dismiss,
+                // so the same click cannot dismiss and reopen the picker.
+                if (model() || modelLoading()) return;
+                setModelLoading(true);
                 void run(async () => {
                   const result = await rpc("model.options");
                   setModels(
@@ -1345,7 +1353,8 @@ export default function Chat(props: {
                       [],
                   );
                   setModel("choose");
-                })}
+                }).finally(() => setModelLoading(false));
+              }}
             >
               {currentModel() || "Select model"}
               {currentEffort()

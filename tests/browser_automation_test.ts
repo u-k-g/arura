@@ -70,10 +70,7 @@ Deno.test({
       void onceActionDialog(page, (dialog) => dialog.accept());
       await card.getByRole("button", { name: "Delete", exact: true }).click();
       await expect(card).toHaveCount(0);
-      await page
-        .locator(".resource-dialog > .dialog-inner > header")
-        .getByRole("button", { name: "Close", exact: true })
-        .click();
+      await page.getByRole("button", { name: "Threads", exact: true }).click();
       await page
         .locator(".topbar")
         .getByRole("button", { name: "New conversation", exact: true })

@@ -126,15 +126,19 @@ grace period.
   Enter inserts a newline. Command+Enter submits nonempty composer text (queue
   while running); with empty text it sends the first queued message now. This is
   the sole enabled application shortcut.
+- Sidebar navigation has one horizontal icon-only row: Threads, Bots, Artifacts,
+  and Cron jobs. Each switches the main content; Bots and Cron jobs do not open
+  overlay dialogs. Threads returns to the last conversation. Mobile uses the
+  same row in its navigation sheet and closes the sheet on selection.
 - Messaging setup lives in Settings, with no permanent sidebar shortcut.
 - Bot conversations display their bot's name rather than "Bot Chat". Preserve
   Hermes's canonical session title internally so bot discovery remains
   compatible.
 - The model picker opens as a compact popover anchored to its composer button,
   with a left rail containing only providers and Starred (no All models),
-  opening on the current provider, with a searchable model list, per-model stars
-  synchronized across devices, and an always-visible reasoning effort selector.
-  Keep model-list customization available.
+  opening on Starred, with a searchable model list, per-model stars synchronized
+  across devices, and an always-visible reasoning effort selector. Keep
+  model-list customization available.
 - **Pinned:** manually pinned entries and all folders. Folder contents count as
   pinned. Folders cannot live in any other section.
 - **Other entries:** below Pinned, no folders; autoarchive after seven days of

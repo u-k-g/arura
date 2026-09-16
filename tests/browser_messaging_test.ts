@@ -24,7 +24,7 @@ Deno.test({
       await signIn(page, "Messaging test");
       await expect(
         page
-          .locator(".sidebar-actions")
+          .getByRole("navigation", { name: "Main navigation" })
           .getByRole("button", { name: "Messaging", exact: true }),
       ).toHaveCount(0);
       await openSettings(page);
