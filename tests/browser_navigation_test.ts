@@ -71,7 +71,11 @@ Deno.test({
         requireValue(original, "original"),
       );
       const title = `Garden notes ${crypto.randomUUID().slice(0, 6)}`;
-      await a.locator(".thread-row.selected > .icon-button").click();
+      await a
+        .locator(
+          '.thread-row.selected > .icon-button[aria-label^="Actions for"]',
+        )
+        .click();
       void onceActionDialog(a, (dialog) => dialog.accept(title));
       await a.getByRole("button", { name: "Rename", exact: true }).click();
       await expect(
@@ -157,7 +161,11 @@ Deno.test({
         .getByRole("button", { name: "Close", exact: true })
         .click();
       await a.getByRole("button", { name: title, exact: true }).click();
-      await a.locator(".thread-row.selected > .icon-button").click();
+      await a
+        .locator(
+          '.thread-row.selected > .icon-button[aria-label^="Actions for"]',
+        )
+        .click();
       void onceActionDialog(a, (dialog) => dialog.accept());
       await a
         .getByRole("button", { name: "Delete conversation", exact: true })

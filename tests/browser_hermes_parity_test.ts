@@ -50,7 +50,11 @@ Deno.test({
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .click();
-      await page.locator(".thread-row.selected > .icon-button").click();
+      await page
+        .locator(
+          '.thread-row.selected > .icon-button[aria-label^="Actions for"]',
+        )
+        .click();
       const pin = page.getByRole("button", {
         name: "Toggle pinned",
         exact: true,

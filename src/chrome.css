@@ -725,8 +725,37 @@ dialog.conversation-menu {
   min-height: 0;
 }
 .pinned-divider {
-  border-bottom: var(--hairline) solid var(--line);
-  margin: 12px 8px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 22px;
+  margin: 8px;
+}
+.pinned-divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  border-top: var(--hairline) solid var(--line);
+}
+.navigation .pinned-divider > .icon-button {
+  position: relative;
+  opacity: 0;
+  min-width: 22px;
+  min-height: 22px;
+  padding: 2px;
+  background: var(--panel);
+}
+.navigation .pinned-divider > .icon-button:hover {
+  background: var(--panel);
+  color: var(--accent);
+}
+.navigation .pinned-divider:hover > .icon-button,
+.navigation .pinned-divider:focus-within > .icon-button {
+  opacity: 1;
 }
 .navigation > .archive {
   flex: 0 1 auto;
@@ -777,20 +806,6 @@ dialog.conversation-menu {
 .sidebar-bottom-row .gateway-status {
   min-width: 0;
   flex: 1;
-}
-.thread-actions {
-  display: flex;
-  margin-left: auto;
-  flex: none;
-}
-.thread-actions .icon-button {
-  min-width: 26px;
-  min-height: 26px;
-  padding: 4px;
-}
-.thread-actions .icon {
-  width: 13px;
-  height: 13px;
 }
 .essential-icon-picker {
   max-height: min(360px, 55dvh);

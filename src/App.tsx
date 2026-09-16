@@ -517,6 +517,12 @@ export default function App() {
         </Show>
       </button>
       <IconButton
+        icon="archive"
+        label={`Archive ${c.title}`}
+        disabled={c.running || c.pendingInput}
+        onClick={() => void run(() => archiveConversation(c))}
+      />
+      <IconButton
         icon="more-horiz"
         label={`Actions for ${c.title}`}
         onClick={(event) => openMenu(c, event)}
@@ -524,28 +530,11 @@ export default function App() {
     </div>
   );
   const conversationActions = () => (
-    <>
-      <IconButton
-        icon="edit-pencil"
-        label="New conversation"
-        onClick={() => void newChat(currentProfile())}
-      />
-      <Show when={selected()}>
-        {(c) => (
-          <>
-            <IconButton
-              icon="archive"
-              label={c().section === "archived"
-                ? "Unarchive conversation"
-                : "Archive conversation"}
-              disabled={c().section !== "archived" &&
-                (c().running || c().pendingInput)}
-              onClick={() => void run(() => archiveConversation(c()))}
-            />
-          </>
-        )}
-      </Show>
-    </>
+    <IconButton
+      icon="edit-pencil"
+      label="New conversation"
+      onClick={() => void newChat(currentProfile())}
+    />
   );
   const navigationActions = () => (
     <>
@@ -567,6 +556,7 @@ export default function App() {
         />
         <IconButton
           icon="folder"
+          class="mobile-only"
           label="New folder"
           onClick={() => setFolderName("")}
         />
@@ -729,12 +719,18 @@ export default function App() {
             </details>
           )}
         </For>
-        <Show
-          when={chats().some((c) => c.section === "pinned") ||
-            workspace()?.folders.length}
-        >
-          <div class="pinned-divider" role="separator" />
-        </Show>
+        <div class="pinned-divider">
+          <IconButton
+            icon="edit-pencil"
+            label="New conversation"
+            onClick={() => void newChat(currentProfile())}
+          />
+          <IconButton
+            icon="folder"
+            label="New folder"
+            onClick={() => setFolderName("")}
+          />
+        </div>
         <For each={recentConversations()}>{row}</For>
         <Show when={workspace()?.recentHasMore}>
           <button
@@ -856,7 +852,6 @@ export default function App() {
                 : "disconnected"}
             </span>
           </button>
-          <div class="thread-actions">{conversationActions()}</div>
         </div>
       </footer>
     </div>

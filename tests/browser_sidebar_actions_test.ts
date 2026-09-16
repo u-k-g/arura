@@ -21,13 +21,14 @@ Deno.test({
       await expect(page.locator(".main-view > .topbar")).toBeHidden();
       await expect(
         page
-          .locator(".thread-actions")
+          .locator(".pinned-divider")
           .getByRole("button", { name: "New conversation", exact: true }),
       ).toBeVisible();
       await expect(
-        page
-          .locator(".thread-actions")
-          .getByRole("button", { name: "Archive conversation", exact: true }),
+        page.locator(".thread-row.selected").getByRole("button", {
+          name: "Archive Fixture conversation",
+          exact: true,
+        }),
       ).toBeVisible();
       await page
         .getByRole("button", { name: "Collapse sidebar", exact: true })
@@ -110,7 +111,11 @@ Deno.test({
           exact: true,
         }),
       ).toBeVisible();
-      await page.locator(".thread-row.selected > .icon-button").click();
+      await page
+        .locator(
+          '.thread-row.selected > .icon-button[aria-label^="Actions for"]',
+        )
+        .click();
       await page.getByRole("button", { name: "Archive", exact: true }).click();
       await expect
         .poll(() => page.evaluate(() => localStorage.getItem("arura.view")))
@@ -156,7 +161,11 @@ Deno.test({
           )
         )
         .toBe("sidebar-profile");
-      await page.locator(".thread-row.selected > .icon-button").click();
+      await page
+        .locator(
+          '.thread-row.selected > .icon-button[aria-label^="Actions for"]',
+        )
+        .click();
       await page
         .getByRole("button", { name: "Delete conversation", exact: true })
         .click();

@@ -618,7 +618,10 @@ Deno.test({
         .last()
         .click();
       await a
-        .getByRole("button", { name: "Archive conversation", exact: true })
+        .getByRole("button", {
+          name: "Archive Fixture conversation",
+          exact: true,
+        })
         .click();
       await b
         .getByRole("button", { name: "Open conversations", exact: true })

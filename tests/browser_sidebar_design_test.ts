@@ -82,20 +82,23 @@ Deno.test({
       );
       const newThread = requireValue(
         await page
-          .locator(".thread-actions")
+          .locator(".pinned-divider")
           .getByRole("button", { name: "New conversation", exact: true })
           .boundingBox(),
         "new thread",
       );
-      expect(newThread.y).toBeGreaterThan(740);
+      expect(newThread.y).toBeGreaterThan(sidebar.y);
+      expect(newThread.y).toBeLessThan(sidebar.y + sidebar.height);
       await tile.click({ button: "right" });
       await page
         .getByRole("button", { name: "Toggle pinned", exact: true })
         .click();
       await expect(page.locator(".pinned-divider")).toBeVisible();
       await page
-        .locator(".thread-actions")
-        .getByRole("button", { name: "Archive conversation", exact: true })
+        .getByRole("button", {
+          name: "Archive Fixture conversation",
+          exact: true,
+        })
         .click();
       await page.getByRole("button", { name: "Archived", exact: true }).click();
       const archive = page.locator(".archive-list");

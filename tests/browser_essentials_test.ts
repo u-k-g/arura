@@ -31,7 +31,11 @@ Deno.test({
           .click();
       }
       const actions = () =>
-        a.locator(".thread-row.selected > .icon-button").click();
+        a
+          .locator(
+            '.thread-row.selected > .icon-button[aria-label^="Actions for"]',
+          )
+          .click();
       await actions();
       await expect(
         a.getByRole("button", { name: "Move to conversations", exact: true }),
@@ -85,7 +89,10 @@ Deno.test({
         path: `${Deno.env.get("TMPDIR")}/essentials-desktop.png`,
       });
       await a
-        .getByRole("button", { name: "Archive conversation", exact: true })
+        .getByRole("button", {
+          name: "Archive Fixture conversation",
+          exact: true,
+        })
         .click();
       await expect(tile).toHaveCount(0);
       await a.getByRole("button", { name: "Archived", exact: true }).click();
@@ -94,7 +101,10 @@ Deno.test({
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .click();
       await a
-        .getByRole("button", { name: "Unarchive conversation", exact: true })
+        .getByRole("button", {
+          name: "Unarchive Fixture conversation",
+          exact: true,
+        })
         .click();
       await a.getByRole("button", { name: "New folder", exact: true }).click();
       await a.getByRole("dialog").getByRole("textbox").fill("Saved");
