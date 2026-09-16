@@ -139,12 +139,12 @@
   flex: initial;
   flex-direction: row;
 }
-.nav-footer .gateway-status {
+.sidebar-titlebar .gateway-status {
   justify-content: flex-start;
-  padding: 2px 6px;
+  border: 0;
   font-size: 11px;
 }
-.nav-footer .connection {
+.sidebar-titlebar .connection {
   font-size: 11px;
 }
 .composer-bottom {
@@ -706,12 +706,18 @@ dialog.conversation-menu {
   color: var(--danger);
 }
 
-.sidebar-titlebar > button[aria-label="New folder"] {
+.sidebar-titlebar > .gateway-status {
   margin-left: auto;
+  padding: 2px 6px;
 }
 .sidebar-titlebar > button[aria-label="Search conversations"],
 .collapsed-controls > button[aria-label="Search conversations"] {
   margin-left: 0;
+}
+.collapsed-controls .connection {
+  font-size: 0;
+  gap: 0;
+  color: transparent;
 }
 .topbar > .thread-row {
   flex: 1;
@@ -725,37 +731,34 @@ dialog.conversation-menu {
   min-height: 0;
 }
 .pinned-divider {
-  position: relative;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 2px;
   min-height: 22px;
   margin: 8px;
 }
 .pinned-divider::before {
   content: "";
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
+  flex: 1;
   border-top: var(--hairline) solid var(--line);
 }
 .navigation .pinned-divider > .icon-button {
-  position: relative;
-  opacity: 0;
+  flex: none;
   min-width: 22px;
   min-height: 22px;
   padding: 2px;
-  background: var(--panel);
 }
-.navigation .pinned-divider > .icon-button:hover {
-  background: var(--panel);
-  color: var(--accent);
+.navigation .pinned-divider > .pinned-divider-folder {
+  opacity: 0;
 }
-.navigation .pinned-divider:hover > .icon-button,
-.navigation .pinned-divider:focus-within > .icon-button {
+.navigation .pinned-divider:hover > .pinned-divider-folder,
+.navigation .pinned-divider:focus-within > .pinned-divider-folder {
   opacity: 1;
+}
+@media (max-width: 720px), (pointer: coarse) and (hover: none) {
+  .navigation .pinned-divider > .pinned-divider-folder {
+    opacity: 1;
+  }
 }
 .navigation > .archive {
   flex: 0 1 auto;
@@ -799,13 +802,10 @@ dialog.conversation-menu {
 .archive-list .thread-select {
   color: var(--muted);
 }
-.sidebar-bottom-row {
-  display: flex;
-  align-items: center;
-}
-.sidebar-bottom-row .gateway-status {
-  min-width: 0;
-  flex: 1;
+.navigation .thread-row > .archive-button .icon,
+.topbar .thread-row > .archive-button .icon {
+  width: 12px;
+  height: 12px;
 }
 .essential-icon-picker {
   max-height: min(360px, 55dvh);

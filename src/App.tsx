@@ -518,6 +518,7 @@ export default function App() {
       </button>
       <IconButton
         icon="archive"
+        class="archive-button"
         label={`Archive ${c.title}`}
         disabled={c.running || c.pendingInput}
         onClick={() => void run(() => archiveConversation(c))}
@@ -545,6 +546,25 @@ export default function App() {
       />
     </>
   );
+  const gatewayStatus = () => (
+    <button
+      type="button"
+      class="gateway-status"
+      onClick={() => navigate("resources:status")}
+    >
+      <span
+        class="connection"
+        classList={{
+          offline: !connected() || !workspace()?.connection?.online,
+        }}
+      >
+        <i />
+        Gateway {workspace()?.connection?.online && connected()
+          ? "connected"
+          : "disconnected"}
+      </span>
+    </button>
+  );
   const navigation = () => (
     <div class="navigation">
       <header class="sidebar-titlebar">
@@ -554,12 +574,7 @@ export default function App() {
           label="Collapse sidebar"
           onClick={toggleSidebar}
         />
-        <IconButton
-          icon="folder"
-          class="mobile-only"
-          label="New folder"
-          onClick={() => setFolderName("")}
-        />
+        {gatewayStatus()}
         {navigationActions()}
       </header>
       <nav class="sidebar-sections" aria-label="Main navigation">
@@ -727,6 +742,7 @@ export default function App() {
           />
           <IconButton
             icon="folder"
+            class="pinned-divider-folder"
             label="New folder"
             onClick={() => setFolderName("")}
           />
@@ -834,25 +850,6 @@ export default function App() {
             onClick={() => navigate("settings")}
           />
         </div>
-        <div class="sidebar-bottom-row">
-          <button
-            type="button"
-            class="gateway-status"
-            onClick={() => navigate("resources:status")}
-          >
-            <span
-              class="connection"
-              classList={{
-                offline: !connected() || !workspace()?.connection?.online,
-              }}
-            >
-              <i />
-              Gateway {workspace()?.connection?.online && connected()
-                ? "connected"
-                : "disconnected"}
-            </span>
-          </button>
-        </div>
       </footer>
     </div>
   );
@@ -930,6 +927,7 @@ export default function App() {
                     label="Expand sidebar"
                     onClick={toggleSidebar}
                   />
+                  {gatewayStatus()}
                   {navigationActions()}
                   {conversationActions()}
                 </div>
@@ -1217,26 +1215,6 @@ export default function App() {
                   <Icon name="edit-pencil" />
                   Change icon
                 </button>
-              </Show>
-              <Show when={["essential", "pinned"].includes(c().section)}>
-                <For each={[-1, 1]}>
-                  {(direction) => (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        void run(async () => {
-                          await mutate("workspace.reorder", {
-                            kind: "conversation",
-                            id: c().key,
-                            direction,
-                          });
-                          setMenu(undefined);
-                        })}
-                    >
-                      Move {direction === -1 ? "up" : "down"}
-                    </button>
-                  )}
-                </For>
               </Show>
               <For
                 each={[
