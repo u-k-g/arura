@@ -127,6 +127,8 @@ export default function Chat(props: {
   let modelButton: HTMLButtonElement | undefined;
   const [currentProvider, setCurrentProvider] = createSignal("");
   const [currentModel, setCurrentModel] = createSignal("");
+  const selectedModel = () => workspace()?.settings.chatModel;
+  const displayedModel = () => selectedModel()?.label || currentModel();
   const [currentEffort, setCurrentEffort] = createSignal("");
   createEffect(() => {
     if (!connected()) return;
@@ -383,8 +385,10 @@ export default function Chat(props: {
     let key = originalKey;
     setSending(true);
     try {
+      const modelSelection = selectedModel();
       const payload = {
         text: value,
+        ...(modelSelection ? { model: { ...modelSelection } } : {}),
         attachments: uploads().filter((file) =>
           value.includes(`[Attached file: ${file.path}]`)
         ),
@@ -416,6 +420,13 @@ export default function Chat(props: {
               method: "config.set",
               params: { ...params, confirm_expensive_model: true },
             });
+            if (params.key === "model" && payload.model) {
+              payload.model.confirmed = true;
+              await mutate("workspace.setting", {
+                key: "chatModel",
+                value: payload.model,
+              });
+            }
           }
         }
         draftConfig.clear();
@@ -727,61 +738,19 @@ export default function Chat(props: {
                 input.focus();
               }}
             />
-          </Show>
-          <Show when={message.role === "assistant"}>
             <IconButton
-              icon="refresh"
-              label="Regenerate response"
-              disabled={turn()?.state === "running" || sending()}
+              icon="git-fork"
+              label="Branch conversation"
               onClick={() =>
                 void run(async () => {
-                  const before = messages().slice(
-                    0,
-                    messages().findIndex((item) =>
-                      item.id === message.id
-                    ),
-                  );
-                  const prompt = before.findLast(
-                    (item) => item.role === "user",
-                  );
-                  if (!prompt) {
-                    throw new Error(
-                      "The original prompt is not loaded. Load earlier messages first.",
-                    );
-                  }
-                  if (
-                    await rejectAction(
-                      "Regenerate this response and replace the conversation after its original prompt?",
-                    )
-                  ) {
-                    return;
-                  }
-                  await enqueueCommand("send", props.conversation, {
-                    text: [
-                      prompt.text,
-                      ...(prompt.attachments ?? []).map((attachment) =>
-                        contextReference("image", attachment.url)
-                      ),
-                    ]
-                      .filter(Boolean)
-                      .join("\n"),
-                    edit: prompt.id,
+                  const result = await command("branch", props.conversation, {
+                    messageId: message.id,
                   });
+                  inform("Conversation branched");
+                  props.navigate(String(result.key));
                 })}
             />
           </Show>
-          <IconButton
-            icon="git-fork"
-            label="Branch conversation"
-            onClick={() =>
-              void run(async () => {
-                const result = await command("branch", props.conversation, {
-                  messageId: message.id,
-                });
-                inform("Conversation branched");
-                props.navigate(String(result.key));
-              })}
-          />
         </div>
       </Show>
     </article>
@@ -1439,7 +1408,7 @@ export default function Chat(props: {
                 }).finally(() => setModelLoading(false));
               }}
             >
-              {currentModel() || "Select model"}
+              {displayedModel() || "Select model"}
               {currentEffort()
                 ? ` · ${currentEffort() === "none" ? "Off" : currentEffort()}`
                 : ""}
@@ -1612,8 +1581,8 @@ export default function Chat(props: {
         <ModelPicker
           anchor={modelButton}
           models={models()}
-          current={currentModel()}
-          provider={currentProvider()}
+          current={displayedModel()}
+          provider={selectedModel()?.provider ?? currentProvider()}
           effort={currentEffort()}
           close={() => setModel("")}
           choose={async (m) => {
@@ -1643,6 +1612,15 @@ export default function Chat(props: {
             }
             setCurrentModel(modelLabel(m));
             setCurrentProvider(m.provider ?? "");
+            await mutate("workspace.setting", {
+              key: "chatModel",
+              value: {
+                value,
+                label: modelLabel(m),
+                provider: m.provider ?? "",
+                confirmed: Boolean(result.confirm_required),
+              },
+            });
             setModel("");
           }}
           changeEffort={async (effort) => {

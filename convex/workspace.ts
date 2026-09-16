@@ -368,7 +368,7 @@ export const setting = mutation({
   args: { key: v.string(), value: v.any() },
   handler: async (ctx, args) => {
     await device(ctx);
-    if (!["modelFavorites", "appearance"].includes(args.key)) {
+    if (!["modelFavorites", "appearance", "chatModel"].includes(args.key)) {
       throw new Error("Unknown preference");
     }
     const old = await ctx.db

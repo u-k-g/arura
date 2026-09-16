@@ -1041,8 +1041,9 @@ export class Hermes extends EventEmitter {
   async branch(key: string, messageId: string) {
     const [profile, id] = JSON.parse(key);
     let count = 0,
-      found = false;
-    for (let offset = 0; !found; offset += 500) {
+      found = false,
+      finished = false;
+    for (let offset = 0; !finished; offset += 500) {
       const query = new URLSearchParams({
         profile,
         limit: "500",
@@ -1054,6 +1055,12 @@ export class Hermes extends EventEmitter {
       );
       const rows = data.messages ?? [];
       for (const row of rows) {
+        // A user-prompt branch includes its complete response, ending before
+        // the next user prompt, even when the turn crosses a history page.
+        if (found && row.role === "user") {
+          finished = true;
+          break;
+        }
         if (
           ["user", "assistant"].includes(row.role) &&
           plainText(row.content ?? row.text).trim()
@@ -1062,7 +1069,10 @@ export class Hermes extends EventEmitter {
         }
         if (String(row.id ?? row.row_id ?? row.message_id) === messageId) {
           found = true;
-          break;
+          if (row.role !== "user") {
+            finished = true;
+            break;
+          }
         }
       }
       if (rows.length < 500) break;

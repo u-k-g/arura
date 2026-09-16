@@ -47,7 +47,7 @@ Deno.test({
       await signIn(page, "Composer test");
       const newChat = () =>
         page
-          .locator(".topbar")
+          .locator(".sidebar-titlebar, .topbar")
           .getByRole("button", { name: "New conversation", exact: true })
           .first()
           .click();

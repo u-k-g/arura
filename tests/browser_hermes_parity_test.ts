@@ -87,7 +87,7 @@ Deno.test({
       ).toHaveCount(0);
       await expect(
         page
-          .locator(".topbar")
+          .locator(".sidebar-titlebar, .topbar")
           .getByRole("button", { name: "New conversation", exact: true }),
       ).toBeVisible();
       await expect(

@@ -490,6 +490,7 @@ small {
 }
 .transcript-inner {
   width: 100%;
+  max-width: 840px;
   padding: 8px 24px;
   margin: 0 auto;
 }

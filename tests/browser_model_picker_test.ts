@@ -121,6 +121,44 @@ Deno.test({
       await expect(
         a.getByRole("button", { name: "Model", exact: true }),
       ).toContainText("fixture-alternative");
+      await expect(
+        b.getByRole("button", { name: "Model", exact: true }),
+      ).toContainText("fixture-alternative");
+      await a
+        .locator(".sidebar-titlebar")
+        .getByRole("button", { name: "New conversation", exact: true })
+        .click();
+      await expect(
+        a.getByRole("button", { name: "Model", exact: true }),
+      ).toContainText("fixture-alternative");
+      await a
+        .getByLabel("Message Hermes", { exact: true })
+        .fill("Use my selected model");
+      await a
+        .getByRole("button", { name: "Send message", exact: true })
+        .click();
+      await expect(
+        a.getByText("Received: Use my selected model", { exact: true }),
+      ).toBeVisible();
+      const conversation = await a.evaluate(() =>
+        localStorage.getItem("arura.view")
+      );
+      const runtime = await a.request.post(`${url}/api/query`, {
+        headers: { Origin: url },
+        data: { method: "session.context_breakdown", conversation },
+      });
+      expect(runtime.ok()).toBe(true);
+      expect((await runtime.json()).model).toBe("fixture-alternative");
+      await a.reload();
+      await expect(
+        a.getByRole("button", { name: "Model", exact: true }),
+      ).toContainText("fixture-alternative");
+      await a
+        .getByRole("button", { name: "Fixture conversation", exact: true })
+        .click();
+      await expect(
+        a.getByRole("button", { name: "Model", exact: true }),
+      ).toContainText("fixture-alternative");
       await mobile
         .getByRole("button", {
           name: "Unstar fixture-alternative · Fixture provider",

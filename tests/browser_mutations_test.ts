@@ -22,7 +22,7 @@ Deno.test({
       await page.goto(url);
       await signIn(page, "Conversation lifecycle test");
       await page
-        .locator(".topbar")
+        .locator(".sidebar-titlebar, .topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
@@ -66,13 +66,25 @@ Deno.test({
       await expect(
         page.getByRole("button", { name: "Send message", exact: true }),
       ).toBeVisible();
+      await input.fill("Later turn excluded from branch");
       await page
-        .locator("article")
-        .filter({
-          has: page
-            .locator(".markdown")
-            .filter({ hasText: "Received: Revised instruction" }),
-        })
+        .getByRole("button", { name: "Send message", exact: true })
+        .click();
+      await expect(
+        page.getByText("Received: Later turn excluded from branch", {
+          exact: true,
+        }),
+      ).toBeVisible();
+      const assistant = page.locator("article").filter({
+        has: page.getByText("Received: Revised instruction", { exact: true }),
+      });
+      await expect(assistant.locator(".message-actions button")).toHaveCount(1);
+      await expect(
+        assistant.getByRole("button", { name: "Copy message", exact: true }),
+      ).toBeVisible();
+      await page
+        .locator("article.user")
+        .filter({ hasText: "Revised instruction" })
         .getByRole("button", { name: "Branch conversation", exact: true })
         .click();
       await expect
@@ -83,6 +95,11 @@ Deno.test({
           .locator(".markdown")
           .filter({ hasText: "Received: Revised instruction" }),
       ).toBeVisible();
+      await expect(
+        page.getByText("Received: Later turn excluded from branch", {
+          exact: true,
+        }),
+      ).toHaveCount(0);
       await input.fill("Only in the branch");
       await page
         .getByRole("button", { name: "Send message", exact: true })
@@ -97,7 +114,9 @@ Deno.test({
       );
       const original = await page.request.get(
         `${url}/api/download?type=conversation&profile=${
-          encodeURIComponent(profile)
+          encodeURIComponent(
+            profile,
+          )
         }&id=${encodeURIComponent(id)}`,
       );
       expect(original.ok()).toBe(true);
@@ -150,12 +169,21 @@ Deno.test({
         );
       }
       await a
-        .locator(".topbar")
+        .locator(".sidebar-titlebar, .topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
       await expect(
         a.getByLabel("Message Hermes", { exact: true }),
+      ).toBeVisible();
+      await a
+        .getByLabel("Message Hermes", { exact: true })
+        .fill("Start interaction test");
+      await a
+        .getByRole("button", { name: "Send message", exact: true })
+        .click();
+      await expect(
+        a.getByText("Received: Start interaction test", { exact: true }),
       ).toBeVisible();
       const key = await a.evaluate(() => localStorage.getItem("arura.view"));
       const bootstrap = await (
@@ -430,7 +458,7 @@ Deno.test({
       );
       await signIn(page, "Run controls");
       await page
-        .locator(".topbar")
+        .locator(".sidebar-titlebar, .topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();

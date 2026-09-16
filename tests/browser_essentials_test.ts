@@ -81,7 +81,7 @@ Deno.test({
         .last()
         .click();
       await expect(
-        a.locator(".topbar").getByRole("button", {
+        a.locator(".sidebar-titlebar, .topbar").getByRole("button", {
           name: "Toggle conversation pin",
           exact: true,
         }),

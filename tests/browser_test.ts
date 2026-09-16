@@ -383,7 +383,7 @@ Deno.test({
       );
       expect(roster.profiles[0].ui_meta["hermes-bots"].imageKind).toBe("photo");
       await page
-        .locator(".topbar")
+        .locator(".sidebar-titlebar, .topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();

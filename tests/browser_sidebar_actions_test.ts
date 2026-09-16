@@ -18,6 +18,28 @@ Deno.test({
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .click();
+      await expect(page.locator(".main-view > .topbar")).toBeHidden();
+      await expect(
+        page
+          .locator(".sidebar-titlebar")
+          .getByRole("button", { name: "New conversation", exact: true }),
+      ).toBeVisible();
+      await expect(
+        page
+          .locator(".sidebar-titlebar")
+          .getByRole("button", { name: "Archive conversation", exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Collapse sidebar", exact: true })
+        .click();
+      await expect(
+        page
+          .locator(".collapsed-controls")
+          .getByRole("button", { name: "New conversation", exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Expand sidebar", exact: true })
+        .click();
       await expect(
         page.getByRole("button", { name: "Settings", exact: true }),
       ).toHaveCount(1);

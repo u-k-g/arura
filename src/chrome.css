@@ -1,14 +1,20 @@
 .app-shell.sidebar-collapsed {
-  grid-template-columns: 0 minmax(0, 1fr);
+  grid-template-columns: 36px minmax(0, 1fr);
 }
 .sidebar-collapsed .desktop-navigation {
-  visibility: hidden;
+  overflow: visible;
 }
 .sidebar-titlebar {
   height: 32px;
   display: flex;
   align-items: center;
   padding: 0 4px;
+}
+.sidebar-titlebar.collapsed-controls {
+  height: auto;
+  flex-direction: column;
+  padding-top: 3px;
+  gap: 4px;
 }
 .sidebar-titlebar .icon-button,
 .topbar .icon-button {

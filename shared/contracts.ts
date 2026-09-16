@@ -13,6 +13,12 @@ export type Workspace = {
     hiddenModels?: string[];
     modelFavorites?: string[];
     dismissedErrors?: string[];
+    chatModel?: {
+      value: string;
+      label: string;
+      provider: string;
+      confirmed: boolean;
+    };
     autoArchiveDays?: number;
     archiveDays?: number;
   };

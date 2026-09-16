@@ -22,7 +22,7 @@ Deno.test({
       );
       await signIn(page, "Queue keyboard test");
       await page
-        .locator(".topbar")
+        .locator(".sidebar-titlebar, .topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .click();
       const input = page.getByRole("textbox", {

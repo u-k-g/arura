@@ -9,16 +9,20 @@ default, alongside Grove, Jade, Black Rose, Gruvbox Dark Hard, and Rosé Pine in
 Settings → Appearance → Theme.
 
 The shell uses a 247px sidebar (the requested 5% reduction), 32px titlebar, tool
-navigation, bottom profile/gateway controls, full-width messages, and compact
-composer with its model picker beside the input. Colors follow
+navigation, bottom profile/gateway controls, messages centered in an 840px-wide
+column, and a full-width compact composer with its model picker beside the
+input. The message column fills the available width on smaller screens. Colors
+follow
 [Macro's theme definitions](https://github.com/macro-inc/macro/tree/main/apps/web/src/features/theme/themes):
 neutral light surfaces, black/gray dark surfaces, and amber accents.
 
-Intentional layout differences: New conversation is a plus icon in the top bar,
-and Capabilities is reached through Settings, not the sidebar tools list. The
-profile name is clickable without a preceding icon. The top-bar search opens
-full history search; no sidebar search field. These controls remain usable
-without app keyboard shortcuts.
+Intentional layout differences: New conversation, Archive, Search, and
+conversation actions sit in the sidebar's top row. Desktop has no header above
+the content; collapsing the sidebar leaves a narrow control rail. Mobile retains
+its toolbar. Capabilities is reached through Settings, not the sidebar tools
+list. The profile name is clickable without a preceding icon. Search opens full
+history search; no sidebar search field. These controls remain usable without
+app keyboard shortcuts.
 
 Default message text is 13px with 1.5 line spacing; the per-browser size control
 ranges from 12–20px. Sidebar rows are 27px high with 12px labels, per-thread

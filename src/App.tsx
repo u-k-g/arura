@@ -65,6 +65,24 @@ export default function App() {
   const [matches, setMatches] = createSignal<
     { key: string; title: string; profile: string }[]
   >([]);
+  onMount(() => {
+    const openPalette = (event: KeyboardEvent) => {
+      if (
+        event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !event.shiftKey &&
+        !event.isComposing &&
+        event.key.toLowerCase() === "k" &&
+        authorized()
+      ) {
+        event.preventDefault();
+        setPalette(true);
+      }
+    };
+    globalThis.addEventListener("keydown", openPalette);
+    onCleanup(() => globalThis.removeEventListener("keydown", openPalette));
+  });
   const [searching, setSearching] = createSignal(false);
   const [searchError, setSearchError] = createSignal("");
   createEffect(() => {
@@ -476,6 +494,44 @@ export default function App() {
       />
     </div>
   );
+  const conversationActions = () => (
+    <>
+      <IconButton
+        icon="edit-pencil"
+        label="New conversation"
+        onClick={() => void newChat(currentProfile())}
+      />
+      <Show when={selected()}>
+        {(c) => (
+          <>
+            <IconButton
+              icon="archive"
+              label={c().section === "archived"
+                ? "Unarchive conversation"
+                : "Archive conversation"}
+              disabled={c().section !== "archived" &&
+                (c().running || c().pendingInput)}
+              onClick={() => void run(() => archiveConversation(c()))}
+            />
+          </>
+        )}
+      </Show>
+      <IconButton
+        icon="search"
+        label="Search conversations"
+        onClick={() => setPalette(true)}
+      />
+      <Show when={selected()}>
+        {(c) => (
+          <IconButton
+            icon="more-horiz"
+            label="Conversation actions"
+            onClick={(event) => openMenu(c(), event)}
+          />
+        )}
+      </Show>
+    </>
+  );
   const navigation = () => (
     <div class="navigation">
       <header class="sidebar-titlebar">
@@ -485,6 +541,7 @@ export default function App() {
           label="Collapse sidebar"
           onClick={toggleSidebar}
         />
+        {conversationActions()}
       </header>
       <nav class="sidebar-sections" aria-label="Main navigation">
         <For
@@ -843,59 +900,31 @@ export default function App() {
     >
       <div class="app-shell" classList={{ "sidebar-collapsed": collapsed() }}>
         <aside class="desktop-navigation">
-          <Show when={!collapsed()}>{navigation()}</Show>
+          <Show
+            when={!collapsed()}
+            fallback={
+              <div class="sidebar-titlebar collapsed-controls">
+                <IconButton
+                  icon="sidebar-collapse"
+                  label="Expand sidebar"
+                  onClick={toggleSidebar}
+                />
+                {conversationActions()}
+              </div>
+            }
+          >
+            {navigation()}
+          </Show>
         </aside>
         <main class="main-view">
-          <header class="topbar">
+          <header class="topbar mobile-only">
             <IconButton
               icon="menu"
               class="mobile-only"
               label="Open conversations"
               onClick={() => setSheet(true)}
             />
-            <Show when={collapsed()}>
-              <IconButton
-                icon="sidebar-collapse"
-                class="desktop-only"
-                label="Expand sidebar"
-                onClick={toggleSidebar}
-              />
-            </Show>
-            <IconButton
-              icon="edit-pencil"
-              label="New conversation"
-              onClick={() => void newChat(currentProfile())}
-            />
-            <Show when={selected()}>
-              {(c) => (
-                <>
-                  <IconButton
-                    icon="archive"
-                    label={c().section === "archived"
-                      ? "Unarchive conversation"
-                      : "Archive conversation"}
-                    disabled={c().section !== "archived" &&
-                      (c().running || c().pendingInput)}
-                    onClick={() => void run(() => archiveConversation(c()))}
-                  />
-                </>
-              )}
-            </Show>
-            <span class="view-title" aria-hidden="true" />
-            <IconButton
-              icon="search"
-              label="Search conversations"
-              onClick={() => setPalette(true)}
-            />
-            <Show when={selected()}>
-              {(c) => (
-                <IconButton
-                  icon="more-horiz"
-                  label="Conversation actions"
-                  onClick={(event) => openMenu(c(), event)}
-                />
-              )}
-            </Show>
+            {conversationActions()}
           </header>
           <SettingsFrame view={view()} navigate={navigate}>
             <Suspense fallback={<div class="loading">Opening…</div>}>

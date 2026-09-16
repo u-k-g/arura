@@ -22,19 +22,25 @@ Deno.test({
       return page;
     }
     async function newChat(page: Page) {
-      const before = await page.evaluate(() =>
-        localStorage.getItem("arura.view")
-      );
       await page
-        .locator(".topbar")
+        .locator(".sidebar-titlebar, .topbar")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();
       await expect
         .poll(() => page.evaluate(() => localStorage.getItem("arura.view")))
-        .not.toBe(before);
+        .toBe("");
       await expect(
         page.getByLabel("Message Hermes", { exact: true }),
+      ).toBeVisible();
+      await page
+        .getByLabel("Message Hermes", { exact: true })
+        .fill("Start navigation test");
+      await page
+        .getByRole("button", { name: "Send message", exact: true })
+        .click();
+      await expect(
+        page.getByText("Received: Start navigation test", { exact: true }),
       ).toBeVisible();
       return page.evaluate(() => localStorage.getItem("arura.view"));
     }
@@ -42,8 +48,17 @@ Deno.test({
       const a = await device("Navigation desktop"),
         b = await device("Navigation second device");
       const original = await newChat(a);
-      // Hermes hasn't saved a database row yet. A reconciliation and reload
-      // must preserve the live session instead of treating it as deleted.
+      await a.getByLabel("Message Hermes", { exact: true }).focus();
+      await a.keyboard.press("Meta+k");
+      await expect(
+        a.getByRole("dialog", { name: "Find anything" }),
+      ).toBeVisible();
+      await a.keyboard.press("Escape");
+      await expect(
+        a.getByRole("dialog", { name: "Find anything" }),
+      ).toHaveCount(0);
+
+      // A reconciliation and reload must preserve the newly started thread.
       await a.waitForTimeout(6000);
       await a.reload();
       await expect(

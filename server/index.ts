@@ -458,6 +458,23 @@ async function processCommands() {
             if (shouldSubmit) prompt = String(record(result).message);
           }
           if (shouldSubmit) {
+            if (typeof payload.model?.value === "string") {
+              const configured = await hermes.call("config.set", {
+                session_id,
+                key: "model",
+                value: payload.model.value,
+                scope: "session",
+                confirm_expensive_model: payload.model.confirmed === true,
+              });
+              if (configured.confirm_required) {
+                throw new Error(
+                  String(
+                    configured.confirm_message ||
+                      "Select this model again to confirm before sending.",
+                  ),
+                );
+              }
+            }
             activeCommands.add(key);
             result = await hermes.submitPrompt(
               key,
