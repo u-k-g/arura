@@ -93,6 +93,7 @@ let
     };
   buildDependencies = dependencies false "sha256-aCP6AQtDiHLz+BbvoC3tQYgQKbKeHrLqq4ZGWptrH80=";
   runtimeDependencies = dependencies true "sha256-6Vb5qkTQjXRAOA670NFN0k8prB+D6VJnjzEX9wGk+NQ=";
+  buildId = builtins.substring 0 12 (builtins.hashFile "sha256" source);
 in
 stdenvNoCC.mkDerivation {
   pname = "arura";
@@ -105,6 +106,7 @@ stdenvNoCC.mkDerivation {
   buildPhase = ''
     export DENO_DIR="$NIX_BUILD_TOP/deno-cache"
     export DENO_NO_UPDATE_CHECK=1
+    export ARURA_BUILD_ID="${buildId}"
     cp -R ${buildDependencies}/node_modules node_modules
     chmod -R u+w node_modules
     deno task build

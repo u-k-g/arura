@@ -7,6 +7,9 @@ self-hosted Convex direction.
 
 Read [Product scope](docs/product-scope.md) when building or reviewing features.
 
+In browser code under `src/`, use `globalThis` for DOM and window APIs (`addEventListener`,
+`matchMedia`, `location`, and similar). Deno lint rejects `window`.
+
 ## Reference repositories
 
 - [Hermes Agent](https://github.com/NousResearch/hermes-agent): runtime and

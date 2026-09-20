@@ -17,6 +17,7 @@ import {
   preferences,
   storageInfo,
 } from "./cache.ts";
+import { useAppInstall } from "./install.ts";
 import { Field, Icon, IconButton, run } from "./ui.tsx";
 const groups = [
   {
@@ -93,6 +94,7 @@ export default function Settings(props: {
     [cache, setCache] = createSignal(caching()),
     [storage, setStorage] = createSignal<StorageEstimate>({}),
     [actions, setActions] = createSignal<{ id: string; label: string }[]>([]);
+  const appInstall = useAppInstall();
   createEffect(() => {
     if (props.section === "devices") {
       const stop = subscribe("devices", "list", {}, setDevices);
@@ -232,6 +234,42 @@ export default function Settings(props: {
         <Show when={props.section === "storage"}>
           <Show when={cacheIssue()}>
             <p role="status">{cacheIssue()}</p>
+          </Show>
+          <Show when={appInstall.installed()}>
+            <p>Arura is installed on this device.</p>
+          </Show>
+          <Show when={appInstall.canInstall()}>
+            <div class="button-row">
+              <button
+                type="button"
+                onClick={() => void run(appInstall.install)}
+              >
+                Install app
+              </button>
+            </div>
+            <p>
+              Add Arura to your home screen for full-screen access and faster
+              reopening.
+            </p>
+          </Show>
+          <Show when={appInstall.iosHint() && !appInstall.installed()}>
+            <p>
+              On iPhone or iPad, open the Share menu in Safari and choose Add to
+              Home Screen.
+            </p>
+          </Show>
+          <Show
+            when={
+              !appInstall.installed() &&
+              !appInstall.canInstall() &&
+              !appInstall.iosHint() &&
+              /Android/i.test(navigator.userAgent)
+            }
+          >
+            <p>
+              In Chrome on Android, open the menu and choose Install app or Add
+              to Home screen.
+            </p>
           </Show>
           <Field
             label="Keep data on this device"

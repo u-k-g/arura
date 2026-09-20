@@ -22,6 +22,15 @@ import { clearsStaleEffort } from "../shared/model-reasoning.ts";
 import { equal, hash, identity, randomSecret } from "./identity.ts";
 
 const keys = await identity();
+const distRoot = fileURLToPath(new URL("../dist/", import.meta.url));
+let buildId = "dev";
+try {
+  buildId = JSON.parse(
+    await readFile(resolve(distRoot, "build-id.json"), "utf8"),
+  ).id;
+} catch {
+  /* Development or an incomplete build. */
+}
 const publicUrl = new URL(
   process.env.ARURA_PUBLIC_URL || "http://localhost:5173",
 );
@@ -751,6 +760,7 @@ async function handle(request: Request, ip: string): Promise<Response> {
     return json({
       convexUrl: process.env.CONVEX_PUBLIC_URL ?? convexUrl,
       name: "Arura",
+      build: buildId,
     });
   }
   if (path === "/.well-known/jwks.json") return json(keys.jwks);
