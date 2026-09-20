@@ -93,7 +93,11 @@ let
     };
   buildDependencies = dependencies false "sha256-aCP6AQtDiHLz+BbvoC3tQYgQKbKeHrLqq4ZGWptrH80=";
   runtimeDependencies = dependencies true "sha256-6Vb5qkTQjXRAOA670NFN0k8prB+D6VJnjzEX9wGk+NQ=";
-  buildId = builtins.substring 0 12 (builtins.hashFile "sha256" source);
+  # fileset.toSource is a directory; hash the store path, which already
+  # changes whenever the filtered source changes.
+  buildId = builtins.substring 0 12 (
+    builtins.hashString "sha256" (builtins.unsafeDiscardStringContext (toString source))
+  );
 in
 stdenvNoCC.mkDerivation {
   pname = "arura";
