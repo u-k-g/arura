@@ -29,6 +29,9 @@ export interface Message {
   toolCallId?: string;
   details?: unknown;
   createdAt?: number;
+  // Compaction-archived row: displayed for context but no longer in the
+  // active transcript, so Hermes can never target it for an edit or branch.
+  compacted?: boolean;
 }
 export function groupMessages(messages: Message[]) {
   const groups: {
@@ -68,9 +71,10 @@ export function workGroup(
   turn: Pick<Turn, "text" | "startedAt">,
 ) {
   const text = turn.text.replace(/\s+/g, "");
-  const answer = text &&
+  const answer =
+    text &&
     groups.findLast((group) =>
-      group.answer?.text.replace(/\s+/g, "").startsWith(text)
+      group.answer?.text.replace(/\s+/g, "").startsWith(text),
     );
   if (answer) return answer;
   return (
@@ -79,8 +83,8 @@ export function workGroup(
         group.prompt?.createdAt !== undefined &&
         group.prompt.createdAt <= turn.startedAt,
     ) ??
-      groups.findLast((group) => group.prompt) ??
-      groups.at(-1)
+    groups.findLast((group) => group.prompt) ??
+    groups.at(-1)
   );
 }
 // A tool call and its result can fall on opposite history-page boundaries.
@@ -151,29 +155,29 @@ export function interactionFromEvent(
     multiple: payload.multi_select === true,
     ...(Array.isArray(payload.questions)
       ? {
-        questions: payload.questions
-          .filter(
-            (q) =>
-              q &&
-              typeof q.qid === "string" &&
-              typeof q.question === "string",
-          )
-          .map((q) => ({
-            id: q.qid,
-            text: visibleText(q.question),
-            options: choices(q.choices),
-            multiple: q.multi_select === true,
-            ...(record(payload.answers)[q.qid] !== undefined
-              ? {
-                answer: visibleText(
-                  Array.isArray(record(payload.answers)[q.qid])
-                    ? JSON.stringify(record(payload.answers)[q.qid])
-                    : String(record(payload.answers)[q.qid]),
-                ),
-              }
-              : {}),
-          })),
-      }
+          questions: payload.questions
+            .filter(
+              (q) =>
+                q &&
+                typeof q.qid === "string" &&
+                typeof q.question === "string",
+            )
+            .map((q) => ({
+              id: q.qid,
+              text: visibleText(q.question),
+              options: choices(q.choices),
+              multiple: q.multi_select === true,
+              ...(record(payload.answers)[q.qid] !== undefined
+                ? {
+                    answer: visibleText(
+                      Array.isArray(record(payload.answers)[q.qid])
+                        ? JSON.stringify(record(payload.answers)[q.qid])
+                        : String(record(payload.answers)[q.qid]),
+                    ),
+                  }
+                : {}),
+            })),
+        }
       : {}),
   };
 }
@@ -252,13 +256,16 @@ export function userMessageText(value: unknown): string {
     const start = bundle
       ? text.indexOf(instructionMarker)
       : text.lastIndexOf(instructionMarker);
-    const instruction = start < 0 ? "" : text
-      .slice(start + instructionMarker.length)
-      .split(
-        bundle ? "\n\n[Loaded as part of the " : "\n\n[Runtime note:",
-      )[0]
-      .trim()
-      .replace(/\s+/g, " ");
+    const instruction =
+      start < 0
+        ? ""
+        : text
+            .slice(start + instructionMarker.length)
+            .split(
+              bundle ? "\n\n[Loaded as part of the " : "\n\n[Runtime note:",
+            )[0]
+            .trim()
+            .replace(/\s+/g, " ");
     const name = skill[1].trim();
     if (name) {
       return `${name.startsWith("/") ? name : `/${name}`}${
@@ -315,11 +322,12 @@ export function subagentTranscript(text: string, details = false): string {
       );
       if (!match) return [];
       const [, time, role, body] = match;
-      const content = !details && role === "tool"
-        ? body.split("(")[0]
-        : !details && role === "result"
-        ? body.split(":")[0]
-        : visibleText(body);
+      const content =
+        !details && role === "tool"
+          ? body.split("(")[0]
+          : !details && role === "result"
+            ? body.split(":")[0]
+            : visibleText(body);
       return [`${time} ${role} | ${content}`];
     })
     .join("\n");
@@ -334,7 +342,7 @@ export function normalizeMessages(rows: Record<string, unknown>[]): Message[] {
     rows.flatMap((row) =>
       Array.isArray(row.tool_calls)
         ? row.tool_calls.map((call) => String(record(call).id))
-        : []
+        : [],
     ),
   );
   return rows.flatMap((row, index): Message[] => {
@@ -347,13 +355,11 @@ export function normalizeMessages(rows: Record<string, unknown>[]): Message[] {
     }
     if (row.role === "tool" && calls.has(String(row.tool_call_id))) return [];
     const content = row.display_content ?? row.content ?? row.text;
-    const text = row.role === "user"
-      ? userMessageText(content)
-      : visibleText(content);
+    const text =
+      row.role === "user" ? userMessageText(content) : visibleText(content);
     const id = String(row.id ?? row.row_id ?? row.message_id ?? `row-${index}`);
-    const createdAt = typeof row.timestamp === "number"
-      ? row.timestamp * 1000
-      : undefined;
+    const createdAt =
+      typeof row.timestamp === "number" ? row.timestamp * 1000 : undefined;
     const eventLabels: Record<string, string> = {
       auto_continue: "Resumed interrupted turn",
       personality_switch: "Personality changed",
@@ -370,9 +376,10 @@ export function normalizeMessages(rows: Record<string, unknown>[]): Message[] {
       for (const block of content) {
         const item = record(block);
         if (item.type !== "image_url") continue;
-        const url = typeof item.image_url === "string"
-          ? item.image_url
-          : record(item.image_url).url;
+        const url =
+          typeof item.image_url === "string"
+            ? item.image_url
+            : record(item.image_url).url;
         if (
           typeof url === "string" &&
           /^(https?:|file:|data:image\/(?:png|jpeg|webp|gif);|\/)/i.test(url)
@@ -390,23 +397,24 @@ export function normalizeMessages(rows: Record<string, unknown>[]): Message[] {
     const messages: Message[] =
       text || attachments.length || row.role === "tool"
         ? [
-          {
-            id,
-            role: row.role as Message["role"],
-            text,
-            ...(attachments.length ? { attachments } : {}),
-            ...(createdAt ? { createdAt } : {}),
-            ...(row.role === "tool"
-              ? {
-                tool: String(row.name ?? row.tool_name ?? "Tool"),
-                ...(row.tool_call_id
-                  ? { toolCallId: String(row.tool_call_id) }
-                  : {}),
-                details: { output: withoutReasoning(content) },
-              }
-              : {}),
-          },
-        ]
+            {
+              id,
+              role: row.role as Message["role"],
+              text,
+              ...(attachments.length ? { attachments } : {}),
+              ...(createdAt ? { createdAt } : {}),
+              ...(row.compacted ? { compacted: true } : {}),
+              ...(row.role === "tool"
+                ? {
+                    tool: String(row.name ?? row.tool_name ?? "Tool"),
+                    ...(row.tool_call_id
+                      ? { toolCallId: String(row.tool_call_id) }
+                      : {}),
+                    details: { output: withoutReasoning(content) },
+                  }
+                : {}),
+            },
+          ]
         : [];
     if (Array.isArray(row.tool_calls)) {
       for (const raw of row.tool_calls) {

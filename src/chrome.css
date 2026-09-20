@@ -379,6 +379,21 @@ dialog.conversation-menu {
 .conversation-menu::backdrop {
   background: transparent;
 }
+.essential-icon-picker {
+  max-height: min(360px, 55dvh);
+  overflow-y: auto;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 4px;
+}
+.essential-icon-picker button {
+  min-height: 38px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+}
+.essential-icon-picker button:hover {
+  background: var(--hover);
+}
 .conversation-menu .dialog-inner {
   padding: 6px;
 }
@@ -455,6 +470,13 @@ dialog.conversation-menu {
 }
 .palette-results [aria-selected="true"] {
   background: var(--active);
+}
+.archive-toggle .icon {
+  width: 12px;
+  height: 12px;
+}
+.archive-toggle[aria-expanded="true"] .icon {
+  transform: rotate(180deg);
 }
 .palette-results [role="option"] .icon {
   width: 14px;
@@ -689,9 +711,6 @@ dialog.conversation-menu {
   height: 13px;
   color: var(--muted);
 }
-.conversation-menu .action-list .danger .icon {
-  color: inherit;
-}
 .navigation .section-heading > .icon-button {
   order: 1;
 }
@@ -701,14 +720,6 @@ dialog.conversation-menu {
 }
 .session-age.archive-overdue {
   color: var(--danger);
-}
-.thread-row.draft .thread-select,
-.thread-row.draft .thread-select .icon,
-.thread-row.draft .draft-indicator {
-  color: var(--warning);
-}
-.thread-row.draft .session-dot {
-  background: var(--warning);
 }
 .draft-indicator {
   display: inline-flex;
@@ -800,12 +811,8 @@ dialog.conversation-menu {
   flex: 1;
   background: var(--line);
 }
-.archive-toggle .icon {
-  width: 12px;
-  height: 12px;
-}
-.archive-toggle[aria-expanded="true"] .icon {
-  transform: rotate(180deg);
+.conversation-menu .action-list .danger .icon {
+  color: inherit;
 }
 .archive-list {
   min-height: 0;
@@ -821,20 +828,13 @@ dialog.conversation-menu {
   width: 12px;
   height: 12px;
 }
-.essential-icon-picker {
-  max-height: min(360px, 55dvh);
-  overflow-y: auto;
-  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
-  gap: 4px;
+.thread-row.draft .thread-select,
+.thread-row.draft .thread-select .icon,
+.thread-row.draft .draft-indicator {
+  color: var(--warning);
 }
-.essential-icon-picker button {
-  min-height: 38px;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-}
-.essential-icon-picker button:hover {
-  background: var(--hover);
+.thread-row.draft .session-dot {
+  background: var(--warning);
 }
 .nav-scroll .thread-row,
 .topbar > .thread-row {

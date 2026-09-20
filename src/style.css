@@ -1539,6 +1539,32 @@ progress {
   width: 11px;
   height: 11px;
 }
+.thinking-label {
+  margin: 0;
+  font-size: 12px;
+  background: linear-gradient(
+    90deg,
+    var(--muted) 30%,
+    var(--ink) 50%,
+    var(--muted) 70%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: thinking-flow 1.6s linear infinite;
+}
+@keyframes thinking-flow {
+  from {
+    background-position: 110% 0;
+  }
+  to {
+    background-position: -110% 0;
+  }
+}
+.work-summary-static {
+  width: fit-content;
+}
 .work-summary:has(~ .current-activity)[open] ~ .current-activity {
   display: none;
 }

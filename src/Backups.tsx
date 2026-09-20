@@ -30,7 +30,8 @@ export default function Backups() {
             } finally {
               setStarting(false);
             }
-          })}
+          })
+        }
       >
         {busy() ? "Creating backup…" : "Create backup"}
       </button>
@@ -41,8 +42,8 @@ export default function Backups() {
               {value().status === "complete"
                 ? "Backup ready"
                 : value().status === "error"
-                ? value().error
-                : "Creating backup on the host…"}
+                  ? value().error
+                  : "Creating backup on the host…"}
             </p>
             <Show when={value().status === "complete" && value().archive}>
               <a

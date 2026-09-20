@@ -23,21 +23,22 @@ export default function ProfilePicker(props: {
   let trigger!: HTMLButtonElement;
   let disposed = false;
   let pending: Promise<void> | undefined;
-  const refresh = () => (pending ??= (async () => {
-    setLoading(true);
-    try {
-      const result = await resource("profileRoster");
-      if (!disposed) {
-        setProfiles(result.profiles ?? []);
-        setError("");
+  const refresh = () =>
+    (pending ??= (async () => {
+      setLoading(true);
+      try {
+        const result = await resource("profileRoster");
+        if (!disposed) {
+          setProfiles(result.profiles ?? []);
+          setError("");
+        }
+      } catch (error) {
+        if (!disposed) setError((error as Error).message);
+      } finally {
+        if (!disposed) setLoading(false);
+        pending = undefined;
       }
-    } catch (error) {
-      if (!disposed) setError((error as Error).message);
-    } finally {
-      if (!disposed) setLoading(false);
-      pending = undefined;
-    }
-  })());
+    })());
   createEffect(() => {
     revision();
     if (!connected()) return;
@@ -49,9 +50,10 @@ export default function ProfilePicker(props: {
   });
   const position = () => {
     const rect = trigger.getBoundingClientRect();
-    panel.style.left = `${
-      Math.max(8, Math.min(rect.left, innerWidth - 268))
-    }px`;
+    panel.style.left = `${Math.max(
+      8,
+      Math.min(rect.left, innerWidth - 268),
+    )}px`;
     panel.style.bottom = `${Math.max(8, innerHeight - rect.top + 6)}px`;
     panel.style.maxHeight = `${Math.max(80, rect.top - 16)}px`;
   };

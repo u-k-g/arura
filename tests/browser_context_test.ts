@@ -2,8 +2,7 @@ import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 Deno.test({
-  name:
-    "attached context stays out of messages, copied text and editing while Hermes retains it",
+  name: "attached context stays out of messages, copied text and editing while Hermes retains it",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -26,8 +25,7 @@ Deno.test({
       expect(response.ok).toBe(true);
     };
     const prompt = "Summarize @url:https://example.com/article";
-    const raw =
-      `${prompt}\n\n--- Attached Context ---\n\n@url:https://example.com/article\nINTERNAL_FETCHED_PAGE_TEXT\n\n--- Context Warnings ---\nINTERNAL_CONTEXT_WARNING`;
+    const raw = `${prompt}\n\n--- Attached Context ---\n\n@url:https://example.com/article\nINTERNAL_FETCHED_PAGE_TEXT\n\n--- Context Warnings ---\nINTERNAL_CONTEXT_WARNING`;
     try {
       await patch([
         { id: 901, role: "user", content: raw },

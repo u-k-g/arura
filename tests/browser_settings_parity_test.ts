@@ -2,8 +2,7 @@ import { requireValue } from "./require_value.ts";
 import { chromium, expect } from "@playwright/test";
 import { openSettings, signIn } from "./sign_in.ts";
 Deno.test({
-  name:
-    "inline model, profile instructions and MCP edits use Hermes contracts and preserve external changes",
+  name: "inline model, profile instructions and MCP edits use Hermes contracts and preserve external changes",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({

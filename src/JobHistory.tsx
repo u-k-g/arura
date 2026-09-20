@@ -36,7 +36,9 @@ export default function JobHistory(props: {
     if (!value) return "";
     const parsed = new Date(
       typeof value === "number"
-        ? value < 1e12 ? value * 1000 : value
+        ? value < 1e12
+          ? value * 1000
+          : value
         : String(value),
     );
     return Number.isNaN(parsed.getTime()) ? "" : parsed.toLocaleString();
@@ -62,7 +64,8 @@ export default function JobHistory(props: {
                   String(run.profile ?? (props.profile || "default")),
                   String(run.id),
                 ]),
-              )}
+              )
+            }
           >
             <span>{String(run.title || run.preview || run.id)}</span>
             <time>{date(run.last_active ?? run.started_at)}</time>

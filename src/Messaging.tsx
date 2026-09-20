@@ -60,7 +60,8 @@ function PlatformMark(props: { platform: Platform }) {
       class="platform-mark"
       aria-hidden="true"
       style={{
-        "--platform-brand": brands[props.platform.id] ??
+        "--platform-brand":
+          brands[props.platform.id] ??
           (props.platform.id === "slack" ? "#4A154B" : "var(--muted)"),
       }}
     >
@@ -82,10 +83,10 @@ function tone(p: Platform) {
   return !p.enabled
     ? "muted"
     : p.state === "connected"
-    ? "good"
-    : ["fatal", "startup_failed"].includes(p.state ?? "")
-    ? "bad"
-    : "waiting";
+      ? "good"
+      : ["fatal", "startup_failed"].includes(p.state ?? "")
+        ? "bad"
+        : "waiting";
 }
 
 export default function Messaging() {
@@ -109,11 +110,11 @@ export default function Messaging() {
     platforms().filter((p) =>
       `${p.name} ${p.description ?? ""}`
         .toLowerCase()
-        .includes(filter().toLowerCase())
-    )
+        .includes(filter().toLowerCase()),
+    ),
   );
   const current = createMemo(() =>
-    platforms().find((p) => p.id === selected())
+    platforms().find((p) => p.id === selected()),
   );
   const draft = (id: string) => edits()[id] ?? {};
   async function refresh() {
@@ -189,8 +190,8 @@ export default function Messaging() {
       group === "required"
         ? f.required
         : group === "advanced"
-        ? !f.required && f.advanced
-        : !f.required && !f.advanced
+          ? !f.required && f.advanced
+          : !f.required && !f.advanced,
     );
   const credential = (p: Platform, field: Credential) => (
     <Field label={field.prompt || field.key} hint={field.description}>
@@ -205,7 +206,8 @@ export default function Messaging() {
             setEdits((all) => ({
               ...all,
               [p.id]: { ...all[p.id], [field.key]: e.currentTarget.value },
-            }))}
+            }))
+          }
         />
         <Show when={field.is_set}>
           <IconButton
@@ -232,7 +234,8 @@ export default function Messaging() {
                     }));
                   }
                 }
-              })()}
+              })()
+            }
           />
         </Show>
         <Show when={field.url && /^https?:\/\//.test(field.url)}>
@@ -321,8 +324,9 @@ export default function Messaging() {
                 type="button"
                 class="platform-row"
                 aria-label={p.name}
-                aria-description={p.state ||
-                  (p.enabled ? "Enabled" : "Disabled")}
+                aria-description={
+                  p.state || (p.enabled ? "Enabled" : "Disabled")
+                }
                 classList={{ active: selected() === p.id }}
                 aria-pressed={selected() === p.id}
                 onClick={() => select(p.id)}
@@ -445,7 +449,8 @@ export default function Messaging() {
                                             : { user_id: user.user_id }),
                                         },
                                       );
-                                    })()}
+                                    })()
+                                  }
                                 >
                                   {group.pending ? "Approve" : "Revoke"}
                                 </button>
@@ -457,8 +462,9 @@ export default function Messaging() {
                     )}
                   </For>
                   <Show
-                    when={p().docs_url &&
-                      /^https?:\/\//.test(p().docs_url ?? "")}
+                    when={
+                      p().docs_url && /^https?:\/\//.test(p().docs_url ?? "")
+                    }
                   >
                     <section>
                       <h2>Get credentials</h2>
@@ -513,15 +519,18 @@ export default function Messaging() {
                           "savePlatform",
                           { id: p().id },
                           { enabled: e.currentTarget.checked },
-                        )}
+                        )
+                      }
                     />
                     Enabled
                   </label>
                   <button
                     type="button"
                     class="primary"
-                    disabled={busy() ||
-                      !Object.values(draft(p().id)).some((v) => v.trim())}
+                    disabled={
+                      busy() ||
+                      !Object.values(draft(p().id)).some((v) => v.trim())
+                    }
                     onClick={() =>
                       void (async () => {
                         const id = p().id;
@@ -531,7 +540,8 @@ export default function Messaging() {
                         if (await update("savePlatform", { id }, { env })) {
                           setEdits((all) => ({ ...all, [id]: {} }));
                         }
-                      })()}
+                      })()
+                    }
                   >
                     {busy() ? "Saving…" : "Save changes"}
                   </button>

@@ -6,9 +6,10 @@ export async function deployFunctions(
   env: Record<string, string> = {},
   signal?: AbortSignal,
 ) {
-  const target = env.CONVEX_SELF_HOSTED_URL ??
-    Deno.env.get("CONVEX_SELF_HOSTED_URL");
-  const admin = env.CONVEX_SELF_HOSTED_ADMIN_KEY ??
+  const target =
+    env.CONVEX_SELF_HOSTED_URL ?? Deno.env.get("CONVEX_SELF_HOSTED_URL");
+  const admin =
+    env.CONVEX_SELF_HOSTED_ADMIN_KEY ??
     Deno.env.get("CONVEX_SELF_HOSTED_ADMIN_KEY");
   if (!target || !admin) {
     throw new Error(
@@ -63,19 +64,15 @@ export async function deployFunctions(
     const auth = join(scratch, "auth.env");
     await Deno.writeTextFile(
       auth,
-      `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${
-        btoa(
-          JSON.stringify(keys.jwks),
-        )
-      }\n`,
+      `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${btoa(
+        JSON.stringify(keys.jwks),
+      )}\n`,
       { mode: 0o600 },
     );
-    for (
-      const args of [
-        ["env", "set", "--from-file", auth],
-        ["dev", "--once", "--typecheck", "disable", "--codegen", "disable"],
-      ]
-    ) {
+    for (const args of [
+      ["env", "set", "--from-file", auth],
+      ["dev", "--once", "--typecheck", "disable", "--codegen", "disable"],
+    ]) {
       signal?.throwIfAborted();
       const child = new Deno.Command(Deno.execPath(), {
         args: [

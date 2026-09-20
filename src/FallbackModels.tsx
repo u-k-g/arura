@@ -43,7 +43,8 @@ export default function FallbackModels() {
       .then((result) => {
         if (cancelled) return;
         const config = result.config ?? result;
-        const dirty = clearLegacy() ||
+        const dirty =
+          clearLegacy() ||
           JSON.stringify([rows(), originalLegacy]) !== baseline();
         if (!ready() || !dirty) accept(config);
         else setConflict(fingerprint(config) !== baseline());
@@ -57,7 +58,7 @@ export default function FallbackModels() {
   });
   const update = (index: number, key: string, value: string) =>
     setRows((rows) =>
-      rows.map((row, n) => (n === index ? { ...row, [key]: value } : row))
+      rows.map((row, n) => (n === index ? { ...row, [key]: value } : row)),
     );
   function move(index: number, direction: number) {
     setRows((rows) => {
@@ -112,7 +113,8 @@ export default function FallbackModels() {
             void run(async () => {
               const result = await resource("config");
               accept(result.config ?? result);
-            })}
+            })
+          }
         >
           Reload fallbacks
         </button>
@@ -133,7 +135,8 @@ export default function FallbackModels() {
                     required
                     value={rows()[index].provider}
                     onInput={(event) =>
-                      update(index, "provider", event.currentTarget.value)}
+                      update(index, "provider", event.currentTarget.value)
+                    }
                   />
                 </Field>
                 <Field label="Model">
@@ -141,7 +144,8 @@ export default function FallbackModels() {
                     required
                     value={rows()[index].model}
                     onInput={(event) =>
-                      update(index, "model", event.currentTarget.value)}
+                      update(index, "model", event.currentTarget.value)
+                    }
                   />
                 </Field>
                 <Field label="Inference URL (optional)">
@@ -149,14 +153,16 @@ export default function FallbackModels() {
                     type="url"
                     value={String(rows()[index].base_url ?? "")}
                     onInput={(event) =>
-                      update(index, "base_url", event.currentTarget.value)}
+                      update(index, "base_url", event.currentTarget.value)
+                    }
                   />
                 </Field>
                 <Field label="API key environment variable (optional)">
                   <input
                     value={String(rows()[index].key_env ?? "")}
                     onInput={(event) =>
-                      update(index, "key_env", event.currentTarget.value)}
+                      update(index, "key_env", event.currentTarget.value)
+                    }
                   />
                 </Field>
                 <div class="resource-actions">
@@ -177,7 +183,8 @@ export default function FallbackModels() {
                   <button
                     type="button"
                     onClick={() =>
-                      setRows((rows) => rows.filter((_, n) => n !== index))}
+                      setRows((rows) => rows.filter((_, n) => n !== index))
+                    }
                   >
                     Remove
                   </button>
@@ -195,7 +202,8 @@ export default function FallbackModels() {
                 type="checkbox"
                 checked={clearLegacy()}
                 onChange={(event) =>
-                  setClearLegacy(event.currentTarget.checked)}
+                  setClearLegacy(event.currentTarget.checked)
+                }
               />
             </Field>
           </Show>
@@ -203,7 +211,8 @@ export default function FallbackModels() {
             <button
               type="button"
               onClick={() =>
-                setRows((rows) => [...rows, { provider: "", model: "" }])}
+                setRows((rows) => [...rows, { provider: "", model: "" }])
+              }
             >
               Add fallback
             </button>

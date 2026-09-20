@@ -12,11 +12,9 @@ export function incomingOrganization(
   old: Organization | null,
   incoming: { pinned?: boolean; archived?: boolean },
   now: number,
-):
-  & Partial<
-    Pick<Organization, "section" | "sourcePinned" | "sourceArchived">
-  >
-  & { folderId?: undefined; archivedAt?: number; unarchivedAt?: number } {
+): Partial<
+  Pick<Organization, "section" | "sourcePinned" | "sourceArchived">
+> & { folderId?: undefined; archivedAt?: number; unarchivedAt?: number } {
   if (old?.organizationPending) return {};
   if (incoming.pinned === undefined && incoming.archived === undefined) {
     return {};
@@ -30,13 +28,16 @@ export function incomingOrganization(
   if (old && old.sourcePinned === pinned && old.sourceArchived === archived) {
     return observed;
   }
-  const section: Section = archived === true
-    ? "archived"
-    : pinned === true
-    ? old?.section === "essential" ? "essential" : "pinned"
-    : pinned === false || archived === false
-    ? "recent"
-    : (old?.section ?? "recent");
+  const section: Section =
+    archived === true
+      ? "archived"
+      : pinned === true
+        ? old?.section === "essential"
+          ? "essential"
+          : "pinned"
+        : pinned === false || archived === false
+          ? "recent"
+          : (old?.section ?? "recent");
   return {
     ...observed,
     section,

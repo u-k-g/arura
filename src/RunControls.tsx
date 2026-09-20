@@ -174,15 +174,16 @@ export default function RunControls(props: {
     }
     setBusy(true);
     try {
-      const text = kind() === "goal"
-        ? `/goal ${prompt().trim()}${
-          verification().trim()
-            ? `\nverification: ${verification().trim()}`
-            : ""
-        }`
-        : kind() === "loop"
-        ? `/loop ${interval()} ${prompt().trim()}`
-        : `/heartbeat every ${interval()} ${prompt().trim()}`;
+      const text =
+        kind() === "goal"
+          ? `/goal ${prompt().trim()}${
+              verification().trim()
+                ? `\nverification: ${verification().trim()}`
+                : ""
+            }`
+          : kind() === "loop"
+            ? `/loop ${interval()} ${prompt().trim()}`
+            : `/heartbeat every ${interval()} ${prompt().trim()}`;
       await command("send", props.conversation, { text });
       setPrompt("");
       setVerification("");
@@ -193,11 +194,13 @@ export default function RunControls(props: {
   }
   return (
     <Dialog
-      title={props.view === "automation"
-        ? "Conversation automations"
-        : props.view === "context"
-        ? "Context usage"
-        : "Delegated work"}
+      title={
+        props.view === "automation"
+          ? "Conversation automations"
+          : props.view === "context"
+            ? "Context usage"
+            : "Delegated work"
+      }
       close={props.close}
     >
       <Show when={error()}>
@@ -217,8 +220,8 @@ export default function RunControls(props: {
                       {name === "goal"
                         ? "Goal"
                         : name === "loop"
-                        ? "Repeated prompt"
-                        : "Heartbeat"}
+                          ? "Repeated prompt"
+                          : "Heartbeat"}
                     </h3>
                     <span>{value().status}</span>
                   </div>
@@ -241,7 +244,8 @@ export default function RunControls(props: {
                   </Show>
                   <Show when={value().next_due_at}>
                     <p>
-                      Next run: {new Date(
+                      Next run:{" "}
+                      {new Date(
                         (value().next_due_at ?? 0) * 1000,
                       ).toLocaleString()}
                     </p>
@@ -264,12 +268,11 @@ export default function RunControls(props: {
                   <Show when={value().wait_barrier}>
                     {(wait) => (
                       <p role="status">
-                        Waiting {wait().type === "until"
-                          ? `until ${
-                            new Date(
+                        Waiting{" "}
+                        {wait().type === "until"
+                          ? `until ${new Date(
                               (wait().until_at ?? 0) * 1000,
-                            ).toLocaleString()
-                          }`
+                            ).toLocaleString()}`
                           : `for ${wait().type} ${wait().target}`}{" "}
                         {wait().reason}
                       </p>
@@ -289,8 +292,9 @@ export default function RunControls(props: {
                           disabled={busy()}
                           onClick={() =>
                             void run(() =>
-                              action("subgoal.remove", { index: index() + 1 })
-                            )}
+                              action("subgoal.remove", { index: index() + 1 }),
+                            )
+                          }
                         >
                           Remove
                         </button>
@@ -310,7 +314,8 @@ export default function RunControls(props: {
                           type="button"
                           disabled={busy() || !connected()}
                           onClick={() =>
-                            void run(() => action(`${name}.${verb}`))}
+                            void run(() => action(`${name}.${verb}`))
+                          }
                         >
                           {verb[0].toUpperCase() + verb.slice(1)}
                         </button>
@@ -434,8 +439,8 @@ export default function RunControls(props: {
               <section class="automation-card">
                 <h3>{agent.goal || "Delegated task"}</h3>
                 <p>
-                  {agent.status} · {agent.model} · {agent.tool_count ?? 0}{" "}
-                  tool calls
+                  {agent.status} · {agent.model} · {agent.tool_count ?? 0} tool
+                  calls
                 </p>
                 <Show when={agent.last_tool}>
                   <p>Latest: {agent.last_tool}</p>
@@ -470,7 +475,8 @@ export default function RunControls(props: {
                           );
                         }
                         await refresh();
-                      })}
+                      })
+                    }
                   >
                     Stop task
                   </button>

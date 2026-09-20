@@ -79,9 +79,10 @@ export default function App() {
     setIconSearch("");
   });
   const savedView = preferences.getItem("arura.view") ?? "";
-  const initialView = savedView.split("?")[0] === "resources:files"
-    ? "resources:artifacts"
-    : savedView;
+  const initialView =
+    savedView.split("?")[0] === "resources:files"
+      ? "resources:artifacts"
+      : savedView;
   if (initialView !== savedView) preferences.setItem("arura.view", initialView);
   const [view, setView] = createSignal(initialView);
   const [sheet, setSheet] = createSignal(false),
@@ -124,11 +125,10 @@ export default function App() {
     setSearchError("");
     const timer = setTimeout(async () => {
       const cacheKey = `search:${query}`;
-      const cached = await loadCache<
-        { key: string; title: string; profile: string }[]
-      >(
-        cacheKey,
-      );
+      const cached =
+        await loadCache<{ key: string; title: string; profile: string }[]>(
+          cacheKey,
+        );
       if (disposed) return;
       if (cached) setMatches(cached);
       if (!online) return;
@@ -179,9 +179,8 @@ export default function App() {
   const [archiveReady, setArchiveReady] = createSignal(false);
   const [menu, setMenu] = createSignal<Conversation>(),
     [folderName, setFolderName] = createSignal<string | null>(null);
-  const [activeConversation, setActiveConversation] = createSignal<
-    Conversation | null
-  >(null);
+  const [activeConversation, setActiveConversation] =
+    createSignal<Conversation | null>(null);
   createEffect(() => {
     const key = view();
     connected();
@@ -335,8 +334,8 @@ export default function App() {
     text.trim().split("\n")[0]?.slice(0, 60) || "Draft";
   const selected = () =>
     chats().find((c) => c.key === view()) ??
-      archived().find((c) => c.key === view()) ??
-      activeConversation();
+    archived().find((c) => c.key === view()) ??
+    activeConversation();
   const unread = (conversation: Conversation) => {
     const state = workspace()?.reads?.find(
       (item) => item.key === conversation.key,
@@ -359,7 +358,7 @@ export default function App() {
     };
     document.addEventListener("visibilitychange", markVisible);
     onCleanup(() =>
-      document.removeEventListener("visibilitychange", markVisible)
+      document.removeEventListener("visibilitychange", markVisible),
     );
   });
   const viewedRevision = createMemo(() => {
@@ -481,7 +480,7 @@ export default function App() {
   const recentConversations = createMemo(() =>
     chats()
       .filter((c) => c.section === "recent" && !c.backgroundSession)
-      .sort((a, b) => conversationActivity(b) - conversationActivity(a))
+      .sort((a, b) => conversationActivity(b) - conversationActivity(a)),
   );
   const [ageNow, setAgeNow] = createSignal(Date.now());
   const ageTimer = setInterval(() => setAgeNow(Date.now()), 60_000);
@@ -493,16 +492,15 @@ export default function App() {
       ageNow(),
       workspace()?.settings.archiveEnabled !== false,
     );
-  const ageLabel = (c: Conversation) => {
-    const minutes = Math.floor(
-      Math.max(0, ageNow() - conversationActivity(c)) / 60_000,
-    );
+  const ageFrom = (timestamp: number) => {
+    const minutes = Math.floor(Math.max(0, ageNow() - timestamp) / 60_000);
     if (minutes < 1) return "now";
     if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
     if (hours < 24) return `${hours}h`;
     return `${Math.floor(hours / 24)}d`;
   };
+  const ageLabel = (c: Conversation) => ageFrom(conversationActivity(c));
   const row = (c: Conversation) => (
     <div
       class="thread-row"
@@ -535,11 +533,13 @@ export default function App() {
                 "archive-warning": ageStatus(c) === "warning",
                 "archive-overdue": ageStatus(c) === "overdue",
               }}
-              title={ageStatus(c) === "overdue"
-                ? "Due for automatic archive"
-                : ageStatus(c) === "warning"
-                ? "Automatic archive within one day"
-                : undefined}
+              title={
+                ageStatus(c) === "overdue"
+                  ? "Due for automatic archive"
+                  : ageStatus(c) === "warning"
+                    ? "Automatic archive within one day"
+                    : undefined
+              }
             >
               {ageLabel(c)}
             </time>
@@ -596,7 +596,8 @@ export default function App() {
         }}
       >
         <i />
-        Gateway {workspace()?.connection?.online && connected()
+        Gateway{" "}
+        {workspace()?.connection?.online && connected()
           ? "connected"
           : "disconnected"}
       </span>
@@ -639,7 +640,8 @@ export default function App() {
                     route === "threads"
                       ? (preferences.getItem("arura.lastConversation") ?? "")
                       : route,
-                  )}
+                  )
+                }
               >
                 <Icon name={icon} />
               </button>
@@ -735,7 +737,7 @@ export default function App() {
                     const name = await ask("Folder name", folder.name);
                     if (name?.trim()) {
                       void run(() =>
-                        mutate("workspace.folder", { id: folder._id, name })
+                        mutate("workspace.folder", { id: folder._id, name }),
                       );
                     }
                   }}
@@ -749,8 +751,9 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: 1,
-                      })
-                    )}
+                      }),
+                    )
+                  }
                 />
                 <IconButton
                   icon="nav-arrow-down"
@@ -762,8 +765,9 @@ export default function App() {
                         kind: "folder",
                         id: folder._id,
                         direction: -1,
-                      })
-                    )}
+                      }),
+                    )
+                  }
                 />
                 <button
                   type="button"
@@ -780,7 +784,7 @@ export default function App() {
                         mutate("workspace.folder", {
                           id: folder._id,
                           remove: true,
-                        })
+                        }),
                       );
                     }
                   }}
@@ -854,9 +858,21 @@ export default function App() {
                   <button
                     type="button"
                     class="thread-select"
+                    title={c.title}
+                    aria-label={c.title}
                     onClick={() => navigate(c.key)}
                   >
                     <span>{c.title}</span>
+                    <Show when={c.archivedAt}>
+                      {(at) => (
+                        <time
+                          class="session-age"
+                          title={`Archived ${new Date(at()).toLocaleString()}`}
+                        >
+                          {ageFrom(at())}
+                        </time>
+                      )}
+                    </Show>
                   </button>
                   <IconButton
                     icon="refresh"
@@ -866,8 +882,9 @@ export default function App() {
                         mutate("workspace.move", {
                           key: c.key,
                           section: "recent",
-                        })
-                      )}
+                        }),
+                      )
+                    }
                   />
                 </div>
               )}
@@ -1053,11 +1070,13 @@ export default function App() {
                             when={view() === "resources:platforms"}
                             fallback={
                               <Show
-                                when={![
-                                  "resources:skills",
-                                  "resources:toolsets",
-                                  "resources:mcp",
-                                ].includes(view())}
+                                when={
+                                  ![
+                                    "resources:skills",
+                                    "resources:toolsets",
+                                    "resources:mcp",
+                                  ].includes(view())
+                                }
                                 fallback={
                                   <Capabilities
                                     section={view().slice(10)}
@@ -1176,9 +1195,9 @@ export default function App() {
             <div class="essential-icon-picker">
               <For
                 each={essentialIconChoices.filter(([icon, label]) =>
-                  (icon + " " + label)
+                  `${icon} ${label}`
                     .toLowerCase()
-                    .includes(iconSearch().trim().toLowerCase())
+                    .includes(iconSearch().trim().toLowerCase()),
                 )}
               >
                 {([icon, label]) => (
@@ -1186,10 +1205,12 @@ export default function App() {
                     type="button"
                     aria-label={label}
                     title={label}
-                    aria-pressed={(workspace()?.conversations.find(
-                      (item) => item.key === conversation().key,
-                    )?.essentialIcon ??
-                      (conversation().bot ? "bot" : "chat-bubble")) === icon}
+                    aria-pressed={
+                      (workspace()?.conversations.find(
+                        (item) => item.key === conversation().key,
+                      )?.essentialIcon ??
+                        (conversation().bot ? "bot" : "chat-bubble")) === icon
+                    }
                     onClick={() =>
                       void run(async () => {
                         await mutate("workspace.setEssentialIcon", {
@@ -1197,7 +1218,8 @@ export default function App() {
                           icon,
                         });
                         setIconPicker(undefined);
-                      })}
+                      })
+                    }
                   >
                     <Icon name={icon} />
                   </button>
@@ -1205,11 +1227,13 @@ export default function App() {
               </For>
             </div>
             <Show
-              when={!essentialIconChoices.some(([icon, label]) =>
-                (icon + " " + label)
-                  .toLowerCase()
-                  .includes(iconSearch().trim().toLowerCase())
-              )}
+              when={
+                !essentialIconChoices.some(([icon, label]) =>
+                  `${icon} ${label}`
+                    .toLowerCase()
+                    .includes(iconSearch().trim().toLowerCase()),
+                )
+              }
             >
               <p>No icons found.</p>
             </Show>
@@ -1217,11 +1241,13 @@ export default function App() {
         )}
       </Show>
       <Show
-        when={menu() &&
+        when={
+          menu() &&
           (workspace()?.conversations.find(
             (item) => item.key === menu()?.key,
           ) ??
-            menu())}
+            menu())
+        }
       >
         {(c) => (
           <Dialog
@@ -1233,13 +1259,16 @@ export default function App() {
             <div class="action-list">
               <button
                 type="button"
-                disabled={c().section !== "archived" &&
-                  (c().running || c().pendingInput)}
+                disabled={
+                  c().section !== "archived" &&
+                  (c().running || c().pendingInput)
+                }
                 onClick={() =>
                   void run(async () => {
                     await archiveConversation(c());
                     setMenu(undefined);
-                  })}
+                  })
+                }
               >
                 <Icon name="archive" />
                 {c().section === "archived" ? "Unarchive" : "Archive"}
@@ -1253,7 +1282,8 @@ export default function App() {
                       unread: !unread(c()),
                     });
                     setMenu(undefined);
-                  })}
+                  })
+                }
               >
                 <Icon name="chat-bubble" />
                 {unread(c()) ? "Mark as read" : "Mark as unread"}
@@ -1265,7 +1295,8 @@ export default function App() {
                     await navigator.clipboard.writeText(c().sourceId);
                     setMenu(undefined);
                     inform("Session ID copied");
-                  })}
+                  })
+                }
               >
                 <Icon name="page" />
                 Copy session ID
@@ -1299,7 +1330,8 @@ export default function App() {
                           section: c().section === section ? "recent" : section,
                         });
                         setMenu(undefined);
-                      })}
+                      })
+                    }
                   >
                     <Icon name={section === "essential" ? "star" : "pin"} />
                     {label}
@@ -1318,7 +1350,8 @@ export default function App() {
                           folderId: f._id,
                         });
                         setMenu(undefined);
-                      })}
+                      })
+                    }
                   >
                     <Icon name="folder" />
                     Move to {f.name}
@@ -1341,11 +1374,9 @@ export default function App() {
                 </button>
               </Show>
               <a
-                href={`/api/download?type=conversation&id=${
-                  encodeURIComponent(
-                    c().sourceId,
-                  )
-                }&profile=${encodeURIComponent(c().profile)}`}
+                href={`/api/download?type=conversation&id=${encodeURIComponent(
+                  c().sourceId,
+                )}&profile=${encodeURIComponent(c().profile)}`}
                 download=""
               >
                 <Icon name="download" />

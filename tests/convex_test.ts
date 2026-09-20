@@ -14,8 +14,7 @@ async function until(check: () => boolean) {
   }
 }
 Deno.test({
-  name:
-    "self-hosted Convex: two-device sync, command claims, invite reuse, and live revocation",
+  name: "self-hosted Convex: two-device sync, command claims, invite reuse, and live revocation",
   ignore: !Deno.env.get("CONVEX_SELF_HOSTED_URL"),
   async fn() {
     const url = requireValue(
@@ -97,14 +96,14 @@ Deno.test({
             section?: string;
             unarchivedAt?: number;
           }) => c.key === key,
-        )
+        ),
       );
       const folderName = `Folder ${crypto.randomUUID()}`;
       await a.mutation(api.workspace.folder, { name: folderName });
       await until(() =>
         snapshot.folders.some(
           (f: { name: string; _id: string }) => f.name === folderName,
-        )
+        ),
       );
       const folder = snapshot.folders.find(
         (f: { name: string; _id: string }) => f.name === folderName,
@@ -123,7 +122,7 @@ Deno.test({
             section?: string;
             unarchivedAt?: number;
           }) => c.key === key && c.folderId === folder._id,
-        )
+        ),
       );
       await b.mutation(api.workspace.folder, {
         id: folder._id,
@@ -240,7 +239,7 @@ Deno.test({
             section?: string;
             unarchivedAt?: number;
           }) => c.key === key && c.section === "essential",
-        )
+        ),
       );
       await a.mutation(api.workspace.move, { key, section: "archived" });
       assert(
@@ -262,11 +261,10 @@ Deno.test({
             section?: string;
             unarchivedAt?: number;
           }) => c.key === key && c.unarchivedAt,
-        )
+        ),
       );
-      const archiveKeys = Array.from(
-        { length: 13 },
-        () => JSON.stringify(["test", crypto.randomUUID()]),
+      const archiveKeys = Array.from({ length: 13 }, () =>
+        JSON.stringify(["test", crypto.randomUUID()]),
       );
       await adapter.mutation(api.workspace.ingest, {
         conversations: archiveKeys.map((key) => ({
@@ -334,7 +332,7 @@ Deno.test({
       }
       assert(
         archiveCases.every((row: Record<string, unknown>) =>
-          navigation.has(row.key)
+          navigation.has(row.key),
         ),
         "Recent navigation reaches conversations beyond the first 1,000 entries",
       );

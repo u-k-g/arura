@@ -124,8 +124,10 @@ function ModelAssignment(props: {
           >
             <option value="">Choose provider</option>
             <Show
-              when={value().provider &&
-                !props.providers.some((item) => item.id === value().provider)}
+              when={
+                value().provider &&
+                !props.providers.some((item) => item.id === value().provider)
+              }
             >
               <option value={value().provider}>{value().provider}</option>
             </Show>
@@ -153,8 +155,10 @@ function ModelAssignment(props: {
         </label>
         <datalist id={listId()}>
           <For
-            each={props.providers.find((item) => item.id === value().provider)
-              ?.models ?? []}
+            each={
+              props.providers.find((item) => item.id === value().provider)
+                ?.models ?? []
+            }
           >
             {(model) => <option value={model} />}
           </For>
@@ -229,14 +233,14 @@ export default function ModelSettings(props: { profile: string }) {
           id: String(item.slug ?? item.id),
           aliases: Array.isArray(item.aliases)
             ? item.aliases.filter(
-              (alias): alias is string => typeof alias === "string",
-            )
+                (alias): alias is string => typeof alias === "string",
+              )
             : [],
           name: String(item.name ?? item.slug ?? item.id),
           models: Array.isArray(item.models)
             ? item.models.filter(
-              (model): model is string => typeof model === "string",
-            )
+                (model): model is string => typeof model === "string",
+              )
             : [],
           ...(typeof item.api_url === "string"
             ? { api_url: item.api_url }
@@ -289,16 +293,16 @@ export default function ModelSettings(props: { profile: string }) {
                         aria-label={`${model} · ${
                           provider.name || provider.id
                         }`}
-                        checked={!workspace()?.settings.hiddenModels?.includes(
-                          key,
-                        )}
+                        checked={
+                          !workspace()?.settings.hiddenModels?.includes(key)
+                        }
                         onChange={(event) => {
                           const hidden = !event.currentTarget.checked;
                           void run(() =>
                             mutate("workspace.modelVisibility", {
                               model: key,
                               hidden,
-                            })
+                            }),
                           );
                         }}
                       />
@@ -317,11 +321,13 @@ export default function ModelSettings(props: { profile: string }) {
           {(task) => (
             <ModelAssignment
               profile={props.profile}
-              value={tasks().find((entry) => entry.task === task) ?? {
-                task,
-                provider: "",
-                model: "",
-              }}
+              value={
+                tasks().find((entry) => entry.task === task) ?? {
+                  task,
+                  provider: "",
+                  model: "",
+                }
+              }
               main={main()}
               providers={providers()}
               changed={refresh}

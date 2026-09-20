@@ -54,9 +54,8 @@ Deno.test({
         clipboardData.items.add(
           new File(
             [
-              Uint8Array.from(
-                atob(data),
-                (character) => character.charCodeAt(0),
+              Uint8Array.from(atob(data), (character) =>
+                character.charCodeAt(0),
               ),
             ],
             "pasted.png",

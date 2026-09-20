@@ -53,11 +53,12 @@ const labels: Record<string, string> = {
   native_wayland: "Use native Wayland capture",
 };
 function section(config: Record<string, unknown>, kind: string): Values {
-  const source = kind === "resources"
-    ? record(config.agent).agent_cache
-    : kind === "computer"
-    ? config.computer_use
-    : config.delegation;
+  const source =
+    kind === "resources"
+      ? record(config.agent).agent_cache
+      : kind === "computer"
+        ? config.computer_use
+        : config.delegation;
   return Object.fromEntries(
     Object.entries(defaults[kind]).map(([key, fallback]) => {
       const value = record(source)[key];
@@ -184,11 +185,12 @@ export default function RuntimeSettings(props: { kind: string }) {
     ) {
       throw new Error("Bounded access needs a reviewed capability manifest.");
     }
-    const config = props.kind === "resources"
-      ? { agent: { agent_cache: updates } }
-      : props.kind === "computer"
-      ? { computer_use: updates }
-      : { delegation: updates };
+    const config =
+      props.kind === "resources"
+        ? { agent: { agent_cache: updates } }
+        : props.kind === "computer"
+          ? { computer_use: updates }
+          : { delegation: updates };
     await resource("saveConfig", {}, { config });
     await reload();
     inform("Runtime settings saved");
@@ -199,8 +201,8 @@ export default function RuntimeSettings(props: { kind: string }) {
         {props.kind === "resources"
           ? "Keep recently used agents ready on your host. These limits control cached agents and transcripts; inference models stay with your provider."
           : props.kind === "computer"
-          ? "Configure Hermes’s computer-use tool on the host. Enable or disable the tool in Tools."
-          : "Defaults for delegated work. Empty model fields inherit the parent’s inference configuration."}
+            ? "Configure Hermes’s computer-use tool on the host. Enable or disable the tool in Tools."
+            : "Defaults for delegated work. Empty model fields inherit the parent’s inference configuration."}
       </p>
       <Show when={error()}>
         <p role="alert">{error()}</p>
@@ -250,11 +252,13 @@ export default function RuntimeSettings(props: { kind: string }) {
                   when={["permission_mode", "reasoning_effort"].includes(key)}
                   fallback={
                     <input
-                      type={typeof defaults[props.kind][key] === "boolean"
-                        ? "checkbox"
-                        : typeof defaults[props.kind][key] === "number"
-                        ? "number"
-                        : "text"}
+                      type={
+                        typeof defaults[props.kind][key] === "boolean"
+                          ? "checkbox"
+                          : typeof defaults[props.kind][key] === "number"
+                            ? "number"
+                            : "text"
+                      }
                       min="0"
                       step="1"
                       checked={values()[key] === true}
@@ -262,12 +266,14 @@ export default function RuntimeSettings(props: { kind: string }) {
                       onInput={(event) =>
                         setValues((old) => ({
                           ...old,
-                          [key]: typeof defaults[props.kind][key] === "boolean"
-                            ? event.currentTarget.checked
-                            : typeof defaults[props.kind][key] === "number"
-                            ? Number(event.currentTarget.value)
-                            : event.currentTarget.value,
-                        }))}
+                          [key]:
+                            typeof defaults[props.kind][key] === "boolean"
+                              ? event.currentTarget.checked
+                              : typeof defaults[props.kind][key] === "number"
+                                ? Number(event.currentTarget.value)
+                                : event.currentTarget.value,
+                        }))
+                      }
                     />
                   }
                 >
@@ -277,22 +283,25 @@ export default function RuntimeSettings(props: { kind: string }) {
                       setValues((old) => ({
                         ...old,
                         [key]: event.currentTarget.value,
-                      }))}
+                      }))
+                    }
                   >
                     <For
-                      each={key === "permission_mode"
-                        ? ["standard", "bounded"]
-                        : [
-                          "",
-                          "none",
-                          "minimal",
-                          "low",
-                          "medium",
-                          "high",
-                          "xhigh",
-                          "max",
-                          "ultra",
-                        ]}
+                      each={
+                        key === "permission_mode"
+                          ? ["standard", "bounded"]
+                          : [
+                              "",
+                              "none",
+                              "minimal",
+                              "low",
+                              "medium",
+                              "high",
+                              "xhigh",
+                              "max",
+                              "ultra",
+                            ]
+                      }
                     >
                       {(option) => (
                         <option value={option}>

@@ -121,13 +121,14 @@ export default function FileEditor(props: {
     });
     void (async () => {
       const ext = props.path.split(".").at(-1)?.toLowerCase();
-      const support = ext === "md"
-        ? (await import("@codemirror/lang-markdown")).markdown()
-        : ext === "json"
-        ? (await import("@codemirror/lang-json")).json()
-        : ["yaml", "yml"].includes(ext ?? "")
-        ? (await import("@codemirror/lang-yaml")).yaml()
-        : [];
+      const support =
+        ext === "md"
+          ? (await import("@codemirror/lang-markdown")).markdown()
+          : ext === "json"
+            ? (await import("@codemirror/lang-json")).json()
+            : ["yaml", "yml"].includes(ext ?? "")
+              ? (await import("@codemirror/lang-yaml")).yaml()
+              : [];
       if (!disposed) view?.dispatch({ effects: language.reconfigure(support) });
     })();
   });

@@ -51,6 +51,17 @@ Deno.test("user message display hides expanded context and preserves unique refe
   );
 });
 
+Deno.test("compaction-archived rows keep their marker through projection", () => {
+  const messages = normalizeMessages([
+    { id: 1, role: "user", content: "Old prompt", compacted: true },
+    { id: 2, role: "assistant", content: "Old answer", compacted: 1 },
+    { id: 3, role: "user", content: "Active prompt" },
+  ]);
+  equal(messages[0].compacted, true);
+  equal(messages[1].compacted, true);
+  equal(messages[2].compacted, undefined);
+});
+
 Deno.test("expanded skills display the original invocation instead of instructions", () => {
   const header =
     '[IMPORTANT: The user has invoked the "research" skill, indicating they want you to follow its instructions.\nThe full skill content is loaded below.]';
@@ -219,17 +230,15 @@ Deno.test("archive protects pinned folders, active work, input, and recently res
     pendingInput: false,
   };
   equal(shouldArchive(c, 7, now), true);
-  for (
-    const patch of [
-      { bot: true },
-      { section: "essential" },
-      { section: "pinned" },
-      { folderId: "folder" },
-      { running: true },
-      { pendingInput: true },
-      { unarchivedAt: now - 1000 },
-    ]
-  ) {
+  for (const patch of [
+    { bot: true },
+    { section: "essential" },
+    { section: "pinned" },
+    { folderId: "folder" },
+    { running: true },
+    { pendingInput: true },
+    { unarchivedAt: now - 1000 },
+  ]) {
     equal(shouldArchive({ ...c, ...patch } as Conversation, 7, now), false);
   }
   equal(shouldArchive({ ...c, activityAt: now - 7 * 86400000 }, 7, now), true);
@@ -340,18 +349,16 @@ Deno.test("archive age warnings share archive eligibility and restored inactivit
   equal(archiveAgeStatus(c, 14, now - 1), undefined);
   equal(archiveAgeStatus(c, 14, now, false), undefined);
   equal(archiveAgeStatus({ ...c, bot: true }, 14, now + 86400000), undefined);
-  for (
-    const patch of [
-      { bot: true },
-      { section: "pinned" },
-      { section: "essential" },
-      { section: "archived" },
-      { folderId: "folder" },
-      { running: true },
-      { pendingInput: true },
-      { unarchivedAt: now },
-    ]
-  ) {
+  for (const patch of [
+    { bot: true },
+    { section: "pinned" },
+    { section: "essential" },
+    { section: "archived" },
+    { folderId: "folder" },
+    { running: true },
+    { pendingInput: true },
+    { unarchivedAt: now },
+  ]) {
     equal(
       archiveAgeStatus({ ...c, ...patch } as Conversation, 14, now),
       undefined,

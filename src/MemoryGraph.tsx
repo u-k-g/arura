@@ -51,8 +51,8 @@ export default function MemoryGraph() {
     visibleGraph().nodes.filter((node) =>
       `${node.label} ${node.category ?? ""} ${node.kind}`
         .toLowerCase()
-        .includes(query().toLowerCase())
-    )
+        .includes(query().toLowerCase()),
+    ),
   );
   const positions = createMemo(
     () =>
@@ -61,7 +61,8 @@ export default function MemoryGraph() {
           .slice(0, 200)
           .map((node, index) => {
             const angle = index * 2.399963229728653;
-            const radius = 220 *
+            const radius =
+              220 *
               Math.sqrt(
                 (index + 1) / Math.max(1, Math.min(200, nodes().length)),
               );
@@ -278,12 +279,13 @@ export default function MemoryGraph() {
                 >
                   <span>{node.label}</span>
                   <small>
-                    {node.kind} · {node.timestamp
+                    {node.kind} ·{" "}
+                    {node.timestamp
                       ? new Date(
-                        node.timestamp < 1e12
-                          ? node.timestamp * 1000
-                          : node.timestamp,
-                      ).toLocaleString()
+                          node.timestamp < 1e12
+                            ? node.timestamp * 1000
+                            : node.timestamp,
+                        ).toLocaleString()
                       : "Unknown date"}
                   </small>
                 </button>
@@ -329,9 +331,9 @@ export default function MemoryGraph() {
                     cx={node.x}
                     cy={node.y}
                     r={node.kind === "skill" ? 7 : 5}
-                    class={node.kind === "skill"
-                      ? "graph-skill"
-                      : "graph-memory"}
+                    class={
+                      node.kind === "skill" ? "graph-skill" : "graph-memory"
+                    }
                   />
                   <Show when={nodes().length < 30}>
                     <text x={node.x} y={node.y + 20} text-anchor="middle">
@@ -385,10 +387,7 @@ export default function MemoryGraph() {
                 <Show
                   when={editing()}
                   fallback={
-                    <button
-                      type="button"
-                      onClick={() => setEditing(true)}
-                    >
+                    <button type="button" onClick={() => setEditing(true)}>
                       Edit
                     </button>
                   }

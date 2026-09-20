@@ -93,9 +93,9 @@ export default function ComposerInput(props: {
   const select = (position: number) => {
     let remaining = position;
     const paragraph = $getRoot().getFirstChild();
-    for (
-      const node of $isElementNode(paragraph) ? paragraph.getChildren() : []
-    ) {
+    for (const node of $isElementNode(paragraph)
+      ? paragraph.getChildren()
+      : []) {
       const length = node.getTextContentSize();
       if ($isTextNode(node) && remaining <= length) {
         node.select(remaining, remaining);
@@ -116,10 +116,9 @@ export default function ComposerInput(props: {
         // Complete reference syntax only; a partially typed slash stays editable
         // so the existing upstream autocomplete remains in charge of suggestions.
         const match =
-          /\[(?:Attached file|Conversation): [^\]\n]+\]|@(?:file|folder|url|image|session):(?:"[^"\n]+"|[^\s]+)|(?:^|(?<=\s))\/[\w-]+(?=\s)/
-            .exec(
-              node.getTextContent(),
-            );
+          /\[(?:Attached file|Conversation): [^\]\n]+\]|@(?:file|folder|url|image|session):(?:"[^"\n]+"|[^\s]+)|(?:^|(?<=\s))\/[\w-]+(?=\s)/.exec(
+            node.getTextContent(),
+          );
         if (!match) return;
         const start = match.index;
         const pieces = node.splitText(start, start + match[0].length);

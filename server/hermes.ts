@@ -162,10 +162,12 @@ export class Hermes extends EventEmitter {
   async rest(path: string, method = "GET", body?: unknown) {
     const r = await this.request(path, {
       method,
-      ...(body === undefined ? {} : {
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      }),
+      ...(body === undefined
+        ? {}
+        : {
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          }),
     });
     if (!r.ok) {
       const text = await r.text();
@@ -294,10 +296,10 @@ export class Hermes extends EventEmitter {
         this.pending.delete(frame.id);
         frame.error
           ? p.reject(
-            Object.assign(new Error(frame.error.message), {
-              code: frame.error.code,
-            }),
-          )
+              Object.assign(new Error(frame.error.message), {
+                code: frame.error.code,
+              }),
+            )
           : p.resolve(frame.result ?? {});
       }
       return;
@@ -370,7 +372,9 @@ export class Hermes extends EventEmitter {
         conversation: key,
         text: "",
         activity: [],
-        startedAt: Date.now(),
+        // A dispatch-time projection already started the clock; keeping it
+        // stops the elapsed time from visibly resetting on the first event.
+        startedAt: turn?.state === "running" ? turn.startedAt : Date.now(),
         state: "running",
         interactions: [],
       };
@@ -410,9 +414,10 @@ export class Hermes extends EventEmitter {
       }
     }
     if (type === "tool.complete") {
-      const entry = turn.activity.find(
-        (x) => x.id === String(payload.tool_call_id ?? payload.id),
-      ) ?? turn.activity.findLast((x) => x.state === "running");
+      const entry =
+        turn.activity.find(
+          (x) => x.id === String(payload.tool_call_id ?? payload.id),
+        ) ?? turn.activity.findLast((x) => x.state === "running");
       if (entry) entry.state = payload.error ? "error" : "complete";
     }
     if (
@@ -425,7 +430,8 @@ export class Hermes extends EventEmitter {
         const previous = turn.interactions[index];
         if (next.questions) {
           next.questions = next.questions.map((question) => {
-            const answer = question.answer ??
+            const answer =
+              question.answer ??
               previous.questions?.find((old) => old.id === question.id)?.answer;
             return answer === undefined ? question : { ...question, answer };
           });
@@ -436,11 +442,12 @@ export class Hermes extends EventEmitter {
     if (type === "message.complete") {
       turn.recovering = false;
       turn.text = visibleText(payload.text ?? turn.text);
-      turn.state = payload.status === "error"
-        ? "error"
-        : payload.status === "interrupted"
-        ? "interrupted"
-        : "complete";
+      turn.state =
+        payload.status === "error"
+          ? "error"
+          : payload.status === "interrupted"
+            ? "interrupted"
+            : "complete";
       turn.finishedAt = Date.now();
       turn.interactions = [];
       if (payload.error) turn.error = visibleText(payload.error);
@@ -497,7 +504,7 @@ export class Hermes extends EventEmitter {
           this.emit("resync", this.reverse.get(sid));
         } else {
           events = (result.events ?? []).map((event) =>
-            event.method ? event : { method: "event", params: event }
+            event.method ? event : { method: "event", params: event },
           );
         }
       } catch {
@@ -593,23 +600,23 @@ export class Hermes extends EventEmitter {
         // A fresh snapshot has recovered the visible progress. Polling may
         // continue because snapshots have no cursor for safely merging deltas.
         recovering: false,
-        startedAt: Number(
-          snapshot.started_at ?? result.turn_started_at ?? Date.now() / 1000,
-        ) * 1000,
-        state: snapshot.status === "error"
-          ? "error"
-          : result.running
-          ? "running"
-          : "interrupted",
+        startedAt:
+          Number(
+            snapshot.started_at ?? result.turn_started_at ?? Date.now() / 1000,
+          ) * 1000,
+        state:
+          snapshot.status === "error"
+            ? "error"
+            : result.running
+              ? "running"
+              : "interrupted",
         ...(snapshot.error ? { error: visibleText(snapshot.error) } : {}),
       };
       this.turns.set(key, turn);
-      for (
-        const [kind, payload] of [
-          ["approval", result.pending_approval],
-          ["clarify", result.pending_clarify],
-        ] as const
-      ) {
+      for (const [kind, payload] of [
+        ["approval", result.pending_approval],
+        ["clarify", result.pending_clarify],
+      ] as const) {
         if (payload) {
           this.receive({
             method: "event",
@@ -744,8 +751,8 @@ export class Hermes extends EventEmitter {
       profile,
       sourceId,
       bot: true,
-      title: bot?.ui_meta?.["hermes-bots"]?.title || bot?.display_name ||
-        profile,
+      title:
+        bot?.ui_meta?.["hermes-bots"]?.title || bot?.display_name || profile,
       activityAt: epochMillis(
         row.last_active ?? row.started_at,
         Date.now() / 1000,
@@ -777,7 +784,7 @@ export class Hermes extends EventEmitter {
     const rows = (live.sessions ?? []) as { id: string; status: string }[];
     if (
       sessions.some(([, id]) =>
-        rows.some((row) => row.id === id && row.status !== "idle")
+        rows.some((row) => row.id === id && row.status !== "idle"),
       )
     ) {
       throw new Error("Stop active work before renaming this profile");
@@ -813,7 +820,7 @@ export class Hermes extends EventEmitter {
       }
     >();
     for (const profile of profiles) {
-      for (let offset = 0;; offset += 100) {
+      for (let offset = 0; ; offset += 100) {
         const query = new URLSearchParams({
           profile,
           limit: "100",
@@ -868,7 +875,8 @@ export class Hermes extends EventEmitter {
         profile: profile.name,
         sourceId,
         bot: true,
-        title: profile.ui_meta?.["hermes-bots"]?.title ||
+        title:
+          profile.ui_meta?.["hermes-bots"]?.title ||
           profile.display_name ||
           profile.name,
         activityAt: epochMillis(
@@ -899,11 +907,9 @@ export class Hermes extends EventEmitter {
       "/api/profiles/sessions?limit=1&archived=include",
     );
     const results: { key: string; title: string; profile: string }[] = [];
-    for (
-      const profile of Object.keys(
-        discovery.profile_totals ?? { default: 0 },
-      )
-    ) {
+    for (const profile of Object.keys(
+      discovery.profile_totals ?? { default: 0 },
+    )) {
       const params = new URLSearchParams({ q: query, profile, limit: "20" });
       const data = await this.rest(`/api/sessions/search?${params}`);
       for (const row of data.results ?? []) {
@@ -928,9 +934,40 @@ export class Hermes extends EventEmitter {
     const submit = (session_id: string) =>
       this.call("prompt.submit", { ...params, session_id }, 1800000);
     const sid = await this.attach(key);
+    // Project the turn from dispatch: the agent build can take seconds before
+    // the first message.start, and subscribers should show work immediately.
+    let optimisticStartedAt = 0;
+    if (this.turns.get(key)?.state !== "running") {
+      optimisticStartedAt = Date.now();
+      const turn: Turn = {
+        conversation: key,
+        text: "",
+        activity: [],
+        startedAt: optimisticStartedAt,
+        state: "running",
+        interactions: [],
+      };
+      this.turns.set(key, turn);
+      this.emit("turn", { ...turn });
+    }
     try {
       return await submit(sid);
     } catch (error) {
+      // The submit failed before the agent produced anything; settle the
+      // optimistic projection so clients never show a phantom running turn.
+      const projected = this.turns.get(key);
+      if (
+        projected?.state === "running" &&
+        projected.startedAt === optimisticStartedAt &&
+        !projected.text &&
+        !projected.activity.length
+      ) {
+        this.turns.delete(key);
+        this.emit("idle", {
+          conversation: key,
+          startedAt: optimisticStartedAt,
+        });
+      }
       if (
         !params.confirm_truncate ||
         params.truncate_before_row_id === undefined ||
@@ -943,17 +980,44 @@ export class Hermes extends EventEmitter {
       }
       // A rejected edit has not submitted a turn. Verify the durable target
       // before replacing a stale warm runtime; never guess another row/ordinal.
-      const history = await this.call("session.history", { session_id: sid });
-      const rows = Array.isArray(history.messages) ? history.messages : [];
-      if (
-        !rows.some(
-          (row: Record<string, unknown>) =>
-            row.role === "user" &&
-            String(row.row_id ?? row.id) ===
-              String(params.truncate_before_row_id),
-        )
-      ) {
+      // The REST store answers independently of the warm runtime, whose
+      // in-memory history can be stale, and its default read excludes
+      // compaction-archived rows — exactly the set a truncation can target.
+      const [profile, sourceId] = JSON.parse(key) as [string, string];
+      let targetable = false;
+      try {
+        for (let offset = 0; ; offset += 500) {
+          const query = new URLSearchParams({
+            profile,
+            limit: "500",
+            offset: String(offset),
+            order: "latest",
+          });
+          const data = await this.rest(
+            `/api/sessions/${encodeURIComponent(sourceId)}/messages?${query}`,
+          );
+          const rows = Array.isArray(data.messages) ? data.messages : [];
+          if (
+            rows.some(
+              (row: Record<string, unknown>) =>
+                row.role === "user" &&
+                !row.compacted &&
+                String(row.id ?? row.row_id) ===
+                  String(params.truncate_before_row_id),
+            )
+          ) {
+            targetable = true;
+            break;
+          }
+          if (rows.length < 500) break;
+        }
+      } catch {
         throw error;
+      }
+      if (!targetable) {
+        throw new Error(
+          "This message can no longer be edited — it is no longer in the active session history (it may have been compacted away).",
+        );
       }
       const active = await this.call("session.active_list", {});
       const sessions = Array.isArray(active.sessions) ? active.sessions : [];
@@ -1040,7 +1104,8 @@ export class Hermes extends EventEmitter {
           }),
         )
         .digest("hex"),
-      hasMore: data.pagination?.has_more ??
+      hasMore:
+        data.pagination?.has_more ??
         (Number(data.pagination?.limit) > 0 &&
           (data.messages?.length ?? 0) >= Number(data.pagination?.limit)),
     };

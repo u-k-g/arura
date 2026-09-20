@@ -93,12 +93,10 @@ export const renamed = mutation({
         .withIndex("key", (q) => q.eq("key", target))
         .unique();
       if (targetAlias) await ctx.db.delete(targetAlias._id);
-      for (
-        const alias of await ctx.db
-          .query("conversationAliases")
-          .withIndex("target", (q) => q.eq("target", row.key))
-          .collect()
-      ) {
+      for (const alias of await ctx.db
+        .query("conversationAliases")
+        .withIndex("target", (q) => q.eq("target", row.key))
+        .collect()) {
         await ctx.db.patch(alias._id, { target });
       }
       const oldAlias = await ctx.db
@@ -107,31 +105,23 @@ export const renamed = mutation({
         .unique();
       if (oldAlias) await ctx.db.patch(oldAlias._id, { target });
       else await ctx.db.insert("conversationAliases", { key: row.key, target });
-      for (
-        const read of await ctx.db
-          .query("conversationReads")
-          .withIndex("key", (q) => q.eq("key", row.key))
-          .collect()
-      ) {
+      for (const read of await ctx.db
+        .query("conversationReads")
+        .withIndex("key", (q) => q.eq("key", row.key))
+        .collect()) {
         const existingRead = await ctx.db
           .query("conversationReads")
-          .withIndex(
-            "device",
-            (q) => q.eq("device", read.device).eq("key", target),
+          .withIndex("device", (q) =>
+            q.eq("device", read.device).eq("key", target),
           )
           .unique();
         if (existingRead) await ctx.db.delete(read._id);
         else await ctx.db.patch(read._id, { key: target });
       }
-      for (
-        const draftRow of await ctx.db
-          .query("drafts")
-          .withIndex(
-            "profile",
-            (q) => q.eq("profile", from).eq("key", row.key),
-          )
-          .collect()
-      ) {
+      for (const draftRow of await ctx.db
+        .query("drafts")
+        .withIndex("profile", (q) => q.eq("profile", from).eq("key", row.key))
+        .collect()) {
         const existingDraft = await ctx.db
           .query("drafts")
           .withIndex("profile", (q) => q.eq("profile", to).eq("key", target))
@@ -150,44 +140,34 @@ export const renamed = mutation({
       }
       // Public projections are rebuilt from Hermes; web-owned organization and
       // queued actions retain their identity.
-      for (
-        const page of await ctx.db
-          .query("pages")
-          .withIndex("page", (q) => q.eq("conversation", row.key))
-          .collect()
-      ) {
+      for (const page of await ctx.db
+        .query("pages")
+        .withIndex("page", (q) => q.eq("conversation", row.key))
+        .collect()) {
         await ctx.db.delete(page._id);
       }
-      for (
-        const turn of await ctx.db
-          .query("turns")
-          .withIndex("conversation", (q) => q.eq("conversation", row.key))
-          .collect()
-      ) {
+      for (const turn of await ctx.db
+        .query("turns")
+        .withIndex("conversation", (q) => q.eq("conversation", row.key))
+        .collect()) {
         await ctx.db.delete(turn._id);
       }
-      for (
-        const file of await ctx.db
-          .query("artifacts")
-          .withIndex("conversation", (q) => q.eq("conversation", row.key))
-          .collect()
-      ) {
+      for (const file of await ctx.db
+        .query("artifacts")
+        .withIndex("conversation", (q) => q.eq("conversation", row.key))
+        .collect()) {
         await ctx.db.delete(file._id);
       }
-      for (
-        const scan of await ctx.db
-          .query("artifactScans")
-          .withIndex("conversation", (q) => q.eq("conversation", row.key))
-          .collect()
-      ) {
+      for (const scan of await ctx.db
+        .query("artifactScans")
+        .withIndex("conversation", (q) => q.eq("conversation", row.key))
+        .collect()) {
         await ctx.db.delete(scan._id);
       }
-      for (
-        const command of await ctx.db
-          .query("commands")
-          .withIndex("conversation", (q) => q.eq("conversation", row.key))
-          .collect()
-      ) {
+      for (const command of await ctx.db
+        .query("commands")
+        .withIndex("conversation", (q) => q.eq("conversation", row.key))
+        .collect()) {
         await ctx.db.patch(command._id, { conversation: target });
       }
     }

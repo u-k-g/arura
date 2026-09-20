@@ -47,7 +47,7 @@ const db = Promise.resolve()
       blocking(_currentVersion, _blockedVersion, event) {
         (event.target as IDBDatabase).close();
       },
-    })
+    }),
   )
   .catch((error) => {
     unavailable(error);
@@ -66,8 +66,8 @@ export async function draftAttachments(
   }
   return (
     attachmentDrafts.get(key) ??
-      (await loadCache<DraftAttachment[]>(`attachments:${key}`)) ??
-      []
+    (await loadCache<DraftAttachment[]>(`attachments:${key}`)) ??
+    []
   );
 }
 let generation = 0;
@@ -99,12 +99,10 @@ async function evictCachedContent(protectedKey: string, current: number) {
         !String(key).startsWith("attachments:"),
     )
     .sort((a, b) => a.touchedAt - b.touchedAt);
-  for (
-    const { key } of eligible.slice(
-      0,
-      Math.max(1, Math.ceil(eligible.length / 4)),
-    )
-  ) {
+  for (const { key } of eligible.slice(
+    0,
+    Math.max(1, Math.ceil(eligible.length / 4)),
+  )) {
     await tx.objectStore("cache").delete(key);
     await metadata.delete(key);
   }

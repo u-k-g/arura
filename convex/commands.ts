@@ -70,17 +70,17 @@ export const queue = query({
     return (
       args.blocked?.length
         ? queued.filter((q) =>
-          q.or(
-            q.neq(q.field("kind"), "send"),
-            q.not(
-              q.or(
-                ...(args.blocked ?? []).map((key) =>
-                  q.eq(q.field("conversation"), key)
+            q.or(
+              q.neq(q.field("kind"), "send"),
+              q.not(
+                q.or(
+                  ...(args.blocked ?? []).map((key) =>
+                    q.eq(q.field("conversation"), key),
+                  ),
                 ),
               ),
             ),
           )
-        )
         : queued
     ).take(100);
   },
@@ -128,12 +128,10 @@ export const recover = mutation({
   args: {},
   handler: async (ctx) => {
     await adapter(ctx);
-    for (
-      const c of await ctx.db
-        .query("commands")
-        .withIndex("status", (q) => q.eq("status", "dispatching"))
-        .collect()
-    ) {
+    for (const c of await ctx.db
+      .query("commands")
+      .withIndex("status", (q) => q.eq("status", "dispatching"))
+      .collect()) {
       await ctx.db.patch(c._id, {
         status: "unknown",
         error:
@@ -164,9 +162,9 @@ export const edit = mutation({
     }
     const first = args.next
       ? await ctx.db
-        .query("commands")
-        .withIndex("status", (q) => q.eq("status", "queued"))
-        .first()
+          .query("commands")
+          .withIndex("status", (q) => q.eq("status", "queued"))
+          .first()
       : null;
     await ctx.db.patch(c._id, {
       ...(args.sendNow ? { kind: "sendNow" } : {}),
@@ -187,9 +185,8 @@ export const clearQueue = mutation({
     const key = await resolveKey(ctx, args.conversation);
     const rows = await ctx.db
       .query("commands")
-      .withIndex(
-        "pending",
-        (q) => q.eq("conversation", key).eq("status", "queued"),
+      .withIndex("pending", (q) =>
+        q.eq("conversation", key).eq("status", "queued"),
       )
       .collect();
     for (const row of rows) {

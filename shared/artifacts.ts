@@ -44,11 +44,9 @@ export function fileReferences(
       message.display_content ?? message.content ?? message.text,
     );
     if (message.role === "assistant") {
-      for (
-        const match of text.matchAll(
-          /!?\[[^\]\n]*\]\((<[^>]+>|[^\s)]+)(?:\s+"[^"]*")?\)/g,
-        )
-      ) {
+      for (const match of text.matchAll(
+        /!?\[[^\]\n]*\]\((<[^>]+>|[^\s)]+)(?:\s+"[^"]*")?\)/g,
+      )) {
         add(match[1]);
       }
       for (const match of text.matchAll(/`((?:\/|~\/|\.\.?\/)[^`\n]+)`/g)) {
@@ -72,18 +70,16 @@ export function fileReferences(
         }
       }
       const producer =
-        /(?:^|_)(?:write|save|create|download|export|render|generate)(?:_|$)/i
-          .test(
-            String(message.tool_name ?? message.name ?? ""),
-          );
+        /(?:^|_)(?:write|save|create|download|export|render|generate)(?:_|$)/i.test(
+          String(message.tool_name ?? message.name ?? ""),
+        );
       const visit = (value: unknown, key = "", depth = 0) => {
         if (depth > 12) return;
         if (
           typeof value === "string" &&
-          (/(?:^|\.)(?:output|artifact|attachment|download|image_path|audio_path)(?:s|_path|_file)?(?:\.|$)/i
-            .test(
-              key,
-            ) ||
+          (/(?:^|\.)(?:output|artifact|attachment|download|image_path|audio_path)(?:s|_path|_file)?(?:\.|$)/i.test(
+            key,
+          ) ||
             (producer && /(?:^|\.)(?:paths?|files?|filename)$/i.test(key)))
         ) {
           add(value);

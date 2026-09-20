@@ -58,7 +58,8 @@ export default function SettingsFrame(props: {
                 <button
                   type="button"
                   classList={{
-                    selected: selected() === route ||
+                    selected:
+                      selected() === route ||
                       (route === "capabilities" &&
                         [
                           "resources:skills",
@@ -87,7 +88,8 @@ export default function SettingsFrame(props: {
         title="Settings"
         class="settings-dialog"
         close={() =>
-          props.navigate(preferences.getItem("arura.lastConversation") ?? "")}
+          props.navigate(preferences.getItem("arura.lastConversation") ?? "")
+        }
       >
         <div class="settings-layout">
           <div class="settings-desktop-rail">{navigation()}</div>
