@@ -1,20 +1,15 @@
 import { render } from "solid-js/web";
-import { registerSW } from "virtual:pwa-register";
 import App from "./App.tsx";
 import "./style.css";
 import "./chrome.css";
 import "./desktop-parity.css";
 
-if (import.meta.env.PROD) {
-  registerSW({
-    immediate: true,
-    onRegistered(registration) {
-      if (!registration) return;
-      const refresh = () => void registration.update();
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") refresh();
-      });
-    },
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  void navigator.serviceWorker.register("/sw.js");
+  globalThis.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void navigator.serviceWorker.getRegistration().then((r) => r?.update());
+    }
   });
 }
 
