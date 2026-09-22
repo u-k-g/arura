@@ -11,6 +11,7 @@ import {
   type Turn,
   withoutReasoning,
 } from "../shared/model.ts";
+import { clearsStaleEffort } from "../shared/model-reasoning.ts";
 import {
   operationRequest,
   rpcAllowlist,
@@ -18,7 +19,6 @@ import {
 } from "../shared/resources.ts";
 import { exportConversation } from "./export.ts";
 import { Hermes, HermesHttpError } from "./hermes.ts";
-import { clearsStaleEffort } from "../shared/model-reasoning.ts";
 import { equal, hash, identity, randomSecret } from "./identity.ts";
 
 const keys = await identity();
@@ -504,44 +504,51 @@ async function processCommands() {
           }
           if (shouldSubmit) {
             if (typeof payload.model?.value === "string") {
-              const configured = await hermes.call("config.set", {
-                session_id,
-                key: "model",
-                value: payload.model.value,
-                scope: "session",
-                confirm_expensive_model: payload.model.confirmed === true,
-              });
-              if (configured.confirm_required) {
-                throw new Error(
-                  String(
-                    configured.confirm_message ||
-                      "Select this model again to confirm before sending.",
-                  ),
+              const requested = payload.model.value.split(/\s+/)[0] ?? "";
+              let current = "";
+              try {
+                const breakdown = await hermes.call(
+                  "session.context_breakdown",
+                  { session_id },
                 );
+                current = String(breakdown.model ?? "").split(/\s+/)[0] ?? "";
+              } catch {
+                /* Unknown current model: still apply the selection. */
+              }
+              // config.set model appends a model-switch user row. Hermes merges
+              // that row into the next prompt on resume, then cannot address
+              // the prompt id for edit. Reapply only when the model differs.
+              if (current !== requested) {
+                const configured = await hermes.call("config.set", {
+                  session_id,
+                  key: "model",
+                  value: payload.model.value,
+                  scope: "session",
+                  confirm_expensive_model: payload.model.confirmed === true,
+                });
+                if (configured.confirm_required) {
+                  throw new Error(
+                    String(
+                      configured.confirm_message ||
+                        "Select this model again to confirm before sending.",
+                    ),
+                  );
+                }
               }
             }
             activeCommands.add(key);
-            result = await hermes.submitPrompt(
-              key,
-              {
-                session_id,
-                text: prompt,
-                ...(payload.edit
-                  ? {
-                      truncate_before_row_id: payload.edit,
-                      confirm_truncate: true,
-                      confirm_empty_truncate: true,
-                    }
-                  : {}),
-                profile: JSON.parse(key)[0],
-              },
-              (payload.attachments ?? [])
-                .filter(
-                  (attachment: { image?: boolean; path?: string }) =>
-                    attachment.image && typeof attachment.path === "string",
-                )
-                .map((attachment: { path: string }) => attachment.path),
-            );
+            result = await hermes.submitPrompt(key, {
+              session_id,
+              text: prompt,
+              ...(payload.edit
+                ? {
+                    truncate_before_row_id: payload.edit,
+                    confirm_truncate: true,
+                    confirm_empty_truncate: true,
+                  }
+                : {}),
+              profile: JSON.parse(key)[0],
+            });
           }
         } else if (kind === "rename" || kind === "delete") {
           const [profile, id] = JSON.parse(key);

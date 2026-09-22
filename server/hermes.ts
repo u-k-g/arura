@@ -926,11 +926,7 @@ export class Hermes extends EventEmitter {
     }
     return results;
   }
-  async submitPrompt(
-    key: string,
-    params: Record<string, unknown>,
-    imagePaths: string[] = [],
-  ) {
+  async submitPrompt(key: string, params: Record<string, unknown>) {
     const submit = (session_id: string) =>
       this.call("prompt.submit", { ...params, session_id }, 1800000);
     const sid = await this.attach(key);
@@ -968,79 +964,7 @@ export class Hermes extends EventEmitter {
           startedAt: optimisticStartedAt,
         });
       }
-      if (
-        !params.confirm_truncate ||
-        params.truncate_before_row_id === undefined ||
-        !(error instanceof Error) ||
-        !/target user message is no longer in session history/i.test(
-          error.message,
-        )
-      ) {
-        throw error;
-      }
-      // A rejected edit has not submitted a turn. Verify the durable target
-      // before replacing a stale warm runtime; never guess another row/ordinal.
-      // The REST store answers independently of the warm runtime, whose
-      // in-memory history can be stale, and its default read excludes
-      // compaction-archived rows — exactly the set a truncation can target.
-      const [profile, sourceId] = JSON.parse(key) as [string, string];
-      let targetable = false;
-      try {
-        for (let offset = 0; ; offset += 500) {
-          const query = new URLSearchParams({
-            profile,
-            limit: "500",
-            offset: String(offset),
-            order: "latest",
-          });
-          const data = await this.rest(
-            `/api/sessions/${encodeURIComponent(sourceId)}/messages?${query}`,
-          );
-          const rows = Array.isArray(data.messages) ? data.messages : [];
-          if (
-            rows.some(
-              (row: Record<string, unknown>) =>
-                row.role === "user" &&
-                !row.compacted &&
-                String(row.id ?? row.row_id) ===
-                  String(params.truncate_before_row_id),
-            )
-          ) {
-            targetable = true;
-            break;
-          }
-          if (rows.length < 500) break;
-        }
-      } catch {
-        throw error;
-      }
-      if (!targetable) {
-        throw new Error(
-          "This message can no longer be edited — it is no longer in the active session history (it may have been compacted away).",
-        );
-      }
-      const active = await this.call("session.active_list", {});
-      const sessions = Array.isArray(active.sessions) ? active.sessions : [];
-      if (
-        !sessions.some(
-          (session: Record<string, unknown>) =>
-            session.id === sid && session.status === "idle",
-        )
-      ) {
-        throw error;
-      }
-      const closed = await this.call("session.close", { session_id: sid });
-      if (!closed.closed) throw error;
-      this.stopRecovery(sid);
-      this.runtime.delete(key);
-      this.reverse.delete(sid);
-      this.seq.delete(sid);
-      const restored = await this.attach(key);
-      for (const path of imagePaths) {
-        await this.call("image.attach", { session_id: restored, path });
-      }
-      this.emit("resync", key);
-      return await submit(restored);
+      throw error;
     }
   }
   async history(key: string, offset = 0) {

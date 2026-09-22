@@ -4,12 +4,9 @@ import type { RpcResult } from "../shared/contracts.ts";
 
 class EditRuntime extends Hermes {
   calls: { method: string; params: Record<string, unknown> }[] = [];
-  restPaths: string[] = [];
   attempts = 0;
   closed = false;
-  targetPresent = true;
   rejectFirst = true;
-  status = "idle";
   failure = "target user message is no longer in session history";
   override call(
     method: string,
@@ -17,15 +14,7 @@ class EditRuntime extends Hermes {
   ): Promise<RpcResult> {
     this.calls.push({ method, params });
     if (method === "session.resume") {
-      return Promise.resolve({
-        session_id: this.closed ? "fresh" : "stale",
-        running: false,
-      });
-    }
-    if (method === "session.active_list") {
-      return Promise.resolve({
-        sessions: [{ id: "stale", status: this.status }],
-      });
+      return Promise.resolve({ session_id: "live", running: false });
     }
     if (method === "session.close") {
       this.closed = true;
@@ -40,14 +29,6 @@ class EditRuntime extends Hermes {
     }
     return Promise.resolve({ status: "complete" });
   }
-  // The durable store answers independently of the warm runtime; its default
-  // read excludes compaction-archived rows.
-  override rest(path: string): Promise<Record<string, unknown>> {
-    this.restPaths.push(path);
-    return Promise.resolve({
-      messages: this.targetPresent ? [{ id: 3280, role: "user" }] : [],
-    });
-  }
 }
 const key = '["default","stored"]';
 const params = {
@@ -56,55 +37,35 @@ const params = {
   confirm_truncate: true,
   confirm_empty_truncate: true,
 };
-Deno.test("editing recovers a stale idle runtime and retries the same durable target with images", async () => {
+Deno.test("an edit is one submit against the open runtime", async () => {
   const hermes = new EditRuntime();
-  await hermes.submitPrompt(key, params, ["/image.png"]);
+  hermes.rejectFirst = false;
+  await hermes.submitPrompt(key, params);
   deepStrictEqual(
-    hermes.calls.map((c) => c.method),
-    [
-      "session.resume",
-      "prompt.submit",
-      "session.active_list",
-      "session.close",
-      "session.resume",
-      "image.attach",
-      "prompt.submit",
-    ],
+    hermes.calls.map((call) => call.method),
+    ["session.resume", "prompt.submit"],
   );
-  equal(hermes.restPaths.length, 1);
-  equal(hermes.restPaths[0].startsWith("/api/sessions/stored/messages?"), true);
   deepStrictEqual(hermes.calls.at(-1)?.params, {
     ...params,
-    session_id: "fresh",
+    session_id: "live",
   });
-  equal(hermes.attempts, 2);
+  equal(hermes.closed, false);
   hermes.close();
 });
-Deno.test("editing a target the durable store no longer carries fails plainly without closing the runtime", async () => {
+Deno.test("a refused edit is returned once and leaves the runtime open", async () => {
   const hermes = new EditRuntime();
-  hermes.targetPresent = false;
   await rejects(
     hermes.submitPrompt(key, params),
-    /no longer be edited.*compacted/,
+    /no longer in session history/,
   );
   equal(hermes.closed, false);
   equal(hermes.attempts, 1);
+  deepStrictEqual(
+    hermes.calls.map((call) => call.method),
+    ["session.resume", "prompt.submit"],
+  );
   hermes.close();
 });
-for (const scenario of ["busy", "unknown"] as const) {
-  Deno.test(`editing does not retry or close a runtime when the target is ${scenario}`, async () => {
-    const hermes = new EditRuntime();
-    if (scenario === "busy") hermes.status = "working";
-    if (scenario === "unknown") {
-      hermes.failure = "Connection lost; outcome unknown";
-    }
-    await rejects(hermes.submitPrompt(key, params));
-    equal(hermes.closed, false);
-    equal(hermes.attempts, 1);
-    if (scenario === "unknown") equal(hermes.restPaths.length, 0);
-    hermes.close();
-  });
-}
 Deno.test("a failed submit settles the dispatch-time projection instead of leaving a phantom run", async () => {
   const hermes = new EditRuntime();
   hermes.failure = "Connection lost; outcome unknown";
