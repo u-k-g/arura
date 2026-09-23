@@ -568,7 +568,7 @@ dialog.conversation-menu {
     min-height: 44px;
   }
   .palette-results [role="option"] {
-    min-height: 48px;
+    min-height: 44px;
   }
 }
 
