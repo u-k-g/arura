@@ -292,7 +292,11 @@ export default function Chat(props: {
     const pending = pendingPrompt();
     if (!pending || pending.key !== props.conversation) return;
     const command = activity().commands.find((item) => item.id === pending.id);
-    if (command && ["error", "unknown", "cancelled"].includes(command.status)) {
+    if (
+      command && ["complete", "error", "unknown", "cancelled"].includes(
+        command.status,
+      )
+    ) {
       return;
     }
     const sentText = userMessageText(pending.text).trim();
@@ -304,6 +308,13 @@ export default function Chat(props: {
       )
     ) return;
     return pending;
+  });
+  createEffect(() => {
+    if (pendingPrompt() && !visiblePendingPrompt()) {
+      // Once history owns the prompt, never revive the preview if an edit
+      // later replaces that history entry.
+      setPendingPrompt(undefined);
+    }
   });
   const turn = () => activity().turn as Turn | null;
   const turnIsInHistory = () => {
@@ -968,6 +979,7 @@ export default function Chat(props: {
               icon="edit-pencil"
               label="Edit and resubmit"
               onClick={() => {
+                setPendingPrompt(undefined);
                 setEdit(message.id);
                 changeText(
                   [

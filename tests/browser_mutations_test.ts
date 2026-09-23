@@ -5,6 +5,49 @@ import { chromium, expect } from "@playwright/test";
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi } from "convex/server";
 Deno.test({
+  name: "editing a sent follow-up does not revive its pending preview",
+  ignore: !Deno.env.get("ARURA_TEST_URL"),
+  async fn() {
+    const browser = await chromium.launch({
+      headless: true,
+      executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
+    });
+    const page = await browser.newPage();
+    try {
+      await page.goto(requireValue(Deno.env.get("ARURA_TEST_URL"), "test URL"));
+      await signIn(page, "Edit preview test");
+      await page
+        .getByRole("button", { name: "Fixture conversation", exact: true })
+        .click();
+      const input = page.getByLabel("Message Hermes", { exact: true });
+      await input.fill("First dimensions");
+      await page.getByRole("button", { name: "Send message" }).click();
+      await expect(page.getByText("Received: First dimensions", {
+        exact: true,
+      })).toBeVisible();
+      await page.locator("article.user")
+        .filter({ hasText: "First dimensions" })
+        .getByRole("button", { name: "Edit and resubmit" })
+        .click();
+      await input.fill("Corrected dimensions");
+      void onceActionDialog(page, async (dialog) => {
+        await dialog.accept();
+      });
+      await page.getByRole("button", { name: "Send message" }).click();
+      await expect(page.getByText("Received: Corrected dimensions", {
+        exact: true,
+      })).toBeVisible();
+      await expect(page.locator(".pending-prompt")).toHaveCount(0);
+      await expect(
+        page.locator("article.user")
+          .filter({ hasText: "First dimensions" }),
+      ).toHaveCount(0);
+    } finally {
+      await browser.close();
+    }
+  },
+});
+Deno.test({
   name:
     "editing an earlier message replaces its continuation; branching preserves the original",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
