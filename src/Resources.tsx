@@ -62,6 +62,7 @@ import {
   onCleanup,
   Show,
 } from "solid-js";
+import { Portal } from "solid-js/web";
 import {
   inform,
   resource,
@@ -527,7 +528,11 @@ export default function Resources(props: {
   name: string;
   navigate: (view: string) => void;
   newChat: (profile?: string) => Promise<void>;
+  sidebarMount?: () => HTMLElement | undefined;
+  closeSidebar?: () => void;
 }) {
+  const sidebarSurface = () =>
+    !!props.sidebarMount && ["profiles", "jobs"].includes(props.name);
   const scoped = () =>
     ["skills", "toolsets", "mcp", "models", "auxiliary"].includes(props.name);
   const [resourceProfile, setResourceProfile] = createSignal("default");
@@ -851,6 +856,16 @@ export default function Resources(props: {
     ];
   const itemList = () => (
     <nav class="resource-rail" aria-label={`${surface().title} list`}>
+      <Show when={props.name === "profiles" && sidebarSurface()}>
+        <input
+          type="search"
+          aria-label="Filter profiles"
+          placeholder="Filter…"
+          value={filter()}
+          onInput={(event) =>
+            setFilter(event.currentTarget.value)}
+        />
+      </Show>
       <Show when={props.name === "jobs"}>
         <input
           type="search"
@@ -865,8 +880,7 @@ export default function Resources(props: {
         <select
           aria-label="Sort skills"
           value={skillSort()}
-          onChange={(e) =>
-            setSkillSort(e.currentTarget.value)}
+          onChange={(e) => setSkillSort(e.currentTarget.value)}
         >
           <option value="usage">↓ Most used</option>
           <option value="name">Name</option>
@@ -884,6 +898,7 @@ export default function Resources(props: {
               onClick={() => {
                 setSelectedId(rowId(item));
                 setPicker(false);
+                if (sidebarSurface()) props.closeSidebar?.();
               }}
             >
               <Show when={!rowToggle() && item.enabled !== undefined}>
@@ -925,7 +940,9 @@ export default function Resources(props: {
                 onChange={() =>
                   void run(async () => {
                     const id = rowId(item);
-                    setChangingRows((rows) => new Set([...rows, id]));
+                    setChangingRows((rows) =>
+                      new Set([...rows, id])
+                    );
                     try {
                       await action(rowToggle(), item);
                     } finally {
@@ -945,7 +962,10 @@ export default function Resources(props: {
         <button
           type="button"
           aria-label="Add schedule"
-          onClick={() => void run(() => action("createJob"))}
+          onClick={() => {
+            props.closeSidebar?.();
+            void run(() => action("createJob"));
+          }}
         >
           <Icon name="plus" />
         </button>
@@ -954,7 +974,10 @@ export default function Resources(props: {
           {(item) => (
             <button
               type="button"
-              onClick={() => setBlueprint(item)}
+              onClick={() => {
+                setBlueprint(item);
+                props.closeSidebar?.();
+              }}
             >
               <Icon name="rocket" />
               {item.title}
@@ -1296,9 +1319,13 @@ export default function Resources(props: {
       class="resource-page"
       classList={{
         "resource-master-detail": masterDetail(),
+        "resource-sidebar-detail": sidebarSurface(),
         "jobs-page": props.name === "jobs",
       }}
     >
+      <Show when={sidebarSurface() && props.sidebarMount?.()}>
+        {(mount) => <Portal mount={mount()}>{itemList()}</Portal>}
+      </Show>
       <Show when={props.name === "webhooks" && data()?.enabled === false}>
         <button
           type="button"
@@ -1539,16 +1566,18 @@ export default function Resources(props: {
           when={surface().list || ["env", "graph"].includes(props.name)}
           fallback={<Value value={data()} />}
         >
-          <input
-            class="filter"
-            type="search"
-            aria-label="Filter items"
-            placeholder="Filter…"
-            value={filter()}
-            onInput={(e) => setFilter(e.currentTarget.value)}
-          />
+          <Show when={!sidebarSurface()}>
+            <input
+              class="filter"
+              type="search"
+              aria-label="Filter items"
+              placeholder="Filter…"
+              value={filter()}
+              onInput={(e) => setFilter(e.currentTarget.value)}
+            />
+          </Show>
           <div class="resource-browser">
-            <Show when={masterDetail()}>
+            <Show when={masterDetail() && !sidebarSurface()}>
               <div class="resource-desktop-rail">{itemList()}</div>
               <button
                 type="button"
@@ -1760,7 +1789,7 @@ export default function Resources(props: {
               </Show>
             </div>
           </div>
-          <Show when={picker()}>
+          <Show when={picker() && !sidebarSurface()}>
             <Dialog
               title={surface().title}
               class="navigation-sheet"

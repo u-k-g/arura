@@ -23,6 +23,14 @@ Deno.test({
       await page.mouse.move(900, 700);
       await expect(row.locator(".session-dot")).toBeVisible();
       await expect(row.locator(".session-age")).toBeVisible();
+      await expect(row.locator(".busy-dot")).toHaveCount(0);
+      const restingLayout = await row.evaluate((element) => ({
+        ageRight: element.querySelector(".session-age")?.getBoundingClientRect()
+          .right,
+        rowRight: element.getBoundingClientRect().right,
+      }));
+      expect(restingLayout.rowRight - (restingLayout.ageRight ?? 0))
+        .toBeLessThan(12);
       await row.hover();
       const hoverLayout = await row.evaluate((element) => {
         const dot = element.querySelector(".session-dot")!;
@@ -59,6 +67,29 @@ Deno.test({
         getComputedStyle(dot).backgroundColor
       );
       expect(unreadColor).not.toBe(readColor);
+      const statusColors = await row.evaluate((element) => {
+        const dot = element.querySelector(".session-dot");
+        if (!dot) throw new Error("Missing status dot");
+        const sample = globalThis.document.createElement("span");
+        globalThis.document.body.append(sample);
+        const color = (variable: string) => {
+          sample.style.background = `var(${variable})`;
+          return getComputedStyle(sample).backgroundColor;
+        };
+        const muted = getComputedStyle(dot).backgroundColor;
+        element.classList.add("unread");
+        const unread = getComputedStyle(dot).backgroundColor;
+        element.classList.add("running");
+        const running = getComputedStyle(dot).backgroundColor;
+        element.classList.remove("unread", "running");
+        const warning = color("--warning");
+        const success = color("--success");
+        sample.remove();
+        return { muted, unread, running, warning, success };
+      });
+      expect(statusColors.unread).toBe(statusColors.warning);
+      expect(statusColors.running).toBe(statusColors.success);
+      expect(statusColors.muted).toBe(readColor);
       await page
         .getByRole("button", {
           name: "Actions for Fixture conversation",

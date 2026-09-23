@@ -38,6 +38,7 @@
   --accent: oklch(0.65 0.2 59deg);
   --danger: oklch(63.7% 0.237 25.331);
   --warning: #956400;
+  --success: #238a58;
   --accent-soft: color-mix(in oklch, var(--accent) 8%, transparent);
   --hover: color-mix(in oklch, var(--ink) 3%, transparent);
   --active: color-mix(in oklch, var(--ink) 6%, transparent);
@@ -61,6 +62,7 @@
     --accent: oklch(0.75 0.2 59deg);
     --danger: oklch(0.75 0.2 25.331deg);
     --warning: #e9b75f;
+    --success: #69d69a;
     color-scheme: dark;
   }
 }
@@ -76,6 +78,7 @@
   --accent: oklch(0.75 0.2 59deg);
   --danger: oklch(0.75 0.2 25.331deg);
   --warning: #e9b75f;
+  --success: #69d69a;
   color-scheme: dark;
 }
 
@@ -93,6 +96,7 @@
   --accent: #69d69a;
   --danger: #fb414a;
   --warning: #e5bf70;
+  --success: #69d69a;
   color-scheme: dark;
 }
 :root[data-theme="jade"] {
@@ -107,6 +111,7 @@
   --accent: #6bc3bd;
   --danger: #ff5345;
   --warning: #d9b86c;
+  --success: #72c995;
   color-scheme: dark;
 }
 :root[data-theme="black-rose"] {
@@ -121,6 +126,7 @@
   --accent: #a06666;
   --danger: #5f8787;
   --warning: #c4a078;
+  --success: #7fae9a;
   color-scheme: dark;
 }
 :root[data-theme="gruvbox-dark-hard"] {
@@ -135,6 +141,7 @@
   --accent: #83a598;
   --danger: #fb4934;
   --warning: #fabd2f;
+  --success: #b8bb26;
   color-scheme: dark;
 }
 :root[data-theme="rose-pine"] {
@@ -149,5 +156,6 @@
   --accent: #c4a7e7;
   --danger: #eb6f92;
   --warning: #f6c177;
+  --success: #9ccfd8;
   color-scheme: dark;
 }

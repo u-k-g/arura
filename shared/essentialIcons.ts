@@ -1,5 +1,5 @@
 export const essentialIcons = [
-  ["chat-bubble", "Chat"],
+  ["message-text", "Chat"],
   ["bot", "Bot"],
   ["star", "Star"],
   ["page", "Document"],
@@ -104,7 +104,7 @@ const reservedIcons = new Set([
   "attachment",
   "bot",
   "capabilities",
-  "chat-bubble",
+  "message-text",
   "check",
   "clock",
   "cloud",

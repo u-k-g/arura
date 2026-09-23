@@ -11,7 +11,7 @@ export function Icon(props: { name: string }) {
       class="icon"
       aria-hidden="true"
       innerHTML={icons[`./icons/${props.name}.svg`] ??
-        icons["./icons/chat-bubble.svg"]}
+        icons["./icons/message-text.svg"]}
     />
   );
 }
@@ -41,6 +41,7 @@ export function Dialog(props: {
   close: () => void;
   class?: string;
   anchor?: { x: number; y: number };
+  hideHeader?: boolean;
 }) {
   let el!: HTMLDialogElement;
   let drag:
@@ -183,36 +184,38 @@ export function Dialog(props: {
       }}
     >
       <div class="dialog-inner">
-        <header
-          onPointerDown={startDrag}
-          onPointerMove={moveDrag}
-          onPointerUp={(event) => endDrag(event)}
-          onPointerCancel={(event) => endDrag(event, true)}
-          onLostPointerCapture={(event) => {
-            if (drag && event.target === event.currentTarget) {
-              endDrag(event, true);
-            }
-          }}
-        >
-          <Show when={props.class?.split(" ").includes("navigation-sheet")}>
-            <button
-              type="button"
-              class="sheet-handle"
-              aria-label="Close sheet"
-              onClick={() => {
-                if (suppressHandleClick) {
-                  suppressHandleClick = false;
-                  return;
-                }
-                props.close();
-              }}
-            >
-              <span />
-            </button>
-          </Show>
-          <h2>{props.title}</h2>
-          <IconButton icon="xmark" label="Close" onClick={props.close} />
-        </header>
+        <Show when={!props.hideHeader}>
+          <header
+            onPointerDown={startDrag}
+            onPointerMove={moveDrag}
+            onPointerUp={(event) => endDrag(event)}
+            onPointerCancel={(event) => endDrag(event, true)}
+            onLostPointerCapture={(event) => {
+              if (drag && event.target === event.currentTarget) {
+                endDrag(event, true);
+              }
+            }}
+          >
+            <Show when={props.class?.split(" ").includes("navigation-sheet")}>
+              <button
+                type="button"
+                class="sheet-handle"
+                aria-label="Close sheet"
+                onClick={() => {
+                  if (suppressHandleClick) {
+                    suppressHandleClick = false;
+                    return;
+                  }
+                  props.close();
+                }}
+              >
+                <span />
+              </button>
+            </Show>
+            <h2>{props.title}</h2>
+            <IconButton icon="xmark" label="Close" onClick={props.close} />
+          </header>
+        </Show>
         {props.children}
       </div>
     </dialog>

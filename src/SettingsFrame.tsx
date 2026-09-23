@@ -4,7 +4,7 @@ import { preferences } from "./cache.ts";
 
 const groups = [
   [
-    ["resources:models", "Models & providers", "chat-bubble"],
+    ["resources:models", "Models & providers", "brain"],
     ["settings:navigation", "Conversations & archive", "archive"],
     ["settings:appearance", "Appearance", "settings"],
     ["capabilities", "Capabilities", "capabilities"],
@@ -12,11 +12,11 @@ const groups = [
     ["resources:advanced", "Advanced settings", "settings"],
   ],
   [
-    ["resources:profiles", "Profiles & bots", "chat-bubble"],
+    ["resources:profiles", "Profiles & bots", "bot"],
     ["resources:jobs", "Schedules", "clock"],
-    ["resources:platforms", "Messaging", "chat-bubble"],
+    ["resources:platforms", "Messaging", "message-text"],
     ["resources:computer", "Computer use", "computer"],
-    ["resources:delegation", "Delegated work", "chat-bubble"],
+    ["resources:delegation", "Delegated work", "network"],
     ["resources:resources", "Backend resources", "settings"],
     ["resources:connectors", "App connections", "key"],
     ["resources:agentPlugins", "Agent plugins", "capabilities"],

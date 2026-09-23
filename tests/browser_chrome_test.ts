@@ -53,6 +53,25 @@ Deno.test({
         exact: true,
       });
       await expect(palette).toBeVisible();
+      await expect(palette.locator(".dialog-inner > header")).toHaveCount(0);
+      await expect(palette.locator(".icon")).toHaveCount(1);
+      await expect(palette.locator(".palette-search .icon")).toBeVisible();
+      await expect(palette.getByRole("button", { name: "Close" }))
+        .toHaveCount(0);
+      const paletteBox = requireValue(await palette.boundingBox(), "palette");
+      const searchBox = requireValue(
+        await palette.locator(".palette-search").boundingBox(),
+        "palette search",
+      );
+      expect(searchBox.y - paletteBox.y).toBeLessThan(12);
+      const firstOption = palette.getByRole("option").first();
+      expect(
+        requireValue(await firstOption.boundingBox(), "first option").height,
+      )
+        .toBeLessThanOrEqual(40);
+      await expect(palette.locator(".palette-item-text small"))
+        .toHaveCount(0);
+      await page.screenshot({ path: "/var/tmp/arura-command-palette.png" });
       await palette.getByRole("combobox").press("Enter");
       await expect(palette).toHaveCount(0);
       await page.keyboard.press("Meta+k");

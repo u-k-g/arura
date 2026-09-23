@@ -16,6 +16,7 @@ import {
 } from "../shared/references.ts";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
+import { createVirtualizer } from "@tanstack/solid-virtual";
 import {
   createEffect,
   createMemo,
@@ -290,6 +291,15 @@ export default function Chat(props: {
     scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "instant" });
     setAwayFromBottom(false);
   };
+  const maybeLoadEarlier = () => {
+    if (
+      !scroller ||
+      scroller.scrollTop > Math.max(160, scroller.clientHeight / 2) ||
+      !historyPages().at(-1)?.hasMore || historyLoading() || !connected()
+    ) return;
+    setHistoryLoading(true);
+    setPages((count) => count + 1);
+  };
   let input!: ComposerHandle;
   let fileInput!: HTMLInputElement;
   const historyRevision = createMemo(() =>
@@ -560,6 +570,7 @@ export default function Chat(props: {
               ? oldScrollTop
               : scroller.scrollTop + shift;
           } else if (nearBottom) scrollToLatest();
+          maybeLoadEarlier();
         });
       },
     );
@@ -840,6 +851,19 @@ export default function Chat(props: {
     setCompletions([]);
   }
   const groups = createMemo(() => groupMessages(messages()));
+  const historyVirtualizer = createVirtualizer<HTMLElement, HTMLDivElement>({
+    get count() {
+      return groups().length;
+    },
+    getScrollElement: () => scroller ?? null,
+    estimateSize: () => 180,
+    getItemKey: (index) => {
+      const group = groups()[index];
+      return group?.prompt?.id ?? group?.event?.id ?? group?.work[0]?.id ??
+        index;
+    },
+    overscan: 5,
+  });
   const minimapItems = createMemo<TurnMinimapItem[]>(() =>
     groups().flatMap((group) =>
       group.prompt
@@ -858,29 +882,22 @@ export default function Chat(props: {
   const updateMinimap = () => {
     const items = minimapItems();
     if (!items.length || !scroller || !transcriptInner) return;
-    const markers = transcriptInner.querySelectorAll<HTMLElement>(
-      ":scope > article.message.user[data-message-id]",
-    );
-    if (!markers.length) return;
     if (
       scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= 40
     ) {
       setCurrentTurnIndex(items.length - 1);
       return;
     }
-    const boundary = scroller.getBoundingClientRect().top +
+    const boundary = scroller.scrollTop +
       Math.min(90, scroller.clientHeight * 0.28);
-    let low = 0;
-    let high = markers.length;
-    while (low < high) {
-      const middle = (low + high) >>> 1;
-      if (markers[middle].getBoundingClientRect().top <= boundary) {
-        low = middle + 1;
-      } else high = middle;
-    }
-    const id = markers[Math.max(0, low - 1)].dataset.messageId;
-    const index = items.findIndex((item) => item.id === id);
-    if (index >= 0) setCurrentTurnIndex(index);
+    const visible = historyVirtualizer.getVirtualItems();
+    const groupIndex =
+      visible.findLast((row) => row.start <= boundary)?.index ??
+        visible[0]?.index ?? 0;
+    const index =
+      groups().slice(0, groupIndex + 1).filter((group) => group.prompt).length -
+      1;
+    setCurrentTurnIndex(Math.max(0, index));
   };
   const scheduleMinimapUpdate = () => {
     if (minimapFrame !== undefined) return;
@@ -890,23 +907,14 @@ export default function Chat(props: {
     });
   };
   const jumpToTurn = (item: TurnMinimapItem, index: number) => {
-    const target = Array.from(
-      transcriptInner.querySelectorAll<HTMLElement>(
-        ":scope > article.message.user[data-message-id]",
-      ),
-    ).find((element) => element.dataset.messageId === item.id);
-    if (!target) return;
+    const groupIndex = groups().findIndex((group) =>
+      group.prompt?.id === item.id
+    );
+    if (groupIndex < 0) return;
     userScroll();
     setCurrentTurnIndex(index);
     setAwayFromBottom(true);
-    scroller.scrollTo({
-      top: scroller.scrollTop + target.getBoundingClientRect().top -
-        scroller.getBoundingClientRect().top - 16,
-      behavior: globalThis.matchMedia("(prefers-reduced-motion: reduce)")
-          .matches
-        ? "instant"
-        : "smooth",
-    });
+    historyVirtualizer.scrollToIndex(groupIndex, { align: "start" });
   };
   createEffect(() => {
     minimapItems();
@@ -1047,7 +1055,7 @@ export default function Chat(props: {
                   >
                     <Icon
                       name={match[1] === "session"
-                        ? "chat-bubble"
+                        ? "message-text"
                         : match[1] === "folder"
                         ? "folder"
                         : "attachment"}
@@ -1142,6 +1150,7 @@ export default function Chat(props: {
                     scroller.clientHeight >
                   40,
               );
+              maybeLoadEarlier();
             }
           }}
         >
@@ -1152,102 +1161,109 @@ export default function Chat(props: {
             </div>
           </Show>
           <div class="transcript-inner" ref={transcriptInner}>
-            <Show when={historyPages().at(-1)?.hasMore}>
-              <button
-                type="button"
-                class="load-earlier"
-                disabled={historyLoading() || !connected()}
-                aria-busy={historyLoading()}
-                onClick={() => {
-                  setHistoryLoading(true);
-                  setPages(historyPages().length + 1);
-                  setHistoryRetry((value) => value + 1);
-                }}
-              >
-                {historyLoading()
-                  ? "Loading earlier messages…"
-                  : "Load earlier messages"}
-              </button>
-            </Show>
-            <For each={groups()}>
-              {(group, index) => (
-                <>
-                  <Show when={group.event}>
-                    <p class="timeline-event" role="status">
-                      {group.event?.text}
-                    </p>
-                  </Show>
-                  <Show when={group.prompt}>
-                    {(message) => renderMessage(message())}
-                  </Show>
-                  <Show
-                    when={group === liveWorkGroup() && hasTurnOutput() &&
-                      turn()}
-                  >
-                    {(t) => renderLiveWork(t())}
-                  </Show>
-                  <Show
-                    when={turn()?.state === "running" &&
-                      index() === groups().length - 1}
+            <div
+              class="virtualized-groups"
+              style={{ height: `${historyVirtualizer.getTotalSize()}px` }}
+            >
+              <For each={historyVirtualizer.getVirtualItems()}>
+                {(virtualRow) => (
+                  <div
+                    class="virtualized-group"
+                    data-index={virtualRow.index}
+                    ref={(node) => historyVirtualizer.measureElement(node)}
+                    style={{
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
                   >
                     <For
-                      each={group.work.filter(
-                        (message) => message.role === "assistant",
+                      each={groups().slice(
+                        virtualRow.index,
+                        virtualRow.index + 1,
                       )}
                     >
-                      {renderMessage}
-                    </For>
-                  </Show>
-                  <Show
-                    when={group.work.length &&
-                      !(
-                        turn()?.state === "running" &&
-                        index() === groups().length - 1
+                      {(group) => (
+                        <>
+                          <Show when={group.event}>
+                            <p class="timeline-event" role="status">
+                              {group.event?.text}
+                            </p>
+                          </Show>
+                          <Show when={group.prompt}>
+                            {(message) => renderMessage(message())}
+                          </Show>
+                          <Show
+                            when={group === liveWorkGroup() &&
+                              hasTurnOutput() &&
+                              turn()}
+                          >
+                            {(t) => renderLiveWork(t())}
+                          </Show>
+                          <Show
+                            when={turn()?.state === "running" &&
+                              virtualRow.index === groups().length - 1}
+                          >
+                            <For
+                              each={group.work.filter(
+                                (message) => message.role === "assistant",
+                              )}
+                            >
+                              {renderMessage}
+                            </For>
+                          </Show>
+                          <Show
+                            when={group.work.length &&
+                              !(
+                                turn()?.state === "running" &&
+                                virtualRow.index === groups().length - 1
+                              )}
+                          >
+                            <details class="work-summary history-work">
+                              <summary>
+                                Worked
+                                <Show
+                                  when={group === settledHistoryGroup() ||
+                                    (group.prompt?.createdAt &&
+                                      group.answer?.createdAt)}
+                                >
+                                  {" "}
+                                  for {elapsed(
+                                    group === settledHistoryGroup()
+                                      ? (turn()?.startedAt ?? 0)
+                                      : (group.prompt?.createdAt ?? 0),
+                                    group === settledHistoryGroup()
+                                      ? (turn()?.finishedAt ?? clock())
+                                      : (group.answer?.createdAt ?? 0),
+                                  )}
+                                </Show>
+                                <Icon name="nav-arrow-down" />
+                              </summary>
+                              <For each={group.work}>{renderMessage}</For>
+                              <Show when={group === settledHistoryGroup()}>
+                                <For
+                                  each={turn()?.activity.filter(
+                                    (activity) =>
+                                      !group.work.some(
+                                        (message) =>
+                                          message.toolCallId === activity.id ||
+                                          message.tool === activity.label,
+                                      ),
+                                  )}
+                                >
+                                  {renderActivity}
+                                </For>
+                              </Show>
+                            </details>
+                          </Show>
+                          <Show when={group.answer}>
+                            {(message) => renderMessage(message())}
+                          </Show>
+                        </>
                       )}
-                  >
-                    <details class="work-summary history-work">
-                      <summary>
-                        Worked
-                        <Show
-                          when={group === settledHistoryGroup() ||
-                            (group.prompt?.createdAt &&
-                              group.answer?.createdAt)}
-                        >
-                          {" "}
-                          for {elapsed(
-                            group === settledHistoryGroup()
-                              ? (turn()?.startedAt ?? 0)
-                              : (group.prompt?.createdAt ?? 0),
-                            group === settledHistoryGroup()
-                              ? (turn()?.finishedAt ?? clock())
-                              : (group.answer?.createdAt ?? 0),
-                          )}
-                        </Show>
-                        <Icon name="nav-arrow-down" />
-                      </summary>
-                      <For each={group.work}>{renderMessage}</For>
-                      <Show when={group === settledHistoryGroup()}>
-                        <For
-                          each={turn()?.activity.filter(
-                            (activity) =>
-                              !group.work.some(
-                                (message) =>
-                                  message.toolCallId === activity.id ||
-                                  message.tool === activity.label,
-                              ),
-                          )}
-                        >
-                          {renderActivity}
-                        </For>
-                      </Show>
-                    </details>
-                  </Show>
-                  <Show when={group.answer}>
-                    {(message) => renderMessage(message())}
-                  </Show>
-                </>
-              )}
-            </For>
+                    </For>
+                  </div>
+                )}
+              </For>
+            </div>
             <Show when={visiblePendingPrompt()}>
               {(pending) => (
                 <article class="message user pending-prompt" role="status">
@@ -1416,6 +1432,7 @@ export default function Chat(props: {
           items={minimapItems()}
           currentIndex={currentTurnIndex()}
           select={jumpToTurn}
+          jumpToLatest={scrollToLatest}
         />
       </div>
       <div class="compose-area">
@@ -1560,11 +1577,6 @@ export default function Chat(props: {
             )}
           </For>
         </div>
-        <Show when={awayFromBottom()}>
-          <button type="button" class="jump-to-latest" onClick={scrollToLatest}>
-            <Icon name="nav-arrow-down" /> Latest messages
-          </button>
-        </Show>
         <Show when={completions().length}>
           <div
             class="completion-list"

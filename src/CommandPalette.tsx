@@ -5,8 +5,6 @@ export type PaletteItem = {
   id: string;
   label: string;
   group: string;
-  icon: string;
-  detail?: string;
   slot?: number;
   run: () => void;
 };
@@ -40,7 +38,12 @@ export default function CommandPalette(props: {
     item.run();
   };
   return (
-    <Dialog title="Find anything" class="command-palette" close={props.close}>
+    <Dialog
+      title="Find anything"
+      class="command-palette"
+      close={props.close}
+      hideHeader
+    >
       <div class="palette-search">
         <Icon name="search" />
         <input
@@ -55,8 +58,7 @@ export default function CommandPalette(props: {
             : undefined}
           placeholder="Search conversations and actions"
           value={props.query}
-          onInput={(event) =>
-            props.search(event.currentTarget.value)}
+          onInput={(event) => props.search(event.currentTarget.value)}
           onKeyDown={(event) => {
             if (event.isComposing) {
               return;
@@ -98,15 +100,10 @@ export default function CommandPalette(props: {
                 aria-selected={index() === active()}
                 tabindex="-1"
                 onMouseMove={() => setActive(index())}
-                onClick={() =>
-                  choose(item)}
+                onClick={() => choose(item)}
               >
-                <Icon name={item.icon} />
                 <span class="palette-item-text">
                   <span>{item.label}</span>
-                  <Show when={item.detail}>
-                    <small>{item.detail}</small>
-                  </Show>
                 </span>
                 <Show when={item.slot}>
                   <kbd class="palette-slot">

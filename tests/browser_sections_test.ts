@@ -11,6 +11,22 @@ Deno.test({
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
     try {
+      const scheduleName = "Sidebar schedule";
+      const scheduleResponse = await fetch(
+        `${
+          requireValue(Deno.env.get("HERMES_URL"), "Hermes fixture URL")
+        }/api/cron/jobs`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            name: scheduleName,
+            prompt: "Check sidebar layout",
+            schedule: "0 7 * * *",
+          }),
+        },
+      );
+      expect(scheduleResponse.ok).toBe(true);
       for (const width of [1280, 390]) {
         const page = await browser.newPage({
           viewport: { width, height: 844 },
@@ -22,7 +38,9 @@ Deno.test({
         const openNavigation = async () => {
           if (width === 390) {
             await page
-              .getByRole("button", { name: "Open conversations", exact: true })
+              .getByRole("button", {
+                name: /^Open (conversations|Profiles & bots|Scheduled jobs)$/,
+              })
               .click();
           }
         };
@@ -65,6 +83,54 @@ Deno.test({
                 exact: true,
               }),
             ).toBeVisible();
+          }
+          if (label !== "Threads") {
+            await expect(page.locator(".main-view .resource-rail"))
+              .toHaveCount(0);
+            if (width === 390) await openNavigation();
+            const sidebar = width === 390
+              ? page.getByRole("dialog", {
+                name: label === "Bots" ? "Profiles & bots" : "Scheduled jobs",
+              })
+              : page.locator(".desktop-navigation");
+            const resourceList = sidebar.getByRole("navigation", {
+              name: label === "Bots"
+                ? "Profiles & bots list"
+                : "Scheduled jobs list",
+            });
+            await expect(resourceList).toBeVisible();
+            await expect(sidebar.locator(".thread-row")).toHaveCount(0);
+            await page.screenshot({
+              path: `/var/tmp/arura-${
+                label === "Bots" ? "bots" : "jobs"
+              }-${width}.png`,
+            });
+            if (width === 390) {
+              if (label === "Bots") {
+                await resourceList.locator(".resource-rail-row > button")
+                  .first().click();
+                await expect(sidebar).toHaveCount(0);
+              } else {
+                await resourceList.getByRole("button", {
+                  name: scheduleName,
+                  exact: true,
+                }).click();
+                await expect(sidebar).toHaveCount(0);
+              }
+            } else if (label === "Cron jobs") {
+              await resourceList.getByRole("button", {
+                name: scheduleName,
+                exact: true,
+              }).click();
+            }
+            if (label === "Cron jobs") {
+              await expect(
+                page.locator(".main-view .resource-card").getByRole(
+                  "heading",
+                  { name: scheduleName, exact: true },
+                ),
+              ).toBeVisible();
+            }
           }
         }
         await page.close();

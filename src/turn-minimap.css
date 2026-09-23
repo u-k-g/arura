@@ -24,29 +24,29 @@
   padding: 2px;
   border: 0;
   color: var(--muted);
-  opacity: 0;
-  transition: opacity 120ms ease, background-color 120ms ease;
-}
-.turn-minimap:hover .turn-minimap-step:not(:disabled),
-.turn-minimap:focus-within .turn-minimap-step:not(:disabled) {
   opacity: 1;
-}
-.turn-minimap-step:disabled {
-  opacity: 0;
-  pointer-events: none;
-}
-.turn-minimap-step.previous .icon {
-  transform: rotate(180deg);
+  transition: background-color 120ms ease;
 }
 .turn-minimap-track {
   position: relative;
   width: 48px;
 }
+.turn-minimap-viewport {
+  width: 60px;
+  max-height: max(48px, calc(100dvh - 280px));
+  margin-left: -12px;
+  overflow: auto;
+  scrollbar-width: none;
+}
+.turn-minimap-viewport::-webkit-scrollbar {
+  display: none;
+}
 .turn-minimap-rail {
   position: relative;
   display: block;
   width: 48px;
-  min-height: 48px;
+  min-height: 8px;
+  margin-left: 12px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -67,11 +67,21 @@
   left: 12px;
   width: 1px;
   background: var(--line);
-  opacity: 0.25;
+  opacity: 0.09;
+}
+.turn-minimap-rail:has(.turn-minimap-mark.active) .turn-minimap-spine {
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(var(--active-position) - 14px),
+    transparent calc(var(--active-position) - 14px),
+    transparent calc(var(--active-position) + 14px),
+    #000 calc(var(--active-position) + 14px)
+  );
 }
 .turn-minimap-mark {
   position: absolute;
-  left: 16px;
+  right: 22px;
   width: 10px;
   height: 2px;
   transform: translateY(-50%);
@@ -89,7 +99,7 @@
   opacity: 1;
   background: var(--ink);
 }
-.turn-minimap:is(:hover, :focus-within) .turn-minimap-mark:is(.current, .active) {
+.turn-minimap:is(:hover, :focus-within) .turn-minimap-mark.active {
   width: 30px;
 }
 .turn-minimap-preview {

@@ -140,10 +140,11 @@ grace period.
   Pinned chats, folder contents, then unpinned conversations. Folder headers and
   drafts do not consume slots; archived conversations are excluded.
 - Sidebar navigation has one horizontal icon-only row: Threads, Bots, and Cron
-  jobs. Artifacts lives at the bottom of the sidebar beside Settings, replacing
-  Files on host. Each switches the main content; Bots and Cron jobs do not open
-  overlay dialogs. Threads returns to the last conversation. Mobile uses the
-  same row in its navigation sheet and closes the sheet on selection.
+  jobs. Bots and Cron jobs replace the sidebar's conversation list with their
+  own item lists; the main pane shows the selected item's details without a
+  second list. Artifacts lives at the bottom of the sidebar beside Settings,
+  replacing Files on host. Threads returns to the last conversation. Mobile uses
+  the same row in its navigation sheet and closes the sheet on selection.
 - Messaging setup lives in Settings, with no permanent sidebar shortcut.
 - Use the global search palette; no separate sidebar session-search field.
 - Scheduled jobs show all profiles together, with blueprints in the job list,

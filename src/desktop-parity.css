@@ -138,6 +138,12 @@
   flex-direction: column;
   gap: 2px;
 }
+.resource-sidebar-host .resource-rail {
+  padding: 8px 0;
+}
+.resource-sidebar-detail .resource-browser {
+  gap: 0;
+}
 .resource-rail button {
   background: transparent;
   border: 0;
@@ -632,19 +638,19 @@
 .jobs-page > .filter {
   display: none;
 }
-.jobs-page .resource-rail > input {
+.resource-sidebar-host .resource-rail > input {
   width: 100%;
   font-size: 12px;
   margin-bottom: 8px;
 }
-.jobs-page .resource-rail > button {
+.resource-sidebar-host .resource-rail > button {
   text-align: left;
   border: 0;
   font-size: 12px;
   padding: 7px 8px;
   background: transparent;
 }
-.jobs-page .resource-rail > h4 {
+.resource-sidebar-host .resource-rail > h4 {
   color: var(--muted);
   font-size: 10px;
   text-transform: uppercase;

@@ -3,7 +3,7 @@ import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 Deno.test({
   name:
-    "bot history loads older compacted turns without duplicates or losing the reading position",
+    "bot history loads earlier turns on scroll with a bounded transcript DOM",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -48,32 +48,28 @@ Deno.test({
       await expect(
         transcript.getByText("History row 250", { exact: true }),
       ).toBeVisible();
-      await expect(
-        transcript.getByText("History row 150", { exact: true }),
-      ).toHaveCount(0);
-      const earlier = page.getByRole("button", {
+      await expect(page.getByRole("button", {
         name: "Load earlier messages",
-        exact: true,
-      });
-      await earlier.click();
-      await expect(
-        transcript.getByText("History row 051", { exact: true }),
-      ).toHaveCount(1);
-      await expect(
-        transcript.getByText("History row 151", { exact: true }),
-      ).toBeInViewport();
-      await earlier.click();
+      })).toHaveCount(0);
+      const minimapMarks = page.locator(".turn-minimap-mark");
+      await expect(minimapMarks).toHaveCount(50);
+      for (const count of [100, 125]) {
+        await transcript.evaluate((node) => node.scrollTo(0, 0));
+        await expect(minimapMarks).toHaveCount(count);
+      }
+      await transcript.evaluate((node) => node.scrollTo(0, 0));
       await expect(
         transcript.getByText("History row 001", { exact: true }),
-      ).toHaveCount(1);
-      await expect(earlier).toHaveCount(0);
-      // Offscreen messages use content-visibility; inspect all loaded DOM text.
-      const text = (await transcript.textContent()) ?? "";
-      const rows = text.match(/History row \d{3}/g) ?? [];
-      expect(rows).toHaveLength(250);
-      expect(new Set(rows).size).toBe(250);
-      expect(rows[0]).toBe("History row 001");
-      expect(rows.at(-1)).toBe("History row 250");
+      ).toBeVisible();
+      expect(await transcript.locator(".virtualized-group").count())
+        .toBeLessThan(25);
+      const latest = page.getByRole("button", {
+        name: "Jump to latest messages",
+      });
+      await latest.click();
+      await expect(
+        transcript.getByText("History row 250", { exact: true }),
+      ).toBeVisible();
     } finally {
       await patch({
         title: "Fixture conversation",

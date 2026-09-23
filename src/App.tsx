@@ -131,6 +131,32 @@ export default function App() {
   const [sheet, setSheet] = createSignal(false),
     [search, setSearch] = createSignal(""),
     [palette, setPalette] = createSignal(false);
+  const [desktopResourceHost, setDesktopResourceHost] = createSignal<
+    HTMLElement
+  >();
+  const [mobileResourceHost, setMobileResourceHost] = createSignal<
+    HTMLElement
+  >();
+  const resourceSection = () => {
+    const route = view().split("?")[0];
+    return route === "resources:profiles"
+      ? "profiles"
+      : route === "resources:jobs"
+      ? "jobs"
+      : undefined;
+  };
+  const resourceSidebarMount = () =>
+    narrow()
+      ? sheet() ? mobileResourceHost() : undefined
+      : collapsed()
+      ? undefined
+      : desktopResourceHost();
+  const navigationTitle = () =>
+    resourceSection() === "profiles"
+      ? "Profiles & bots"
+      : resourceSection() === "jobs"
+      ? "Scheduled jobs"
+      : "Conversations";
   const [matches, setMatches] = createSignal<
     { key: string; title: string; profile: string }[]
   >([]);
@@ -497,12 +523,12 @@ export default function App() {
     }
   };
   const destinations = [
-    { id: "settings", label: "Settings", icon: "settings" },
-    { id: "resources:artifacts", label: "Generated files", icon: "page" },
-    { id: "resources:profiles", label: "Profiles & bots", icon: "chat-bubble" },
-    { id: "resources:jobs", label: "Schedules", icon: "clock" },
-    { id: "resources:skills", label: "Installed skills", icon: "page" },
-    { id: "resources:usage", label: "Usage", icon: "computer" },
+    { id: "settings", label: "Settings" },
+    { id: "resources:artifacts", label: "Generated files" },
+    { id: "resources:profiles", label: "Profiles & bots" },
+    { id: "resources:jobs", label: "Schedules" },
+    { id: "resources:skills", label: "Installed skills" },
+    { id: "resources:usage", label: "Usage" },
   ];
   const essentialConversations = createMemo(() =>
     chats().filter((c) => c.section === "essential")
@@ -536,14 +562,12 @@ export default function App() {
       return index >= 0 && index < 9 ? index + 1 : undefined;
     };
     const conversationItem = (
-      item: { key: string; title: string; profile: string },
+      item: { key: string; title: string },
       group: string,
     ): PaletteItem => ({
       id: item.key,
       label: item.title,
-      icon: "chat-bubble",
       group,
-      detail: item.profile,
       slot: slotFor(item.key),
       run: () => navigate(item.key),
     });
@@ -555,15 +579,13 @@ export default function App() {
       {
         id: "new",
         label: "New conversation",
-        icon: "plus",
-        group: "Actions",
+        group: "Commands",
         run: () => void newChat(currentProfile()),
       },
       {
         id: "sidebar",
         label: collapsed() ? "Expand sidebar" : "Collapse sidebar",
-        icon: "menu",
-        group: "Actions",
+        group: "Commands",
         run: () => {
           toggleSidebar();
           setPalette(false);
@@ -571,7 +593,7 @@ export default function App() {
       },
       ...destinations.map((item) => ({
         ...item,
-        group: "Go to",
+        group: "Commands",
         run: () => navigate(item.id),
       })),
     ].filter((item) => !query || item.label.toLowerCase().includes(query));
@@ -589,7 +611,7 @@ export default function App() {
       ...results.slice(0, 50).map((item) =>
         conversationItem(
           item,
-          query ? "Conversations" : "Sidebar conversations",
+          "Conversations",
         )
       ),
     );
@@ -645,6 +667,7 @@ export default function App() {
       classList={{
         selected: view() === c.key,
         unread: Boolean(unread(c)),
+        running: Boolean(c.running),
         draft: Boolean(draftFor(c.key, c.profile)),
       }}
     >
@@ -687,9 +710,6 @@ export default function App() {
               <i class="draft-indicator" title="Draft saved">
                 <Icon name="edit-pencil" />
               </i>
-            </Show>
-            <Show when={c.running}>
-              <i class="busy-dot" />
             </Show>
           </button>
         }
@@ -749,7 +769,7 @@ export default function App() {
       </span>
     </button>
   );
-  const navigation = () => (
+  const navigation = (mobile = false) => (
     <div class="navigation">
       <header class="sidebar-titlebar">
         <IconButton
@@ -813,262 +833,273 @@ export default function App() {
           }}
         </For>
       </nav>
-      <div class="nav-scroll">
-        <Show when={essentialConversations().length}>
-          <div class="essentials">
-            <For each={essentialConversations()}>
-              {(c) => (
-                <button
-                  type="button"
-                  classList={{ selected: view() === c.key }}
-                  title={c.title}
-                  aria-label={c.title}
-                  onClick={() => navigate(c.key)}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    openMenu(c, e);
-                  }}
-                >
-                  <Icon
-                    name={c.essentialIcon ?? (c.bot ? "bot" : "chat-bubble")}
-                  />
-                </button>
-              )}
-            </For>
-          </div>
-        </Show>
-        <For each={(workspace()?.drafts ?? []).filter((d) => d.key === "")}>
-          {(d) => (
-            <div
-              class="thread-row draft"
-              classList={{
-                selected: view() === "" && chosenProfile() === d.profile,
-              }}
-            >
-              <button
-                type="button"
-                class="thread-select"
-                title={draftPreview(d.text)}
-                aria-label={`Draft: ${draftPreview(d.text)}`}
-                onClick={() => {
-                  setChosenProfile(d.profile);
-                  preferences.setItem("arura.profile", d.profile);
-                  navigate("");
-                }}
-              >
-                <i class="draft-indicator">
-                  <Icon name="edit-pencil" />
-                </i>
-                <span>{draftPreview(d.text)}</span>
-              </button>
-            </div>
-          )}
-        </For>
-        <For each={pinnedConversations()}>
-          {(c) => row(c)}
-        </For>
-        <For each={workspace()?.folders ?? []}>
-          {(folder) => (
-            <details
-              class="folder"
-              open={!closedFolders()[folder._id]}
-              onToggle={(event) => {
-                const closed = !event.currentTarget.open;
-                if (Boolean(closedFolders()[folder._id]) === closed) return;
-                const next = { ...closedFolders(), [folder._id]: closed };
-                setClosedFolders(next);
-                preferences.setItem(
-                  "arura.closedFolders",
-                  JSON.stringify(next),
-                );
-              }}
-            >
-              <summary>
-                <Icon name="folder" />
-                <Show
-                  when={editing()?.kind === "folder" &&
-                    editing()?.id === folder._id}
-                  fallback={
-                    <button
-                      type="button"
-                      class="folder-name"
-                      onDblClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        beginRename("folder", folder._id);
-                      }}
-                    >
-                      {folder.name}
-                    </button>
-                  }
-                >
-                  <InlineRename
-                    initial={folder.name}
-                    label="Rename folder"
-                    save={(name) =>
-                      saveRename("folder", folder._id, folder.name, name)}
-                    cancel={() => stopRename("folder", folder._id)}
-                  />
-                </Show>
-                <IconButton
-                  icon="edit-pencil"
-                  label={`Rename folder ${folder.name}`}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    beginRename("folder", folder._id);
-                  }}
-                />
-                <IconButton
-                  icon="nav-arrow-down"
-                  label={`Move folder ${folder.name} down`}
-                  onClick={() =>
-                    void run(() =>
-                      mutate("workspace.reorder", {
-                        kind: "folder",
-                        id: folder._id,
-                        direction: 1,
-                      })
-                    )}
-                />
-                <IconButton
-                  icon="nav-arrow-down"
-                  class="rotate-icon"
-                  label={`Move folder ${folder.name} up`}
-                  onClick={() =>
-                    void run(() =>
-                      mutate("workspace.reorder", {
-                        kind: "folder",
-                        id: folder._id,
-                        direction: -1,
-                      })
-                    )}
-                />
-                <button
-                  type="button"
-                  class="folder-delete"
-                  aria-label={`Delete folder ${folder.name}`}
-                  onClick={async (e) => {
-                    e.preventDefault();
-                    if (
-                      await confirmAction(
-                        "Remove this folder? Its conversations stay pinned.",
-                      )
-                    ) {
-                      void run(() =>
-                        mutate("workspace.folder", {
-                          id: folder._id,
-                          remove: true,
-                        })
-                      );
-                    }
-                  }}
-                >
-                  ×
-                </button>
-              </summary>
-              <For each={folderConversations(folder._id)}>
-                {(c) => row(c)}
-              </For>
-            </details>
-          )}
-        </For>
-        <div class="pinned-divider" aria-hidden="true" />
-        <For each={recentConversations()}>{(c) => row(c)}</For>
-        <Show when={workspace()?.recentHasMore}>
-          <button
-            type="button"
-            class="text-button"
-            disabled={!connected()}
-            onClick={moreConversations}
-          >
-            Show 100 more conversations
-          </button>
-        </Show>
-      </div>
-      <div class="archive">
-        <button
-          type="button"
-          class="archive-toggle"
-          aria-expanded={archiveOpen()}
-          onClick={() => setArchiveOpen((x) => !x)}
-        >
-          <span>Archived</span>
-          <span class="archive-rule" />
-          <Icon name="nav-arrow-down" />
-        </button>
-        <Show when={archiveOpen()}>
-          <div class="archive-list">
-            <Show when={!archiveReady()}>
-              <p class="archive-status" role="status">
-                {connected()
-                  ? "Loading archived conversations…"
-                  : "Connect to load archived conversations."}
-              </p>
-            </Show>
-            <Show when={archiveReady() && !archived().length}>
-              <p class="archive-status" role="status">
-                No archived conversations.
-              </p>
-            </Show>
-            <For each={archived()}>
-              {(c) => (
-                <div class="thread-row">
+      <Show when={!resourceSection()}>
+        <div class="nav-scroll">
+          <Show when={essentialConversations().length}>
+            <div class="essentials">
+              <For each={essentialConversations()}>
+                {(c) => (
                   <button
                     type="button"
-                    class="thread-select"
+                    classList={{ selected: view() === c.key }}
                     title={c.title}
                     aria-label={c.title}
                     onClick={() => navigate(c.key)}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      openMenu(c, event);
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      openMenu(c, e);
                     }}
                   >
-                    <span>{c.title}</span>
-                    <Show when={c.archivedAt}>
-                      {(at) => (
-                        <time
-                          class="session-age"
-                          title={`Archived ${new Date(at()).toLocaleString()}`}
-                        >
-                          {ageFrom(at())}
-                        </time>
-                      )}
-                    </Show>
+                    <Icon
+                      name={c.essentialIcon ?? (c.bot ? "bot" : "message-text")}
+                    />
                   </button>
+                )}
+              </For>
+            </div>
+          </Show>
+          <For each={(workspace()?.drafts ?? []).filter((d) => d.key === "")}>
+            {(d) => (
+              <div
+                class="thread-row draft"
+                classList={{
+                  selected: view() === "" && chosenProfile() === d.profile,
+                }}
+              >
+                <button
+                  type="button"
+                  class="thread-select"
+                  title={draftPreview(d.text)}
+                  aria-label={`Draft: ${draftPreview(d.text)}`}
+                  onClick={() => {
+                    setChosenProfile(d.profile);
+                    preferences.setItem("arura.profile", d.profile);
+                    navigate("");
+                  }}
+                >
+                  <i class="draft-indicator">
+                    <Icon name="edit-pencil" />
+                  </i>
+                  <span>{draftPreview(d.text)}</span>
+                </button>
+              </div>
+            )}
+          </For>
+          <For each={pinnedConversations()}>
+            {(c) => row(c)}
+          </For>
+          <For each={workspace()?.folders ?? []}>
+            {(folder) => (
+              <details
+                class="folder"
+                open={!closedFolders()[folder._id]}
+                onToggle={(event) => {
+                  const closed = !event.currentTarget.open;
+                  if (Boolean(closedFolders()[folder._id]) === closed) return;
+                  const next = { ...closedFolders(), [folder._id]: closed };
+                  setClosedFolders(next);
+                  preferences.setItem(
+                    "arura.closedFolders",
+                    JSON.stringify(next),
+                  );
+                }}
+              >
+                <summary>
+                  <Icon name="folder" />
+                  <Show
+                    when={editing()?.kind === "folder" &&
+                      editing()?.id === folder._id}
+                    fallback={
+                      <button
+                        type="button"
+                        class="folder-name"
+                        onDblClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          beginRename("folder", folder._id);
+                        }}
+                      >
+                        {folder.name}
+                      </button>
+                    }
+                  >
+                    <InlineRename
+                      initial={folder.name}
+                      label="Rename folder"
+                      save={(name) =>
+                        saveRename("folder", folder._id, folder.name, name)}
+                      cancel={() => stopRename("folder", folder._id)}
+                    />
+                  </Show>
                   <IconButton
-                    icon="refresh"
-                    label={`Unarchive ${c.title}`}
+                    icon="edit-pencil"
+                    label={`Rename folder ${folder.name}`}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      beginRename("folder", folder._id);
+                    }}
+                  />
+                  <IconButton
+                    icon="nav-arrow-down"
+                    label={`Move folder ${folder.name} down`}
                     onClick={() =>
                       void run(() =>
-                        mutate("workspace.move", {
-                          key: c.key,
-                          section: "recent",
+                        mutate("workspace.reorder", {
+                          kind: "folder",
+                          id: folder._id,
+                          direction: 1,
                         })
                       )}
                   />
                   <IconButton
-                    icon="more-horiz"
-                    class="row-menu-button"
-                    label={`Actions for ${c.title}`}
-                    onClick={(event) => openMenu(c, event)}
+                    icon="nav-arrow-down"
+                    class="rotate-icon"
+                    label={`Move folder ${folder.name} up`}
+                    onClick={() =>
+                      void run(() =>
+                        mutate("workspace.reorder", {
+                          kind: "folder",
+                          id: folder._id,
+                          direction: -1,
+                        })
+                      )}
                   />
-                </div>
-              )}
-            </For>
-            <Show when={archiveHasMore()}>
-              <button
-                type="button"
-                class="text-button"
-                onClick={() => setArchiveLimit((x) => x + 10)}
-              >
-                Show 10 more
-              </button>
-            </Show>
-          </div>
-        </Show>
-      </div>
+                  <button
+                    type="button"
+                    class="folder-delete"
+                    aria-label={`Delete folder ${folder.name}`}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (
+                        await confirmAction(
+                          "Remove this folder? Its conversations stay pinned.",
+                        )
+                      ) {
+                        void run(() =>
+                          mutate("workspace.folder", {
+                            id: folder._id,
+                            remove: true,
+                          })
+                        );
+                      }
+                    }}
+                  >
+                    ×
+                  </button>
+                </summary>
+                <For each={folderConversations(folder._id)}>
+                  {(c) => row(c)}
+                </For>
+              </details>
+            )}
+          </For>
+          <div class="pinned-divider" aria-hidden="true" />
+          <For each={recentConversations()}>{(c) => row(c)}</For>
+          <Show when={workspace()?.recentHasMore}>
+            <button
+              type="button"
+              class="text-button"
+              disabled={!connected()}
+              onClick={moreConversations}
+            >
+              Show 100 more conversations
+            </button>
+          </Show>
+        </div>
+        <div class="archive">
+          <button
+            type="button"
+            class="archive-toggle"
+            aria-expanded={archiveOpen()}
+            onClick={() => setArchiveOpen((x) => !x)}
+          >
+            <span>Archived</span>
+            <span class="archive-rule" />
+            <Icon name="nav-arrow-down" />
+          </button>
+          <Show when={archiveOpen()}>
+            <div class="archive-list">
+              <Show when={!archiveReady()}>
+                <p class="archive-status" role="status">
+                  {connected()
+                    ? "Loading archived conversations…"
+                    : "Connect to load archived conversations."}
+                </p>
+              </Show>
+              <Show when={archiveReady() && !archived().length}>
+                <p class="archive-status" role="status">
+                  No archived conversations.
+                </p>
+              </Show>
+              <For each={archived()}>
+                {(c) => (
+                  <div class="thread-row">
+                    <button
+                      type="button"
+                      class="thread-select"
+                      title={c.title}
+                      aria-label={c.title}
+                      onClick={() => navigate(c.key)}
+                      onContextMenu={(event) => {
+                        event.preventDefault();
+                        openMenu(c, event);
+                      }}
+                    >
+                      <span>{c.title}</span>
+                      <Show when={c.archivedAt}>
+                        {(at) => (
+                          <time
+                            class="session-age"
+                            title={`Archived ${
+                              new Date(at()).toLocaleString()
+                            }`}
+                          >
+                            {ageFrom(at())}
+                          </time>
+                        )}
+                      </Show>
+                    </button>
+                    <IconButton
+                      icon="refresh"
+                      label={`Unarchive ${c.title}`}
+                      onClick={() =>
+                        void run(() =>
+                          mutate("workspace.move", {
+                            key: c.key,
+                            section: "recent",
+                          })
+                        )}
+                    />
+                    <IconButton
+                      icon="more-horiz"
+                      class="row-menu-button"
+                      label={`Actions for ${c.title}`}
+                      onClick={(event) => openMenu(c, event)}
+                    />
+                  </div>
+                )}
+              </For>
+              <Show when={archiveHasMore()}>
+                <button
+                  type="button"
+                  class="text-button"
+                  onClick={() => setArchiveLimit((x) => x + 10)}
+                >
+                  Show 10 more
+                </button>
+              </Show>
+            </div>
+          </Show>
+        </div>
+      </Show>
+      <Show when={resourceSection()}>
+        <div
+          class="nav-scroll resource-sidebar-host"
+          ref={(node) =>
+            mobile ? setMobileResourceHost(node) : setDesktopResourceHost(node)}
+        />
+      </Show>
       <footer class="nav-footer">
         <div class="footer-actions">
           <IconButton
@@ -1176,7 +1207,9 @@ export default function App() {
             <IconButton
               icon="menu"
               class="mobile-only"
-              label="Open conversations"
+              label={resourceSection()
+                ? `Open ${navigationTitle()}`
+                : "Open conversations"}
               onClick={() => setSheet(true)}
             />
             <Show when={narrow() && selected()}>{(c) => row(c(), false)}</Show>
@@ -1237,6 +1270,8 @@ export default function App() {
                                 <Resources
                                   name={view().slice(10).split("?")[0]}
                                   navigate={navigate}
+                                  sidebarMount={resourceSidebarMount}
+                                  closeSidebar={() => setSheet(false)}
                                   newChat={async (profile) => {
                                     const result = await command(
                                       "openBot",
@@ -1283,11 +1318,11 @@ export default function App() {
       </div>
       <Show when={sheet()}>
         <Dialog
-          title="Conversations"
+          title={navigationTitle()}
           class="navigation-sheet"
           close={() => setSheet(false)}
         >
-          {navigation()}
+          {navigation(true)}
         </Dialog>
       </Show>
       <Show when={palette()}>
@@ -1333,7 +1368,7 @@ export default function App() {
                     aria-pressed={(workspace()?.conversations.find(
                       (item) => item.key === conversation().key,
                     )?.essentialIcon ??
-                      (conversation().bot ? "bot" : "chat-bubble")) === icon}
+                      (conversation().bot ? "bot" : "message-text")) === icon}
                     onClick={() =>
                       void run(async () => {
                         await mutate("workspace.setEssentialIcon", {
@@ -1403,7 +1438,7 @@ export default function App() {
                           setMenu(undefined);
                         })}
                     >
-                      <Icon name="chat-bubble" />
+                      <Icon name="eye" />
                       {unread(c()) ? "Mark as read" : "Mark as unread"}
                     </button>
                     <button

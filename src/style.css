@@ -456,14 +456,6 @@ small {
 .connection.offline i {
   background: #b5a17d;
 }
-.busy-dot {
-  width: 5px;
-  height: 5px;
-  background: var(--accent);
-  border-radius: 50%;
-  margin-left: auto;
-  flex: none;
-}
 .mobile-only {
   display: none;
 }
@@ -531,6 +523,17 @@ small {
   content: "";
   display: block;
   height: 48px;
+}
+.virtualized-groups {
+  position: relative;
+  width: 100%;
+}
+.virtualized-group {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flow-root;
 }
 .message {
   margin: 0 0 16px;
@@ -774,15 +777,6 @@ small {
 .queue button {
   font-size: 10px;
 }
-.load-earlier {
-  display: block;
-  margin: 0 auto 12px;
-  background: transparent;
-  border: 0;
-  padding: 4px 8px;
-  font-size: 11px;
-  color: var(--muted);
-}
 .interaction,
 .history-error,
 .command-error {
@@ -993,6 +987,10 @@ small {
 }
 .page-heading > div {
   display: flex;
+}
+.page-heading > div:first-child {
+  align-items: baseline;
+  gap: 6px;
 }
 .filter {
   margin: 15px 0;
@@ -1678,23 +1676,6 @@ progress {
 .compose-area {
   position: relative;
 }
-.jump-to-latest {
-  position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  font-size: 11px;
-  padding: 4px 10px;
-}
-.jump-to-latest .icon {
-  width: 11px;
-  height: 11px;
-}
-
 .queue-panel {
   border: 1px solid var(--line);
   border-radius: 8px 8px 0 0;
@@ -1801,7 +1782,10 @@ progress {
   padding: 6px 0;
 }
 .thread-row.unread .session-dot {
-  background: var(--accent);
+  background: var(--warning);
+}
+.thread-row.running .session-dot {
+  background: var(--success);
 }
 .thread-row.unread .thread-select {
   font-weight: 600;

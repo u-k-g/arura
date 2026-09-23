@@ -420,46 +420,42 @@ dialog.conversation-menu {
   width: 640px;
 }
 .command-palette .dialog-inner {
-  padding: 0;
-}
-.command-palette .dialog-inner > header {
-  padding: 12px 16px 0;
-  margin: 0;
-}
-.command-palette h2 {
-  font-size: 12px;
-  color: var(--muted);
+  padding: 6px;
 }
 .palette-search {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 20px 16px;
-  border-bottom: var(--hairline) solid var(--line);
+  gap: 8px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: var(--hover);
 }
 .palette-search .icon {
   color: var(--muted);
+  width: 15px;
+  height: 15px;
 }
 .palette-search input {
   padding: 0;
   border: 0;
   outline: none;
-  font-size: 16px;
+  font-size: 14px;
   min-width: 0;
 }
 .command-palette .palette-results {
-  padding: 8px;
+  padding: 8px 0 0;
   max-height: min(52dvh, 440px);
 }
 .palette-group {
   font-size: 11px;
   color: var(--subtle);
-  padding: 12px 10px 6px;
+  padding: 10px 12px 5px;
 }
 .palette-results [role="option"] {
-  min-height: 42px;
-  padding: 8px 10px;
-  gap: 12px;
+  min-height: 36px;
+  padding: 7px 12px;
+  gap: 8px;
 }
 .palette-results [aria-selected="true"] {
   background: var(--active);
@@ -471,25 +467,16 @@ dialog.conversation-menu {
 .archive-toggle[aria-expanded="true"] .icon {
   transform: rotate(180deg);
 }
-.palette-results [role="option"] .icon {
-  width: 14px;
-  height: 14px;
-  color: var(--muted);
-}
 .palette-item-text {
   display: flex;
   flex: 1;
   min-width: 0;
   flex-direction: column;
-  gap: 2px;
 }
 .palette-item-text > span {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-}
-.palette-item-text small {
-  font-size: 11px;
 }
 .palette-slot {
   min-width: 20px;
@@ -558,6 +545,9 @@ dialog.conversation-menu {
   .command-palette .palette-results {
     max-height: 50dvh;
     padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+  .command-palette .palette-search {
+    min-height: 44px;
   }
   .palette-results [role="option"] {
     min-height: 48px;
