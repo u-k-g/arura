@@ -2,7 +2,7 @@ import { toolPresentation } from "../shared/tool-presentation.ts";
 import { workGroup } from "../shared/model.ts";
 import { ask, confirmAction, rejectAction } from "./ActionDialog.tsx";
 import ModelPicker, { modelLabel, type ModelOption } from "./ModelPicker.tsx";
-import { clearsStaleEffort } from "../shared/model-reasoning.ts";
+import { clearsStaleEffort, reasoningLevels } from "../shared/model-reasoning.ts";
 import { record, type Transcript } from "../shared/contracts.ts";
 import {
   attachmentHref,
@@ -197,6 +197,27 @@ export default function Chat(props: {
       ? (currentModel() || selectedModel()?.label || "")
       : (selectedModel()?.label || currentModel());
   const [currentEffort, setCurrentEffort] = createSignal("");
+  const displayedEffort = createMemo(() => {
+    const effort = currentEffort();
+    if (!effort) return "";
+    const name = displayedModel();
+    const provider = props.conversation
+      ? currentProvider()
+      : (selectedModel()?.provider ?? currentProvider());
+    const matches = models().filter((entry) =>
+      [entry.id, entry.model, modelLabel(entry)].includes(name)
+    );
+    const entry = matches.find((item) => item.provider === provider) ??
+      (matches.length === 1 ? matches[0] : undefined);
+    const levels = entry
+      ? reasoningLevels(
+        entry.provider ?? "",
+        entry.id ?? entry.model ?? "",
+        entry.capabilities,
+      )
+      : reasoningLevels(provider ?? "", name);
+    return levels?.includes(effort) ? effort : "";
+  });
   createEffect(() => {
     if (!connected()) return;
     const key = props.conversation;
@@ -1710,8 +1731,8 @@ export default function Chat(props: {
               }}
             >
               {displayedModel() || "Select model"}
-              {currentEffort()
-                ? ` · ${currentEffort() === "none" ? "Off" : currentEffort()}`
+              {displayedEffort()
+                ? ` · ${displayedEffort() === "none" ? "Off" : displayedEffort()}`
                 : ""}
               <Icon name="nav-arrow-down" />
             </button>

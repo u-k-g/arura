@@ -180,3 +180,45 @@ Deno.test({
     }
   },
 });
+Deno.test({
+  name: "composer omits effort for models without reported reasoning levels",
+  ignore: !Deno.env.get("ARURA_TEST_URL"),
+  async fn() {
+    const browser = await chromium.launch({
+      headless: true,
+      executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
+    });
+    const page = await browser.newPage();
+    try {
+      await page.goto(requireValue(Deno.env.get("ARURA_TEST_URL"), "test URL"));
+      await signIn(page, "Unreported effort");
+      await page
+        .getByRole("button", { name: "Fixture conversation", exact: true })
+        .click();
+      const button = page.getByRole("button", { name: "Model", exact: true });
+      await button.click();
+      const picker = page.getByRole("dialog", { name: "Choose a model" });
+      await picker.getByRole("combobox", { name: "Reasoning effort" })
+        .selectOption("high");
+      await expect(button).toContainText("high");
+      await picker.getByRole("button", {
+        name: "Fixture provider",
+        exact: true,
+      }).click();
+      await picker.getByRole("button", {
+        name: "fixture-unreported · Fixture provider",
+        exact: true,
+      }).click();
+      await expect(picker).toHaveCount(0);
+      await expect(button).toContainText("fixture-unreported");
+      await expect(button).not.toContainText(/high|Off|Not reported/);
+      await button.click();
+      const effort = picker.getByRole("combobox", { name: "Reasoning effort" });
+      await expect(effort).toBeDisabled();
+      await expect(effort.locator("option:checked"))
+        .toHaveText("Not reported");
+    } finally {
+      await browser.close();
+    }
+  },
+});

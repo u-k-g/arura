@@ -578,7 +578,11 @@ export function hermesFixture(
                 {
                   slug: "fixture",
                   name: "Fixture provider",
-                  models: ["fixture-model", "fixture-alternative"],
+                  models: [
+                    "fixture-model",
+                    "fixture-alternative",
+                    "fixture-unreported",
+                  ],
                   capabilities: {
                     "fixture-model": {
                       reasoning: true,
@@ -616,7 +620,11 @@ export function hermesFixture(
             if (params.key === "model") {
               const parts = String(params.value).split(/\s+/);
               if (
-                !["fixture-model", "fixture-alternative"].includes(parts[0]) ||
+                ![
+                  "fixture-model",
+                  "fixture-alternative",
+                  "fixture-unreported",
+                ].includes(parts[0]) ||
                 parts[1] !== "--provider" ||
                 parts[2] !== "fixture" ||
                 parts[3] !== "--session" ||
