@@ -41,12 +41,12 @@ function refreshCatalog(): Promise<Catalog> {
   return pending;
 }
 
-async function loadCatalog(): Promise<Catalog> {
-  if (Date.now() < expiresAt) return catalog;
+function loadCatalog(): Promise<Catalog> {
+  if (Date.now() < expiresAt) return Promise.resolve(catalog);
   if (Object.keys(catalog).length) {
     // Keep the picker instant while refreshing a stale snapshot in background.
     void refreshCatalog();
-    return catalog;
+    return Promise.resolve(catalog);
   }
   return refreshCatalog();
 }
