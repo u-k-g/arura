@@ -120,7 +120,7 @@ grace period.
   editor is not required.
 - **Essentials:** icon-only, manually chosen chats/bots, with names available as
   tooltips and accessible labels. Tiles flex and wrap to fill the available
-  width. They keep a muted fill, show the name on hover, and use a border for
+  width. They keep a muted fill, darken slightly on hover, and use a border for
   the selected entry. Context-menu icon choices sync across devices. No folders.
   Never autoarchive.
 - The sidebar footer's thread actions include Archive (Unarchive for archived
@@ -135,6 +135,10 @@ grace period.
   while running); with empty text it sends the first queued message now.
   Command+K opens the command palette. Other application shortcuts remain
   disabled.
+- In the command palette, entering a single digit 1–9 selects that sidebar
+  conversation slot. Slots follow the visible order: Essentials, standalone
+  Pinned chats, folder contents, then unpinned conversations. Folder headers and
+  drafts do not consume slots; archived conversations are excluded.
 - Sidebar navigation has one horizontal icon-only row: Threads, Bots, and Cron
   jobs. Artifacts lives at the bottom of the sidebar beside Settings, replacing
   Files on host. Each switches the main content; Bots and Cron jobs do not open

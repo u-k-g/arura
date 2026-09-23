@@ -48,6 +48,12 @@ Deno.test({
         "current mark bounds",
       );
       expect(spineBox.x + spineBox.width).toBeLessThan(currentMarkBox.x);
+      expect(currentMarkBox.x - (spineBox.x + spineBox.width))
+        .toBeLessThan(6);
+      const idleWidths = await page.locator(".turn-minimap-mark").evaluateAll(
+        (marks) => marks.map((mark) => mark.getBoundingClientRect().width),
+      );
+      expect(new Set(idleWidths).size).toBe(1);
       expect(
         await spine.evaluate((element) => getComputedStyle(element).opacity),
       )

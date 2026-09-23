@@ -64,14 +64,14 @@
   position: absolute;
   top: 4px;
   bottom: 4px;
-  right: 44px;
+  left: 12px;
   width: 1px;
   background: var(--line);
   opacity: 0.25;
 }
 .turn-minimap-mark {
   position: absolute;
-  right: 11px;
+  left: 16px;
   width: 10px;
   height: 2px;
   transform: translateY(-50%);
@@ -81,14 +81,16 @@
   transition: width 120ms ease, opacity 120ms ease, background-color 120ms ease;
   pointer-events: none;
 }
-.turn-minimap-mark.nearby {
+.turn-minimap:is(:hover, :focus-within) .turn-minimap-mark.nearby {
   width: 17px;
 }
 .turn-minimap-mark.current,
 .turn-minimap-mark.active {
-  width: 30px;
   opacity: 1;
   background: var(--ink);
+}
+.turn-minimap:is(:hover, :focus-within) .turn-minimap-mark:is(.current, .active) {
+  width: 30px;
 }
 .turn-minimap-preview {
   position: absolute;

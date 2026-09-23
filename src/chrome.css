@@ -491,6 +491,16 @@ dialog.conversation-menu {
 .palette-item-text small {
   font-size: 11px;
 }
+.palette-slot {
+  min-width: 20px;
+  padding: 2px 5px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 11px;
+  text-align: center;
+}
 .palette-status,
 .palette-empty {
   padding: 12px 18px;

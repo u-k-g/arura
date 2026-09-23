@@ -157,9 +157,10 @@ export default function App() {
   createEffect(() => {
     const query = search().trim();
     const online = connected();
-    if (!palette() || !query) {
+    if (!palette() || !query || /^[1-9]$/.test(query)) {
       setMatches([]);
       setSearching(false);
+      setSearchError("");
       return;
     }
     let disposed = false;
@@ -503,8 +504,53 @@ export default function App() {
     { id: "resources:skills", label: "Installed skills", icon: "page" },
     { id: "resources:usage", label: "Usage", icon: "computer" },
   ];
+  const essentialConversations = createMemo(() =>
+    chats().filter((c) => c.section === "essential")
+      .sort((a, b) => a.rank - b.rank)
+  );
+  const pinnedConversations = createMemo(() =>
+    chats().filter((c) => c.section === "pinned" && !c.folderId)
+      .sort((a, b) => a.rank - b.rank)
+  );
+  const folderConversations = (folderId: string) =>
+    chats().filter((c) => c.folderId === folderId)
+      .sort((a, b) => a.rank - b.rank);
+  const recentConversations = createMemo(() =>
+    chats()
+      .filter((c) => c.section === "recent" && !c.backgroundSession)
+      .sort((a, b) => conversationActivity(b) - conversationActivity(a))
+  );
+  const sidebarConversations = () => [
+    ...essentialConversations(),
+    ...pinnedConversations(),
+    ...(workspace()?.folders ?? []).flatMap((folder) =>
+      folderConversations(folder._id)
+    ),
+    ...recentConversations(),
+  ];
   const paletteItems = (): PaletteItem[] => {
     const query = search().trim().toLowerCase();
+    const ordered = sidebarConversations();
+    const slotFor = (key: string) => {
+      const index = ordered.findIndex((item) => item.key === key);
+      return index >= 0 && index < 9 ? index + 1 : undefined;
+    };
+    const conversationItem = (
+      item: { key: string; title: string; profile: string },
+      group: string,
+    ): PaletteItem => ({
+      id: item.key,
+      label: item.title,
+      icon: "chat-bubble",
+      group,
+      detail: item.profile,
+      slot: slotFor(item.key),
+      run: () => navigate(item.key),
+    });
+    if (/^[1-9]$/.test(query)) {
+      const item = ordered[Number(query) - 1];
+      return item ? [conversationItem(item, "Sidebar slots")] : [];
+    }
     const items: PaletteItem[] = [
       {
         id: "new",
@@ -532,7 +578,7 @@ export default function App() {
     const results = [
       ...new Map(
         [
-          ...chats().filter(
+          ...ordered.filter(
             (item) => !query || item.title.toLowerCase().includes(query),
           ),
           ...matches(),
@@ -540,22 +586,15 @@ export default function App() {
       ).values(),
     ];
     items.push(
-      ...results.slice(0, 50).map((item) => ({
-        id: item.key,
-        label: item.title,
-        icon: "chat-bubble",
-        group: query ? "Conversations" : "Recent conversations",
-        detail: item.profile,
-        run: () => navigate(item.key),
-      })),
+      ...results.slice(0, 50).map((item) =>
+        conversationItem(
+          item,
+          query ? "Conversations" : "Sidebar conversations",
+        )
+      ),
     );
     return items;
   };
-  const recentConversations = createMemo(() =>
-    chats()
-      .filter((c) => c.section === "recent" && !c.backgroundSession)
-      .sort((a, b) => conversationActivity(b) - conversationActivity(a))
-  );
   const [ageNow, setAgeNow] = createSignal(Date.now());
   const ageTimer = setInterval(() => setAgeNow(Date.now()), 60_000);
   onCleanup(() => clearInterval(ageTimer));
@@ -775,13 +814,9 @@ export default function App() {
         </For>
       </nav>
       <div class="nav-scroll">
-        <Show when={chats().some((c) => c.section === "essential")}>
+        <Show when={essentialConversations().length}>
           <div class="essentials">
-            <For
-              each={chats()
-                .filter((c) => c.section === "essential")
-                .sort((a, b) => a.rank - b.rank)}
-            >
+            <For each={essentialConversations()}>
               {(c) => (
                 <button
                   type="button"
@@ -797,9 +832,6 @@ export default function App() {
                   <Icon
                     name={c.essentialIcon ?? (c.bot ? "bot" : "chat-bubble")}
                   />
-                  <span class="essential-label" aria-hidden="true">
-                    {c.title}
-                  </span>
                 </button>
               )}
             </For>
@@ -832,11 +864,7 @@ export default function App() {
             </div>
           )}
         </For>
-        <For
-          each={chats()
-            .filter((c) => c.section === "pinned" && !c.folderId)
-            .sort((a, b) => a.rank - b.rank)}
-        >
+        <For each={pinnedConversations()}>
           {(c) => row(c)}
         </For>
         <For each={workspace()?.folders ?? []}>
@@ -939,11 +967,7 @@ export default function App() {
                   ×
                 </button>
               </summary>
-              <For
-                each={chats()
-                  .filter((c) => c.folderId === folder._id)
-                  .sort((a, b) => a.rank - b.rank)}
-              >
+              <For each={folderConversations(folder._id)}>
                 {(c) => row(c)}
               </For>
             </details>

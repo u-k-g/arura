@@ -7,6 +7,7 @@ export type PaletteItem = {
   group: string;
   icon: string;
   detail?: string;
+  slot?: number;
   run: () => void;
 };
 
@@ -91,6 +92,9 @@ export default function CommandPalette(props: {
                 type="button"
                 role="option"
                 id={`palette-option-${index()}`}
+                aria-label={item.slot
+                  ? `${item.label}, slot ${item.slot}`
+                  : undefined}
                 aria-selected={index() === active()}
                 tabindex="-1"
                 onMouseMove={() => setActive(index())}
@@ -104,6 +108,11 @@ export default function CommandPalette(props: {
                     <small>{item.detail}</small>
                   </Show>
                 </span>
+                <Show when={item.slot}>
+                  <kbd class="palette-slot">
+                    {item.slot}
+                  </kbd>
+                </Show>
               </button>
             </>
           )}

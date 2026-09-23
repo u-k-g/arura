@@ -47,7 +47,6 @@ Deno.test({
         .locator(".essentials")
         .getByRole("button", { name: "Fixture conversation", exact: true });
       await expect(tile).toBeVisible();
-      await expect(tile.locator(".essential-label")).toBeHidden();
       expect(await tile.getAttribute("title")).toBe("Fixture conversation");
       const box = await tile.boundingBox();
       const container = await a.locator(".essentials").boundingBox();
@@ -84,8 +83,7 @@ Deno.test({
       expect(selectedStyle.background).toBe(idleStyle.background);
       expect(selectedStyle.border).not.toBe(idleStyle.border);
       await tile.hover();
-      await expect(tile.locator(".essential-label")).toBeVisible();
-      await expect(tile.locator(".icon")).toBeHidden();
+      await expect(tile.locator(".icon")).toBeVisible();
       await tile.click();
       await tile.click({ button: "right" });
       await a.getByRole("button", { name: "Change icon", exact: true }).click();

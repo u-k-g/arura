@@ -246,29 +246,8 @@ small {
   color: var(--essential-icon-color, var(--muted));
   opacity: var(--essential-icon-opacity, 0.7);
 }
-.essential-label {
-  display: none;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 .essentials > button:hover {
   background: color-mix(in srgb, var(--panel) 84%, black);
-}
-@media (hover: hover) {
-  .essentials :where(button:hover) .icon {
-    display: none;
-  }
-  .essentials :where(button:hover) .essential-label {
-    display: block;
-  }
-}
-.essentials :where(button:focus-visible) .icon {
-  display: none;
-}
-.essentials :where(button:focus-visible) .essential-label {
-  display: block;
 }
 .essential-icon-picker {
   display: grid;
