@@ -15,8 +15,10 @@ if (visualViewport) {
     if (visualViewport.scale > 1.05 || keyboardHeight < 120) {
       style.removeProperty("--app-viewport-height");
       style.removeProperty("--app-viewport-top");
+      style.removeProperty("--app-bottom-inset");
       return;
     }
+    style.setProperty("--app-bottom-inset", "0px");
     style.setProperty(
       "--app-viewport-height",
       `${Math.round(visualViewport.height)}px`,

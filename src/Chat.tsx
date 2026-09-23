@@ -104,6 +104,11 @@ export default function Chat(props: {
   reset?: number;
   title: string;
   navigate: (view: string) => void;
+  mobileActions: {
+    openNavigation: () => void;
+    openPalette: () => void;
+    newChat: () => void;
+  };
 }) {
   const [historyPages, setHistoryPages] = createSignal<Transcript["pages"]>([]);
   const [activity, setActivity] = createSignal<
@@ -1941,70 +1946,111 @@ export default function Chat(props: {
             void run(send);
           }}
         >
-          <IconButton
-            icon="plus"
-            class="composer-add"
-            label="Add context"
-            onClick={() => setAttachment(true)}
-          />
-          <ComposerInput
-            ref={(handle) => {
-              input = handle;
-            }}
-            context={`${props.conversation}:${edit() ?? ""}`}
-            controls={completions().length ? "composer-completions" : undefined}
-            activeDescendant={completions().length
-              ? `completion-${completionIndex()}`
-              : undefined}
-            placeholder={connected()
-              ? "Describe what you need"
-              : "Write a draft while offline…"}
-            value={text()}
-            onChange={changeText}
-            onCursor={setCursor}
-            onKeyDown={(e) => {
-              if (
-                e.key === "Enter" &&
-                e.metaKey &&
-                !e.ctrlKey &&
-                !e.altKey &&
-                !e.shiftKey &&
-                !e.isComposing
-              ) {
-                e.preventDefault();
-                if (e.repeat) return;
-                if (text().trim()) void run(send);
-                else if (queued()[0]) void run(() => sendNow(queued()[0]._id));
-                return;
+          <div class="composer-entry">
+            <IconButton
+              icon="plus"
+              class="composer-add"
+              label="Add context"
+              onClick={() => setAttachment(true)}
+            />
+            <ComposerInput
+              ref={(handle) => {
+                input = handle;
+              }}
+              context={`${props.conversation}:${edit() ?? ""}`}
+              controls={
+                completions().length ? "composer-completions" : undefined
               }
-              if (completions().length && !e.isComposing) {
-                if (e.key === "Escape") {
-                  e.preventDefault();
-                  setCompletions([]);
-                  return;
-                }
-                if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                  e.preventDefault();
-                  setCompletionIndex(
-                    (i) =>
-                      (i +
-                        (e.key === "ArrowDown"
-                          ? 1
-                          : completions().length - 1)) %
-                      completions().length,
-                  );
-                  return;
-                }
-                if (e.key === "Tab") {
-                  e.preventDefault();
-                  chooseCompletion(completionIndex());
-                  return;
-                }
+              activeDescendant={
+                completions().length
+                  ? `completion-${completionIndex()}`
+                  : undefined
               }
-            }}
-            onPasteFiles={(files) => void run(() => upload(files))}
-          />
+              placeholder={
+                connected()
+                  ? "Describe what you need"
+                  : "Write a draft while offline…"
+              }
+              value={text()}
+              onChange={changeText}
+              onCursor={setCursor}
+              onKeyDown={(e) => {
+                if (
+                  e.key === "Enter" &&
+                  e.metaKey &&
+                  !e.ctrlKey &&
+                  !e.altKey &&
+                  !e.shiftKey &&
+                  !e.isComposing
+                ) {
+                  e.preventDefault();
+                  if (e.repeat) return;
+                  if (text().trim()) void run(send);
+                  else if (queued()[0])
+                    void run(() => sendNow(queued()[0]._id));
+                  return;
+                }
+                if (completions().length && !e.isComposing) {
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setCompletions([]);
+                    return;
+                  }
+                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setCompletionIndex(
+                      (i) =>
+                        (i +
+                          (e.key === "ArrowDown"
+                            ? 1
+                            : completions().length - 1)) %
+                        completions().length,
+                    );
+                    return;
+                  }
+                  if (e.key === "Tab") {
+                    e.preventDefault();
+                    chooseCompletion(completionIndex());
+                    return;
+                  }
+                }
+              }}
+              onPasteFiles={(files) => void run(() => upload(files))}
+            />
+            <button
+              class="send mobile-send"
+              type="submit"
+              aria-label={
+                turn()?.state === "running" ? "Queue message" : "Send message"
+              }
+              disabled={
+                !text().trim() ||
+                !connected() ||
+                sending() ||
+                pendingUploads().some((item) => !item.error)
+              }
+            >
+              <Icon name="send" />
+            </button>
+          </div>
           <div class="composer-bottom">
+            <div class="mobile-composer-navigation">
+              <IconButton
+                icon="menu"
+                label="Open conversations"
+                onClick={props.mobileActions.openNavigation}
+              />
+              <IconButton
+                icon="search"
+                label="Search conversations"
+                onClick={props.mobileActions.openPalette}
+              />
+              <IconButton
+                icon="plus"
+                label="New conversation"
+                onClick={props.mobileActions.newChat}
+              />
+            </div>
             <button
               type="button"
               class="text-button composer-model"
@@ -2124,15 +2170,17 @@ export default function Chat(props: {
                 </button>
               </Show>
               <button
-                class="send"
+                class="send desktop-send"
                 type="submit"
-                aria-label={turn()?.state === "running"
-                  ? "Queue message"
-                  : "Send message"}
-                disabled={!text().trim() ||
+                aria-label={
+                  turn()?.state === "running" ? "Queue message" : "Send message"
+                }
+                disabled={
+                  !text().trim() ||
                   !connected() ||
                   sending() ||
-                  pendingUploads().some((item) => !item.error)}
+                  pendingUploads().some((item) => !item.error)
+                }
               >
                 <Icon name="send" />
               </button>

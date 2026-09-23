@@ -488,23 +488,38 @@ export default function App() {
       navigate("");
     }
   }
-  const openMenu = (conversation: Conversation, event: MouseEvent) => {
-    const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    setMenuAnchor({
-      x: event.clientX || bounds.left,
-      y: event.clientY || bounds.bottom,
-    });
+  const openMenuAt = (conversation: Conversation, x: number, y: number) => {
+    setMenuAnchor({ x, y });
     setFolderPicker(false);
     setMenu(conversation);
   };
-  const beginRename = (kind: "conversation" | "folder", id: string) => {
+  const openMenu = (conversation: Conversation, event: MouseEvent) => {
+    const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    openMenuAt(
+      conversation,
+      event.clientX || bounds.left,
+      event.clientY || bounds.bottom,
+    );
+  };
+  const beginRename = (
+    kind: "conversation" | "folder",
+    id: string,
+    openSheet = true,
+  ) => {
     setMenu(undefined);
-    if (narrow()) setSheet(true);
+    if (narrow() && openSheet) setSheet(true);
     setEditing({ kind, id });
   };
+  let titlePressTimer: ReturnType<typeof setTimeout> | undefined;
+  let lastTitleTap = 0;
+  const cancelTitlePress = () => {
+    if (titlePressTimer !== undefined) clearTimeout(titlePressTimer);
+    titlePressTimer = undefined;
+  };
+  onCleanup(cancelTitlePress);
   const stopRename = (kind: "conversation" | "folder", id: string) => {
     setEditing((current) =>
-      current?.kind === kind && current.id === id ? undefined : current
+      current?.kind === kind && current.id === id ? undefined : current,
     );
   };
   const saveRename = (
@@ -755,6 +770,16 @@ export default function App() {
       />
     </>
   );
+  const chatView = () =>
+    !view() ||
+    (view() !== "capabilities" &&
+      !view().startsWith("settings") &&
+      !view().startsWith("resources:"));
+  const mobileChatActions = {
+    openNavigation: () => setSheet(true),
+    openPalette: () => setPalette(true),
+    newChat: () => void newChat(currentProfile()),
+  };
   const gatewayOnline = () => connected() && !!workspace()?.connection?.online;
   const gatewayStatus = () => (
     <button
@@ -1203,19 +1228,113 @@ export default function App() {
           </aside>
         </Show>
         <main class="main-view">
-          <header class="topbar mobile-only">
-            <IconButton
-              icon="menu"
-              class="mobile-only"
-              label={resourceSection()
-                ? `Open ${navigationTitle()}`
-                : "Open conversations"}
-              onClick={() => setSheet(true)}
-            />
-            <Show when={narrow() && selected()}>{(c) => row(c(), false)}</Show>
-            {navigationActions()}
-            {conversationActions()}
-          </header>
+          <Show when={!chatView() || selected()}>
+            <header class="topbar mobile-only">
+              <Show when={!chatView()}>
+                <IconButton
+                  icon="menu"
+                  label={
+                    resourceSection()
+                      ? `Open ${navigationTitle()}`
+                      : "Open conversations"
+                  }
+                  onClick={() => setSheet(true)}
+                />
+              </Show>
+              <Show when={chatView() && selected()}>
+                {(c) => (
+                  <>
+                    <Show
+                      when={
+                        editing()?.kind === "conversation" &&
+                        editing()?.id === c().key
+                      }
+                      fallback={
+                        <button
+                          type="button"
+                          class="mobile-thread-title"
+                          title={`${c().title} · Double tap to rename; long press for actions`}
+                          aria-label={`${c().title}, double tap to rename or long press for actions`}
+                          onDblClick={() =>
+                            !c().bot &&
+                            beginRename("conversation", c().key, false)
+                          }
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            cancelTitlePress();
+                            openMenu(c(), event);
+                          }}
+                          onKeyDown={(event) => {
+                            if (
+                              event.key !== "ContextMenu" &&
+                              !(event.shiftKey && event.key === "F10")
+                            )
+                              return;
+                            event.preventDefault();
+                            const bounds =
+                              event.currentTarget.getBoundingClientRect();
+                            openMenuAt(c(), bounds.left, bounds.bottom);
+                          }}
+                          onPointerDown={(event) => {
+                            if (event.pointerType === "mouse") return;
+                            cancelTitlePress();
+                            const bounds =
+                              event.currentTarget.getBoundingClientRect();
+                            const x = event.clientX || bounds.left;
+                            const y = event.clientY || bounds.bottom;
+                            titlePressTimer = setTimeout(() => {
+                              titlePressTimer = undefined;
+                              lastTitleTap = 0;
+                              openMenuAt(c(), x, y);
+                            }, 500);
+                          }}
+                          onPointerUp={(event) => {
+                            if (event.pointerType === "mouse") return;
+                            if (titlePressTimer === undefined) return;
+                            cancelTitlePress();
+                            const now = Date.now();
+                            if (now - lastTitleTap < 350 && !c().bot) {
+                              beginRename("conversation", c().key, false);
+                              lastTitleTap = 0;
+                            } else lastTitleTap = now;
+                          }}
+                          onPointerCancel={cancelTitlePress}
+                          onPointerLeave={cancelTitlePress}
+                        >
+                          {c().title}
+                        </button>
+                      }
+                    >
+                      <div class="mobile-thread-title mobile-thread-rename">
+                        <InlineRename
+                          initial={c().title}
+                          label="Rename conversation"
+                          save={(name) =>
+                            saveRename("conversation", c().key, c().title, name)
+                          }
+                          cancel={() => stopRename("conversation", c().key)}
+                        />
+                      </div>
+                    </Show>
+                    <IconButton
+                      icon="archive"
+                      class="mobile-archive-button"
+                      label={`${c().section === "archived" ? "Unarchive" : "Archive"} ${c().title}`}
+                      disabled={
+                        c().section !== "archived" &&
+                        (c().running || c().pendingInput)
+                      }
+                      onClick={() => void run(() => archiveConversation(c()))}
+                    />
+                  </>
+                )}
+              </Show>
+              <Show when={!chatView()}>
+                {navigationActions()}
+                {conversationActions()}
+              </Show>
+            </header>
+          </Show>
           <SettingsFrame view={view()} navigate={navigate}>
             <Suspense fallback={<div class="loading">Opening…</div>}>
               <Show
@@ -1237,6 +1356,7 @@ export default function App() {
                               profile={chosenProfile()}
                               title="New session"
                               navigate={navigate}
+                              mobileActions={mobileChatActions}
                             />
                           }
                         >
@@ -1244,6 +1364,7 @@ export default function App() {
                             conversation={view()}
                             title={selected()?.title ?? "Conversation"}
                             navigate={navigate}
+                            mobileActions={mobileChatActions}
                           />
                         </Show>
                       }
