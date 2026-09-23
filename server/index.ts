@@ -20,6 +20,10 @@ import {
 import { exportConversation } from "./export.ts";
 import { Hermes, HermesHttpError } from "./hermes.ts";
 import { equal, hash, identity, randomSecret } from "./identity.ts";
+import {
+  currentCatalogReasoningCapabilities,
+  withCatalogReasoning,
+} from "./model-catalog.ts";
 
 const keys = await identity();
 const distRoot = fileURLToPath(new URL("../dist/", import.meta.url));
@@ -449,17 +453,20 @@ async function processCommands() {
           }
           let prompt = payload.text;
           let shouldSubmit = true;
-          // A persisted model without a reported reasoning level must not
+          // A persisted model without a known reasoning level must not
           // submit with a stale session effort (the Go relay answers HTTP
           // 500). Runs before slash dispatch so an explicit /reasoning in
           // this same turn still wins.
           if (typeof payload.model?.value === "string") {
             const parts = payload.model.value.split(/\s+/);
             const flag = parts.indexOf("--provider");
+            const provider = flag >= 0 ? (parts[flag + 1] ?? "") : "";
+            const model = parts[0] ?? "";
             if (
               clearsStaleEffort(
-                flag >= 0 ? (parts[flag + 1] ?? "") : "",
-                parts[0] ?? "",
+                provider,
+                model,
+                await currentCatalogReasoningCapabilities(provider, model),
               )
             ) {
               try {
@@ -961,10 +968,13 @@ async function handle(request: Request, ip: string): Promise<Response> {
       conversation && !["commands.catalog", "complete.slash"].includes(method)
         ? await hermes.attach(conversation)
         : undefined;
-    const result = await hermes.call(method, {
+    let result = await hermes.call(method, {
       ...params,
       ...(session_id ? { session_id } : {}),
     });
+    if (method === "model.options") {
+      result = await withCatalogReasoning(result);
+    }
     if (method === "subagent.tail") {
       record(result).text = subagentTranscript(
         String(record(result).text ?? ""),

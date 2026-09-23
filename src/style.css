@@ -1,5 +1,49 @@
 @import "./theme.css";
 
+:root {
+  --app-scrollbar-thumb: light-dark(rgb(0 0 0 / 15%), rgb(255 255 255 / 8%));
+  --app-scrollbar-thumb-hover: light-dark(
+    rgb(0 0 0 / 25%),
+    rgb(255 255 255 / 12%)
+  );
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--app-scrollbar-thumb) transparent;
+}
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--app-scrollbar-thumb);
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--app-scrollbar-thumb-hover);
+}
+@media (hover: hover) and (pointer: fine) {
+  * {
+    scrollbar-color: transparent transparent;
+  }
+  *:hover {
+    scrollbar-color: var(--app-scrollbar-thumb) transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: transparent;
+  }
+  *:hover::-webkit-scrollbar-thumb {
+    background: var(--app-scrollbar-thumb);
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--app-scrollbar-thumb-hover);
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -216,7 +260,6 @@ small {
 .nav-scroll {
   overflow: auto;
   flex: 1;
-  scrollbar-width: thin;
 }
 .essentials {
   display: flex;
@@ -511,7 +554,6 @@ small {
   flex: 1;
   min-height: 0;
   overscroll-behavior: contain;
-  scrollbar-width: thin;
 }
 .transcript-inner {
   width: 100%;
