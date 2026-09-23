@@ -53,6 +53,7 @@ const Capabilities = lazy(() => import("./Capabilities.tsx"));
 const Artifacts = lazy(() => import("./Artifacts.tsx"));
 
 export default function App() {
+  const [blankChatVersion, setBlankChatVersion] = createSignal(0);
   const [collapsed, setCollapsed] = createSignal(
     preferences.getItem("arura.sidebarCollapsed") === "true",
   );
@@ -393,7 +394,11 @@ export default function App() {
   function newChat(profile = currentProfile()) {
     setChosenProfile(profile);
     preferences.setItem("arura.profile", profile);
-    navigate("");
+    void draft("", "");
+    void draftAttachments("", []);
+    saveDraft(profile, "", "");
+    if (view() === "") setBlankChatVersion((value) => value + 1);
+    else navigate("");
     return Promise.resolve();
   }
   async function archiveConversation(conversation: Conversation) {
@@ -1043,6 +1048,7 @@ export default function App() {
                           fallback={
                             <Chat
                               conversation=""
+                              reset={blankChatVersion()}
                               profile={chosenProfile()}
                               title="New session"
                               navigate={navigate}

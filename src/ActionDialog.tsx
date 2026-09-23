@@ -4,6 +4,8 @@ type Question = {
   title: string;
   value?: string;
   multiline?: boolean;
+  message?: string;
+  confirmLabel?: string;
   resolve: (answer: string | null) => void;
 };
 const [question, setQuestion] = createSignal<Question>();
@@ -21,10 +23,13 @@ export function ask(
     if (!question()) next();
   });
 }
-export async function confirmAction(title: string): Promise<boolean> {
+export async function confirmAction(
+  title: string,
+  options?: { message?: string; confirmLabel?: string },
+): Promise<boolean> {
   return (
     (await new Promise<string | null>((resolve) => {
-      pending.push({ title, resolve });
+      pending.push({ title, ...options, resolve });
       if (!question()) next();
     })) !== null
   );
@@ -48,6 +53,9 @@ export default function ActionDialog() {
             title={item.title}
             close={() => finish(null)}
           >
+            <Show when={item.message}>
+              <p class="action-dialog-message">{item.message}</p>
+            </Show>
             <Show when={item.value !== undefined}>
               <Field label="Value">
                 <Show
@@ -80,7 +88,8 @@ export default function ActionDialog() {
                 class="primary"
                 onClick={() => finish(value())}
               >
-                {item.value === undefined ? "Confirm" : "Save"}
+                {item.confirmLabel ??
+                  (item.value === undefined ? "Confirm" : "Save")}
               </button>
             </div>
           </Dialog>

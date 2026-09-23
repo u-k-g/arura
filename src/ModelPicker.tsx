@@ -170,7 +170,13 @@ export default function ModelPicker(props: {
                 aria-pressed={section() === `provider:${id}`}
                 onClick={() => setSection(`provider:${id}`)}
               >
-                <ProviderLogo provider={id} label={label} />
+                <Show
+                  when={id.toLowerCase() === "moa" ||
+                    label.toLowerCase() === "mixture of agents"}
+                  fallback={<ProviderLogo provider={id} label={label} />}
+                >
+                  <Icon name="network" />
+                </Show>
               </button>
             )}
           </For>

@@ -49,6 +49,10 @@
   background: var(--hover);
   color: var(--ink);
 }
+.model-provider-rail button .icon {
+  width: 20px;
+  height: 20px;
+}
 .model-provider-rail button[aria-pressed="true"]::after {
   content: "";
   position: absolute;
@@ -169,6 +173,15 @@
   min-width: 105px;
   padding: 3px 8px;
   font-size: 12px;
+  border: 0;
+  background: transparent;
+}
+.model-picker-footer select:hover,
+.model-picker-footer select:focus-visible {
+  background: var(--hover);
+}
+.model-picker-footer select:disabled {
+  opacity: 1;
 }
 @media (max-width: 720px), (pointer: coarse) and (hover: none) {
   .model-picker-layout {

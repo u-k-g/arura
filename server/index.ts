@@ -57,6 +57,7 @@ const json = (
   });
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : "The request failed";
+class ModelConfirmationRequired extends Error {}
 const cookieName = "arura_session";
 const cookie = (secret: string, maxAge: number) =>
   `${cookieName}=${secret}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${
@@ -527,7 +528,7 @@ async function processCommands() {
                   confirm_expensive_model: payload.model.confirmed === true,
                 });
                 if (configured.confirm_required) {
-                  throw new Error(
+                  throw new ModelConfirmationRequired(
                     String(
                       configured.confirm_message ||
                         "Select this model again to confirm before sending.",
@@ -663,6 +664,9 @@ async function processCommands() {
           id: command._id,
           status: unknown ? "unknown" : "error",
           error: message,
+          ...(error instanceof ModelConfirmationRequired
+            ? { result: { confirmRequired: true } }
+            : {}),
         });
       }
     }

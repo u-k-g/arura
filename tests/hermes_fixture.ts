@@ -635,13 +635,27 @@ export function hermesFixture(
                 return;
               }
             }
-            const settings = sessionSettings.get(params.session_id) ?? {};
-            settings[params.key] = params.key === "model"
-              ? String(params.value).split(/\s+/)[0]
-              : params.value;
-            sessionSettings.set(params.session_id, settings);
-            event("sessions.changed", "", {});
-            result = { ok: true };
+            const requiresConfirmation = params.key === "model" &&
+              String(params.value).startsWith("fixture-alternative ") &&
+              sessions.get(params.session_id)?.messages.some((row) =>
+                String(row.content).includes("ARURA_TEST_MODEL_CONFIRM")
+              ) &&
+              !params.confirm_expensive_model;
+            if (requiresConfirmation) {
+              result = {
+                confirm_required: true,
+                confirm_message:
+                  "!!! LARGE CONTEXT MODEL SWITCH !!!\nThis session would re-read its context at full input cost. Confirm only if you intend to switch now.",
+              };
+            } else {
+              const settings = sessionSettings.get(params.session_id) ?? {};
+              settings[params.key] = params.key === "model"
+                ? String(params.value).split(/\s+/)[0]
+                : params.value;
+              sessionSettings.set(params.session_id, settings);
+              event("sessions.changed", "", {});
+              result = { ok: true };
+            }
           } else if (
             method === "command.dispatch" &&
             ["goal", "loop", "heartbeat"].includes(params.name)

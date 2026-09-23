@@ -127,14 +127,14 @@ and Arura signing identity.
 Deploy Arura on its own origin with separate listeners and state. Validate real
 sending, reconnects, and device revocation from both a phone and desktop before
 changing the main route. The package has passed isolated browser integration
-tests. A disposable installation of the pinned
-Hermes runtime also passes local configuration and lifecycle writes, real backup
-creation/download, gateway streaming, automation controls, and transcript
-filtering against a local inference stub. These checks do not change the
-production Hermes installation. Manara's NixOS rollout also passes public HTTPS
-device authorization, authenticated Convex queries, existing-history ingestion,
-and device revocation. Real inference and phone suspension/reconnection still
-need a device-level acceptance check.
+tests. A disposable installation of the pinned Hermes runtime also passes local
+configuration and lifecycle writes, real backup creation/download, gateway
+streaming, automation controls, and transcript filtering against a local
+inference stub. These checks do not change the production Hermes installation.
+Manara's NixOS rollout also passes public HTTPS device authorization,
+authenticated Convex queries, existing-history ingestion, and device revocation.
+Real inference and phone suspension/reconnection still need a device-level
+acceptance check.
 
 ## Upstream limitations
 
@@ -155,13 +155,13 @@ need a device-level acceptance check.
 [nc's Arura module](https://github.com/u-k-g/nc/blob/main/modules/arura.mod.nix)
 imports this flake's services and connects them to the same Hermes dashboard.
 Hermes remains authoritative for history; Arura's separate Convex database
-stores its projection, organization, and device access.
-It does not create another Hermes installation or copy its database.
+stores its projection, organization, and device access. It does not create
+another Hermes installation or copy its database.
 
 Arura uses tailnet HTTPS port **8444**, with browser Convex subscriptions on
-**8445**. The Hermes web route stays on **8443**. Each route has its
-own foreground Tailscale Serve service, so stopping Arura does not remove the
-other routes.
+**8445**. The Hermes web route stays on **8443**. Each route has its own
+foreground Tailscale Serve service, so stopping Arura does not remove the other
+routes.
 
 The initialization service creates private instance credentials once and reuses
 the existing Hermes dashboard password. Preserve its `arura-credentials` state

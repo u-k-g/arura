@@ -2,7 +2,12 @@ import { anyApi } from "convex/server";
 import { v } from "convex/values";
 import { incomingOrganization } from "../shared/organization.ts";
 import { conversationActivity, shouldArchive } from "../shared/model.ts";
-import { internalMutation, mutation, query } from "./_generated/server.ts";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type QueryCtx,
+} from "./_generated/server.ts";
 import { adapter, device } from "./access.ts";
 import { resolveKey } from "./conversationKeys.ts";
 import { essentialIcons } from "../shared/essentialIcons.ts";
@@ -171,54 +176,84 @@ export const byKey = query({
     return row && !row.deleted ? row : null;
   },
 });
+async function transcriptPages(
+  ctx: QueryCtx,
+  conversation: string,
+  pages: number,
+) {
+  if (!Number.isSafeInteger(pages) || pages < 1) {
+    throw new Error("Invalid history page count");
+  }
+  return await Promise.all(
+    (
+      await ctx.db
+        .query("pages")
+        .withIndex("page", (q) => q.eq("conversation", conversation))
+        .take(pages)
+    ).map(async (page) => ({
+      ...page,
+      messages: page.chunked
+        ? await readHistoryChunks(ctx, page._id)
+        : page.messages,
+    })),
+  );
+}
+async function transcriptActivity(ctx: QueryCtx, conversation: string) {
+  const recent = await ctx.db
+    .query("commands")
+    .withIndex("conversation", (q) => q.eq("conversation", conversation))
+    .order("desc")
+    .take(30);
+  const queued = await ctx.db
+    .query("commands")
+    .withIndex(
+      "pending",
+      (q) => q.eq("conversation", conversation).eq("status", "queued"),
+    )
+    .collect();
+  return {
+    turn: (
+      await ctx.db
+        .query("turns")
+        .withIndex(
+          "conversation",
+          (q) => q.eq("conversation", conversation),
+        )
+        .unique()
+    )?.data ?? null,
+    commands: [
+      ...queued,
+      ...recent.filter((command) => command.status !== "queued"),
+    ],
+  };
+}
+export const history = query({
+  args: { conversation: v.string(), pages: v.number() },
+  handler: async (ctx, args) => {
+    await device(ctx);
+    const conversation = await resolveKey(ctx, args.conversation);
+    return await transcriptPages(ctx, conversation, args.pages);
+  },
+});
+export const activity = query({
+  args: { conversation: v.string() },
+  handler: async (ctx, args) => {
+    await device(ctx);
+    const conversation = await resolveKey(ctx, args.conversation);
+    return await transcriptActivity(ctx, conversation);
+  },
+});
+// Retained for clients still using the combined shape.
 export const transcript = query({
   args: { conversation: v.string(), pages: v.number() },
   handler: async (ctx, args) => {
     await device(ctx);
-    args.conversation = await resolveKey(ctx, args.conversation);
-    if (!Number.isSafeInteger(args.pages) || args.pages < 1) {
-      throw new Error("Invalid history page count");
-    }
-    const recent = await ctx.db
-      .query("commands")
-      .withIndex("conversation", (q) => q.eq("conversation", args.conversation))
-      .order("desc")
-      .take(30);
-    const queued = await ctx.db
-      .query("commands")
-      .withIndex(
-        "pending",
-        (q) => q.eq("conversation", args.conversation).eq("status", "queued"),
-      )
-      .collect();
-    return {
-      pages: await Promise.all(
-        (
-          await ctx.db
-            .query("pages")
-            .withIndex("page", (q) => q.eq("conversation", args.conversation))
-            .take(args.pages)
-        ).map(async (page) => ({
-          ...page,
-          messages: page.chunked
-            ? await readHistoryChunks(ctx, page._id)
-            : page.messages,
-        })),
-      ),
-      turn: (
-        await ctx.db
-          .query("turns")
-          .withIndex(
-            "conversation",
-            (q) => q.eq("conversation", args.conversation),
-          )
-          .unique()
-      )?.data ?? null,
-      commands: [
-        ...queued,
-        ...recent.filter((command) => command.status !== "queued"),
-      ],
-    };
+    const conversation = await resolveKey(ctx, args.conversation);
+    const [pages, activity] = await Promise.all([
+      transcriptPages(ctx, conversation, args.pages),
+      transcriptActivity(ctx, conversation),
+    ]);
+    return { pages, ...activity };
   },
 });
 export const markRead = mutation({

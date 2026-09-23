@@ -89,14 +89,14 @@ const ContextSuggestions = lazy(() => import("./ContextSuggestions.tsx"));
 export default function Chat(props: {
   profile?: string;
   conversation: string;
+  reset?: number;
   title: string;
   navigate: (view: string) => void;
 }) {
-  const [data, setData] = createSignal<Transcript>({
-    pages: [],
-    commands: [],
-    turn: null,
-  });
+  const [historyPages, setHistoryPages] = createSignal<Transcript["pages"]>([]);
+  const [activity, setActivity] = createSignal<
+    Pick<Transcript, "commands" | "turn">
+  >({ commands: [], turn: null });
   const [text, setText] = createSignal(""),
     [sending, setSending] = createSignal(false),
     [pages, setPages] = createSignal(1);
@@ -145,7 +145,7 @@ export default function Chat(props: {
   const dismissError = (id: string) =>
     void run(() => mutate("workspace.dismissError", { id }));
   const queued = () =>
-    data()
+    activity()
       .commands.filter(
         (item) => item.kind === "send" && item.status === "queued",
       )
@@ -154,8 +154,14 @@ export default function Chat(props: {
     mutate("commands.edit", { id, sendNow: true });
   const [historyLoading, setHistoryLoading] = createSignal(false);
   const [historyRetry, setHistoryRetry] = createSignal(0);
+  const [pendingPrompt, setPendingPrompt] = createSignal<{
+    id: string;
+    key: string;
+    text: string;
+    previousIds: Set<string>;
+  }>();
   const historyFailure = createMemo(() => {
-    const latest = data()
+    const latest = activity()
       .commands.filter(
         (c) =>
           c.kind === "load" && !["queued", "dispatching"].includes(c.status),
@@ -167,6 +173,13 @@ export default function Chat(props: {
       ? latest
       : undefined;
   });
+  const commandIssues = createMemo(() =>
+    activity().commands.filter((item) =>
+      ["error", "unknown"].includes(item.status) &&
+      item.kind !== "load" &&
+      !errorDismissed(item._id)
+    ).sort((a, b) => b.createdAt - a.createdAt)
+  );
   const [edit, setEdit] = createSignal<string>(),
     [controls, setControls] = createSignal<ControlView>();
   const [uploads, setUploads] = createSignal<
@@ -179,7 +192,10 @@ export default function Chat(props: {
   const [currentProvider, setCurrentProvider] = createSignal("");
   const [currentModel, setCurrentModel] = createSignal("");
   const selectedModel = () => workspace()?.settings.chatModel;
-  const displayedModel = () => selectedModel()?.label || currentModel();
+  const displayedModel = () =>
+    props.conversation
+      ? (currentModel() || selectedModel()?.label || "")
+      : (selectedModel()?.label || currentModel());
   const [currentEffort, setCurrentEffort] = createSignal("");
   createEffect(() => {
     if (!connected()) return;
@@ -238,6 +254,7 @@ export default function Chat(props: {
   const [awayFromBottom, setAwayFromBottom] = createSignal(false);
   let needsInitialScroll = true;
   let scrollFrame: number | undefined;
+  let liveScrollFrame: number | undefined;
   let scrollIntent = 0;
   const userScroll = () => {
     scrollIntent++;
@@ -246,6 +263,7 @@ export default function Chat(props: {
   };
   onCleanup(() => {
     if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
+    if (liveScrollFrame !== undefined) cancelAnimationFrame(liveScrollFrame);
   });
   const scrollToLatest = () => {
     scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "instant" });
@@ -254,8 +272,8 @@ export default function Chat(props: {
   let input!: ComposerHandle;
   let fileInput!: HTMLInputElement;
   const historyRevision = createMemo(() =>
-    data()
-      .pages.map((page) => `${page.offset}:${page.revision}`)
+    historyPages()
+      .map((page) => `${page.offset}:${page.revision}`)
       .join("|")
   );
   const messages = createMemo(() => {
@@ -263,14 +281,31 @@ export default function Chat(props: {
     // Command/status updates must not remount unchanged message groups.
     return untrack(() =>
       mergeHistoryMessages(
-        data()
-          .pages.slice()
+        historyPages()
+          .slice()
           .sort((a, b) => b.offset - a.offset)
           .flatMap((page) => page.messages) as Message[],
       )
     );
   });
-  const turn = () => data().turn as Turn | null;
+  const visiblePendingPrompt = createMemo(() => {
+    const pending = pendingPrompt();
+    if (!pending || pending.key !== props.conversation) return;
+    const command = activity().commands.find((item) => item.id === pending.id);
+    if (command && ["error", "unknown", "cancelled"].includes(command.status)) {
+      return;
+    }
+    const sentText = userMessageText(pending.text).trim();
+    if (
+      messages().some((message) =>
+        message.role === "user" &&
+        !pending.previousIds.has(message.id) &&
+        userMessageText(message.text).trim() === sentText
+      )
+    ) return;
+    return pending;
+  });
+  const turn = () => activity().turn as Turn | null;
   const turnIsInHistory = () => {
     const last = turn()?.state === "running"
         ? messages().at(-1)
@@ -289,7 +324,7 @@ export default function Chat(props: {
     const current = turn();
     if (current?.state === "running") return false;
     if (sending()) return true;
-    return data().commands.some(
+    return activity().commands.some(
       (c) =>
         (c.kind === "send" || c.kind === "sendNow") &&
         (c.status === "queued" || c.status === "dispatching") &&
@@ -299,32 +334,62 @@ export default function Chat(props: {
   });
   const [clock, setClock] = createSignal(Date.now());
   let transcriptRevision = 0;
+  let conversationRevision = 0;
+  let lastReset = props.reset;
   onMount(() => {
     const t = setInterval(() => setClock(Date.now()), 1000);
-    onCleanup(() => clearInterval(t));
+    const resize = new globalThis.ResizeObserver(() => {
+      const intent = scrollIntent;
+      if (liveScrollFrame !== undefined) cancelAnimationFrame(liveScrollFrame);
+      liveScrollFrame = requestAnimationFrame(() => {
+        liveScrollFrame = undefined;
+        if (intent === scrollIntent && !awayFromBottom()) scrollToLatest();
+      });
+    });
+    resize.observe(scroller);
+    onCleanup(() => {
+      clearInterval(t);
+      resize.disconnect();
+    });
   });
   createEffect(() => {
     const key = props.conversation;
+    const reset = props.reset;
+    const clearBlank = !key && reset !== lastReset;
+    if (clearBlank) {
+      clearTimeout(draftSync);
+      pendingDraft = undefined;
+    }
+    lastReset = reset;
     const revision = ++transcriptRevision;
+    const draftRevision = ++conversationRevision;
     needsInitialScroll = true;
     draftConfig.clear();
     setAwayFromBottom(false);
-    setData({ pages: [], commands: [], turn: null });
+    setHistoryPages([]);
+    setActivity({ commands: [], turn: null });
     setText("");
     setPages(1);
     setHistoryLoading(false);
     setEdit(undefined);
+    setPendingPrompt(undefined);
     setCurrentModel("");
     setCurrentEffort("");
     setUploads([]);
     setPendingUploads([]);
     void draftAttachments(key).then((value) => {
-      if (props.conversation === key && uploads().length === 0) {
+      if (
+        !clearBlank && conversationRevision === draftRevision &&
+        props.conversation === key && uploads().length === 0
+      ) {
         setUploads(value);
       }
     });
     void draft(key).then((value) => {
-      if (props.conversation !== key || text() !== "") return;
+      if (
+        clearBlank || conversationRevision !== draftRevision ||
+        props.conversation !== key || text() !== ""
+      ) return;
       const remote = untrack(
         () =>
           workspace()?.drafts?.find(
@@ -339,7 +404,7 @@ export default function Chat(props: {
         props.conversation === key &&
         transcriptRevision === revision
       ) {
-        setData(value);
+        setHistoryPages(value.pages);
         requestAnimationFrame(() => {
           if (props.conversation === key && needsInitialScroll) {
             scrollToLatest();
@@ -352,18 +417,45 @@ export default function Chat(props: {
   createEffect(() => {
     const key = props.conversation;
     if (!key) return;
+    connected();
+    const stop = subscribe<Pick<Transcript, "commands" | "turn">>(
+      "workspace",
+      "activity",
+      { conversation: key },
+      (value) => {
+        setActivity(value);
+        if (liveScrollFrame !== undefined) {
+          cancelAnimationFrame(liveScrollFrame);
+        }
+        const intent = scrollIntent;
+        liveScrollFrame = requestAnimationFrame(() => {
+          liveScrollFrame = undefined;
+          if (
+            props.conversation === key && intent === scrollIntent &&
+            !awayFromBottom()
+          ) {
+            scrollToLatest();
+          }
+        });
+      },
+    );
+    onCleanup(stop);
+  });
+  createEffect(() => {
+    const key = props.conversation;
+    if (!key) return;
     const count = pages();
     historyRetry();
     connected();
     const requested = new Set<string>();
-    const stop = subscribe<Transcript>(
+    const stop = subscribe<Transcript["pages"]>(
       "workspace",
-      "transcript",
+      "history",
       { conversation: key, pages: count },
       (value) => {
         transcriptRevision++;
-        const previousOffset = data().pages.at(-1)?.offset ?? 0;
-        const prepended = (value.pages.at(-1)?.offset ?? 0) > previousOffset;
+        const previousOffset = historyPages().at(-1)?.offset ?? 0;
+        const prepended = (value.at(-1)?.offset ?? 0) > previousOffset;
         const viewportTop = scroller?.getBoundingClientRect().top ?? 0;
         const preservePosition = prepended || awayFromBottom();
         const intent = scrollIntent;
@@ -379,36 +471,42 @@ export default function Chat(props: {
         const anchorId = anchor?.dataset.messageId;
         const anchorTop = anchor?.getBoundingClientRect().top ?? viewportTop;
         const nearBottom = needsInitialScroll || !awayFromBottom();
-        setData(value);
+        setHistoryPages(value);
         if (
-          value.pages.length >= count ||
-          value.pages.at(-1)?.hasMore === false
+          value.length >= count ||
+          value.at(-1)?.hasMore === false
         ) {
           setHistoryLoading(false);
         }
-        if (value.pages.some((page) => page.messages.length)) {
+        if (value.some((page) => page.messages.length)) {
           needsInitialScroll = false;
         }
-        const head = value.pages.find((page) => page.offset === 0);
+        const head = value.find((page) => page.offset === 0);
         for (let offset = 100; head && offset < count * 100; offset += 100) {
-          const preceding = value.pages.find(
+          const preceding = value.find(
             (page) => page.offset === offset - 100,
           );
           const requestId = `${head.revision}:${offset}`;
           if (
             preceding?.hasMore &&
-            !value.pages.some((page) => page.offset === offset) &&
+            !value.some((page) => page.offset === offset) &&
             !requested.has(requestId) &&
             connected()
           ) {
             requested.add(requestId);
-            void command("load", key, { offset }).catch((error) => {
+            void command("load", key, { offset }).catch(() => {
               if (props.conversation === key) setHistoryLoading(false);
-              inform(error.message);
             });
           }
         }
-        void saveCache(`chat:${key}`, value);
+        void saveCache(
+          `chat:${key}`,
+          {
+            pages: value,
+            commands: [],
+            turn: null,
+          } satisfies Transcript,
+        );
         if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
         scrollFrame = requestAnimationFrame(() => {
           scrollFrame = undefined;
@@ -435,15 +533,47 @@ export default function Chat(props: {
     );
     onCleanup(stop);
     if (connected()) {
-      void command("load", key, { offset: 0 }).catch((error) =>
-        inform(error.message)
-      );
+      void command("load", key, { offset: 0 }).catch(() => {
+        if (props.conversation === key) setHistoryLoading(false);
+      });
     }
   });
   const changeText = (value: string) => {
     setText(value);
     writeDraft(props.conversation, value);
   };
+  async function restoreFailedMessage(item: Transcript["commands"][number]) {
+    if (
+      text().trim() &&
+      !(await confirmAction("Replace the current draft?", {
+        message:
+          "The message that failed will replace the text in the composer.",
+        confirmLabel: "Restore message",
+      }))
+    ) return;
+    changeText(item.payload.text);
+    setEdit(item.payload.edit);
+    const attachments = item.payload.attachments ?? [];
+    setUploads(attachments);
+    void draftAttachments(props.conversation, attachments);
+    dismissError(item._id);
+    input?.focus();
+  }
+  async function retryConfirmedModel(item: Transcript["commands"][number]) {
+    if (!item.payload.model || item.status !== "error" || !connected()) return;
+    if (
+      !(await confirmAction("Switch model and send?", {
+        message: item.error ??
+          "Hermes needs confirmation for this model change.",
+        confirmLabel: "Switch and send",
+      }))
+    ) return;
+    await enqueueCommand("send", item.conversation, {
+      ...item.payload,
+      model: { ...item.payload.model, confirmed: true },
+    });
+    dismissError(item._id);
+  }
   let submission: { signature: string; id: string } | undefined;
   async function send() {
     if (
@@ -455,10 +585,15 @@ export default function Chat(props: {
     }
     const value = text();
     const originalKey = props.conversation;
+    const focusOwner = globalThis.document.activeElement;
+    const composerHadFocus = focusOwner instanceof globalThis.HTMLElement &&
+      focusOwner.closest(".composer-input") !== null;
     let key = originalKey;
     setSending(true);
     try {
-      const modelSelection = selectedModel();
+      // An existing session was configured when the picker changed. A global
+      // default must not silently switch its model on every later send.
+      const modelSelection = key ? undefined : selectedModel();
       const payload = {
         text: value,
         ...(modelSelection ? { model: { ...modelSelection } } : {}),
@@ -484,9 +619,10 @@ export default function Chat(props: {
           });
           if (result.confirm_required) {
             if (
-              await rejectAction(
-                String(result.confirm_message || "Use this model?"),
-              )
+              !(await confirmAction("Switch model?", {
+                message: String(result.confirm_message || "Use this model?"),
+                confirmLabel: "Switch model",
+              }))
             ) {
               props.navigate(key);
               return;
@@ -509,6 +645,18 @@ export default function Chat(props: {
       const signature = JSON.stringify([key, payload]);
       if (submission?.signature !== signature) {
         submission = { signature, id: crypto.randomUUID() };
+      }
+      if (
+        originalKey && !payload.edit && !value.trimStart().startsWith("/") &&
+        turn()?.state !== "running"
+      ) {
+        setPendingPrompt({
+          id: submission.id,
+          key,
+          text: value,
+          previousIds: new Set(messages().map((message) => message.id)),
+        });
+        if (!awayFromBottom()) requestAnimationFrame(scrollToLatest);
       }
       await enqueueCommand("send", key, payload, submission.id);
       submission = undefined;
@@ -538,11 +686,16 @@ export default function Chat(props: {
         saveDraft(profileOf(key), key, "");
       }
     } catch (error) {
+      setPendingPrompt(undefined);
       if (!originalKey && key) props.navigate(key);
       throw error;
     } finally {
       setSending(false);
-      input?.focus();
+      if (
+        composerHadFocus &&
+        props.conversation === key &&
+        globalThis.document.activeElement === focusOwner
+      ) input?.focus();
     }
   }
   async function upload(files: FileList | null) {
@@ -870,7 +1023,7 @@ export default function Chat(props: {
               scroller.scrollHeight -
                   scroller.scrollTop -
                   scroller.clientHeight >
-                180,
+                40,
             );
           }
         }}
@@ -882,20 +1035,7 @@ export default function Chat(props: {
           </div>
         </Show>
         <div class="transcript-inner">
-          <Show when={historyFailure()}>
-            <div class="history-error" role="alert">
-              Conversation history could not be refreshed. Some messages may be
-              out of date.
-              <button
-                type="button"
-                disabled={!connected()}
-                onClick={() => setHistoryRetry((value) => value + 1)}
-              >
-                Retry history
-              </button>
-            </div>
-          </Show>
-          <Show when={data().pages.at(-1)?.hasMore}>
+          <Show when={historyPages().at(-1)?.hasMore}>
             <button
               type="button"
               class="load-earlier"
@@ -903,7 +1043,7 @@ export default function Chat(props: {
               aria-busy={historyLoading()}
               onClick={() => {
                 setHistoryLoading(true);
-                setPages(data().pages.length + 1);
+                setPages(historyPages().length + 1);
                 setHistoryRetry((value) => value + 1);
               }}
             >
@@ -989,6 +1129,14 @@ export default function Chat(props: {
               </>
             )}
           </For>
+          <Show when={visiblePendingPrompt()}>
+            {(pending) => (
+              <article class="message user pending-prompt" role="status">
+                <Markdown text={userMessageText(pending().text)} />
+                <small>Sending…</small>
+              </article>
+            )}
+          </Show>
           <Show when={thinking()}>
             <article class="message assistant">
               <p class="thinking-label" role="status">
@@ -1032,16 +1180,6 @@ export default function Chat(props: {
                       {activity().label}
                     </div>
                   )}
-                </Show>
-                <Show when={t().error && !errorDismissed(turnErrorId(t()))}>
-                  <div class="error dismissible-error" role="alert">
-                    {t().error}
-                    <IconButton
-                      icon="xmark"
-                      label="Dismiss error"
-                      onClick={() => dismissError(turnErrorId(t()))}
-                    />
-                  </div>
                 </Show>
                 <For each={t().interactions.map((item) => item.id)}>
                   {(id) => {
@@ -1138,7 +1276,7 @@ export default function Chat(props: {
             )}
           </Show>
           <For
-            each={data().commands.filter(
+            each={activity().commands.filter(
               (c) =>
                 c.status === "complete" &&
                 c.kind === "send" &&
@@ -1152,52 +1290,84 @@ export default function Chat(props: {
               </article>
             )}
           </For>
-          <For
-            each={data().commands.filter(
-              (c) =>
-                ["unknown", "error"].includes(c.status) &&
-                c.kind !== "load" &&
-                !errorDismissed(c._id),
-            )}
-          >
-            {(c) => (
-              <div class="command-error dismissible-error" role="alert">
-                <IconButton
-                  icon="xmark"
-                  label="Dismiss error"
-                  onClick={() => dismissError(c._id)}
-                />
-                {c.error}
-                <Show when={c.kind === "send" && c.status === "error"}>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void run(async () => {
-                        if (
-                          text().trim() &&
-                          !(await confirmAction(
-                            "Replace the current draft with this failed message?",
-                          ))
-                        ) {
-                          return;
-                        }
-                        changeText(c.payload.text);
-                        setEdit(c.payload.edit);
-                        setUploads(c.payload.attachments ?? []);
-                      })}
-                  >
-                    Edit failed message
-                  </button>
-                </Show>
-                <Show when={c.status === "unknown"}>
-                  <p>Check the conversation before sending again.</p>
-                </Show>
-              </div>
-            )}
-          </For>
         </div>
       </section>
       <div class="compose-area">
+        <Show when={historyFailure()}>
+          <div class="history-error chat-issue" role="alert">
+            <span>Conversation history may be out of date.</span>
+            <button
+              type="button"
+              disabled={!connected()}
+              onClick={() => setHistoryRetry((value) => value + 1)}
+            >
+              Retry history
+            </button>
+          </div>
+        </Show>
+        <Show when={turn()?.error && !errorDismissed(turnErrorId(turn()!))}>
+          <div class="chat-issue" role="alert">
+            <strong>Hermes stopped this turn.</strong>
+            <details>
+              <summary>Details</summary>
+              <p>{turn()?.error}</p>
+            </details>
+            <IconButton
+              icon="xmark"
+              label="Dismiss error"
+              onClick={() => turn() && dismissError(turnErrorId(turn()!))}
+            />
+          </div>
+        </Show>
+        <Show when={commandIssues()[0]}>
+          {(c) => (
+            <div class="command-error chat-issue" role="alert">
+              <strong>
+                {c().result?.confirmRequired
+                  ? "Model switch needs confirmation"
+                  : c().kind === "send"
+                  ? c().status === "unknown"
+                    ? "Message delivery is uncertain"
+                    : "Message was not sent"
+                  : "Action failed"}
+              </strong>
+              <Show when={commandIssues().length > 1}>
+                <small>{commandIssues().length} issues</small>
+              </Show>
+              <details>
+                <summary>Details</summary>
+                <p>{c().error}</p>
+              </details>
+              <Show
+                when={c().result?.confirmRequired && c().status === "error"}
+              >
+                <button
+                  type="button"
+                  disabled={!connected()}
+                  onClick={() => void run(() => retryConfirmedModel(c()))}
+                >
+                  Confirm switch and send
+                </button>
+              </Show>
+              <Show
+                when={c().kind === "send" &&
+                  c().status === "error" && !c().result?.confirmRequired}
+              >
+                <button
+                  type="button"
+                  onClick={() => void run(() => restoreFailedMessage(c()))}
+                >
+                  Restore message to composer
+                </button>
+              </Show>
+              <IconButton
+                icon="xmark"
+                label="Dismiss error"
+                onClick={() => dismissError(c()._id)}
+              />
+            </div>
+          )}
+        </Show>
         <div class="composer-attachments">
           <For each={pendingUploads()}>
             {(item) => (
@@ -1701,7 +1871,9 @@ export default function Chat(props: {
           anchor={modelButton}
           models={models()}
           current={displayedModel()}
-          provider={selectedModel()?.provider ?? currentProvider()}
+          provider={props.conversation
+            ? currentProvider()
+            : (selectedModel()?.provider ?? currentProvider())}
           effort={currentEffort()}
           close={() => setModel("")}
           choose={async (m) => {
@@ -1716,9 +1888,10 @@ export default function Chat(props: {
             });
             if (result.confirm_required) {
               if (
-                await rejectAction(
-                  String(result.confirm_message || "Use this model?"),
-                )
+                !(await confirmAction(`Switch to ${modelLabel(m)}?`, {
+                  message: String(result.confirm_message || "Use this model?"),
+                  confirmLabel: "Switch model",
+                }))
               ) {
                 return;
               }

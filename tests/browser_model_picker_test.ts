@@ -125,7 +125,7 @@ Deno.test({
         b.getByRole("button", { name: "Model", exact: true }),
       ).toContainText("fixture-alternative");
       await a
-        .locator(".sidebar-titlebar, .topbar, .nav-footer")
+        .locator(".sidebar-titlebar, .topbar, .nav-footer, .pinned-divider")
         .getByRole("button", { name: "New conversation", exact: true })
         .first()
         .click();

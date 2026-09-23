@@ -51,18 +51,18 @@ Additional palettes are bundled snapshots of the
 Grove (T3 Code), Jade (steez), and Black Rose (metalelf0) are defined there;
 Gruvbox Dark Hard and Rosé Pine come from its pinned
 [ThemeNix revision](https://github.com/RGBCube/ThemeNix/tree/3779a7ba289d88ea092063e8bc512cfe80f293ba).
-They use this Base16 color mapping: base00 canvas, base01 sidebar/dialog,
-base02 surfaces/borders, base05 text, base04
-secondary text, base03 subtle text, base0D accent, and base08 errors. These five
-presets are dark palettes regardless of the device's appearance. Selection is
-saved per browser. Arura does not read, follow, or update nc's active theme; no
-Nix dependency or runtime theme request is required.
+They use this Base16 color mapping: base00 canvas, base01 sidebar/dialog, base02
+surfaces/borders, base05 text, base04 secondary text, base03 subtle text, base0D
+accent, and base08 errors. These five presets are dark palettes regardless of
+the device's appearance. Selection is saved per browser. Arura does not read,
+follow, or update nc's active theme; no Nix dependency or runtime theme request
+is required.
 
 IBM Plex Sans is bundled with its
-[OFL license](https://github.com/IBM/plex/blob/master/LICENSE.txt).
-The bundled Iosevka font is subset to Latin, punctuation, currency, and arrows
-to avoid shipping unused Nerd Font icon glyphs. Its OFL license is bundled
-alongside it. Fonts load locally and are cached offline.
+[OFL license](https://github.com/IBM/plex/blob/master/LICENSE.txt). The bundled
+Iosevka font is subset to Latin, punctuation, currency, and arrows to avoid
+shipping unused Nerd Font icon glyphs. Its OFL license is bundled alongside it.
+Fonts load locally and are cached offline.
 
 Sidebar collapse is stored per device. Search and action menus remain keyboard
 accessible. Mobile navigation and action menus use bottom sheets. Internal tabs,
