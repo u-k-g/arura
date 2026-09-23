@@ -114,8 +114,10 @@ Deno.test({
       ).toBeLessThanOrEqual(1280);
       await page.keyboard.press("End");
       await expect(
-        menu.getByRole("button", { name: "Delete conversation", exact: true }),
+        menu.getByRole("link", { name: "Export conversation", exact: true }),
       ).toBeFocused();
+      await expect(menu.getByRole("button", { name: "Delete conversation" }))
+        .toHaveCount(0);
       await page.keyboard.press("Escape");
       await page.setViewportSize({ width: 390, height: 844 });
       await page

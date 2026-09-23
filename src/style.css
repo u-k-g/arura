@@ -229,8 +229,8 @@ small {
   flex: 1 0 48px;
   min-width: 44px;
   height: auto;
-  border: 0;
-  background: transparent;
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--panel) 90%, black);
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -246,8 +246,29 @@ small {
   color: var(--essential-icon-color, var(--muted));
   opacity: var(--essential-icon-opacity, 0.7);
 }
+.essential-label {
+  display: none;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .essentials > button:hover {
-  background: var(--hover);
+  background: color-mix(in srgb, var(--panel) 84%, black);
+}
+@media (hover: hover) {
+  .essentials :where(button:hover) .icon {
+    display: none;
+  }
+  .essentials :where(button:hover) .essential-label {
+    display: block;
+  }
+}
+.essentials :where(button:focus-visible) .icon {
+  display: none;
+}
+.essentials :where(button:focus-visible) .essential-label {
+  display: block;
 }
 .essential-icon-picker {
   display: grid;
@@ -265,14 +286,9 @@ small {
   color: var(--accent);
 }
 .essentials > .selected {
-  background: light-dark(var(--surface), var(--ink));
-  color: light-dark(var(--ink), var(--panel));
-  --essential-icon-color: light-dark(var(--ink), var(--panel));
+  border-color: var(--accent);
+  --essential-icon-color: var(--ink);
   --essential-icon-opacity: 1;
-  box-shadow: 0 1px 3px color-mix(in srgb, black 18%, transparent);
-}
-.essentials > .selected:hover {
-  background: light-dark(var(--surface), var(--ink));
 }
 .section-heading {
   display: flex;
@@ -331,6 +347,23 @@ small {
   height: 13px;
   color: var(--muted);
 }
+.thread-rename {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding-block: 2px;
+}
+.inline-rename {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 3px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--ink);
+  font: inherit;
+}
 .thread-row > .icon-button {
   opacity: 0;
   padding: 4px;
@@ -344,6 +377,18 @@ small {
   cursor: pointer;
   padding: 6px 8px;
   font-size: 14px;
+}
+.folder-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  justify-content: flex-start;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
 }
 
 .folder .thread-row {
@@ -1148,6 +1193,11 @@ dialog::backdrop {
 .action-list {
   display: flex;
   flex-direction: column;
+}
+.folder-picker-heading {
+  padding: 7px 8px 4px;
+  color: var(--muted);
+  font-size: 11px;
 }
 .file-editor {
   width: 1000px;

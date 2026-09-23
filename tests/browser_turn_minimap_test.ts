@@ -41,6 +41,17 @@ Deno.test({
       expect(railBox.x).toBeGreaterThan(
         transcriptBox.x + transcriptBox.width * 0.75,
       );
+      const spine = page.locator(".turn-minimap-spine");
+      const spineBox = requireValue(await spine.boundingBox(), "spine bounds");
+      const currentMarkBox = requireValue(
+        await page.locator(".turn-minimap-mark.current").boundingBox(),
+        "current mark bounds",
+      );
+      expect(spineBox.x + spineBox.width).toBeLessThan(currentMarkBox.x);
+      expect(
+        await spine.evaluate((element) => getComputedStyle(element).opacity),
+      )
+        .toBe("0.25");
       const scrollTop = () => transcript.evaluate((node) => node.scrollTop);
       const before = await scrollTop();
       expect(before).toBeGreaterThan(0);

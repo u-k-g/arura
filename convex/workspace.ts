@@ -393,9 +393,13 @@ export const folder = mutation({
     id: v.optional(v.id("folders")),
     name: v.optional(v.string()),
     remove: v.optional(v.boolean()),
+    conversationKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await device(ctx);
+    if (args.conversationKey && (args.id || args.remove)) {
+      throw new Error("Create a new folder to move a conversation");
+    }
     if (args.remove && args.id) {
       for (
         const c of await ctx.db
@@ -410,8 +414,35 @@ export const folder = mutation({
     }
     const name = args.name?.trim().slice(0, 80);
     if (!name) throw new Error("Name the folder");
-    if (args.id) await ctx.db.patch(args.id, { name });
-    else await ctx.db.insert("folders", { name, rank: Date.now() });
+    if (args.id) {
+      await ctx.db.patch(args.id, { name });
+      return args.id;
+    }
+    const key = args.conversationKey
+      ? await resolveKey(ctx, args.conversationKey)
+      : undefined;
+    const conversation = key
+      ? await ctx.db.query("conversations")
+        .withIndex("key", (q) => q.eq("key", key)).unique()
+      : undefined;
+    if (key && (!conversation || conversation.deleted)) {
+      throw new Error("Conversation not found");
+    }
+    const id = await ctx.db.insert("folders", { name, rank: Date.now() });
+    if (conversation) {
+      await ctx.db.patch(conversation._id, {
+        organizationPending: true,
+        organizationRevision: (conversation.organizationRevision ?? 0) + 1,
+        section: "pinned",
+        folderId: id,
+        rank: Date.now(),
+        archivedAt: undefined,
+        unarchivedAt: conversation.section === "archived"
+          ? Date.now()
+          : conversation.unarchivedAt,
+      });
+    }
+    return id;
   },
 });
 export const reorder = mutation({

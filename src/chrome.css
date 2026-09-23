@@ -119,14 +119,14 @@
   margin-top: 4px;
   padding-top: 2px;
 }
-.profile-actions {
+.footer-actions {
   display: flex;
   align-items: center;
   gap: 4px;
   color: var(--muted);
   font-size: 12px;
 }
-.profile-actions > span {
+.footer-spacer {
   flex: 1;
 }
 .nav-footer button {
@@ -134,12 +134,8 @@
   flex-direction: row;
 }
 .sidebar-titlebar .gateway-status {
-  justify-content: flex-start;
+  justify-content: center;
   border: 0;
-  font-size: 11px;
-}
-.sidebar-titlebar .connection {
-  font-size: 11px;
 }
 .composer-bottom {
   padding: 0;
@@ -630,13 +626,10 @@ dialog.conversation-menu {
   margin-left: 8px;
 }
 
-.profile-actions .profile-name {
+.sidebar-titlebar .profile-name {
   flex: 1;
   min-width: 0;
   justify-content: flex-start;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   border: 0;
   padding: 4px 6px;
 }
@@ -665,6 +658,9 @@ dialog.conversation-menu {
   display: none;
 }
 @media (max-width: 720px), (pointer: coarse) and (hover: none) {
+  .navigation-sheet .sidebar-titlebar {
+    display: flex;
+  }
   .navigation-sheet > .dialog-inner > header {
     touch-action: none;
     user-select: none;
@@ -728,18 +724,15 @@ dialog.conversation-menu {
 }
 
 .sidebar-titlebar > .gateway-status {
-  padding: 2px 6px;
+  min-width: 26px;
+  min-height: 26px;
+  padding: 0;
 }
 .sidebar-titlebar > button[aria-label="Search conversations"] {
   margin-left: auto;
 }
 .collapsed-controls > button[aria-label="Search conversations"] {
   margin-left: 0;
-}
-.collapsed-controls .connection {
-  font-size: 0;
-  gap: 0;
-  color: transparent;
 }
 .topbar > .thread-row {
   flex: 1;
@@ -763,24 +756,6 @@ dialog.conversation-menu {
   content: "";
   flex: 1;
   border-top: var(--hairline) solid var(--line);
-}
-.navigation .pinned-divider > .icon-button {
-  flex: none;
-  min-width: 22px;
-  min-height: 22px;
-  padding: 2px;
-}
-.navigation .pinned-divider > .pinned-divider-folder {
-  opacity: 0;
-}
-.navigation .pinned-divider:hover > .pinned-divider-folder,
-.navigation .pinned-divider:focus-within > .pinned-divider-folder {
-  opacity: 1;
-}
-@media (max-width: 720px), (pointer: coarse) and (hover: none) {
-  .navigation .pinned-divider > .pinned-divider-folder {
-    opacity: 1;
-  }
 }
 .navigation > .archive {
   flex: 0 1 auto;

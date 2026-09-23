@@ -15,6 +15,7 @@ Deno.test({
     const a = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     const b = await browser.newPage({ viewport: { width: 390, height: 844 } });
     try {
+      let baselineTitle = "";
       for (
         const [page, name] of [
           [a, "Picker desktop"],
@@ -27,6 +28,26 @@ Deno.test({
           await page
             .getByRole("button", { name: "Fixture conversation", exact: true })
             .click();
+          await page.locator(".nav-footer").getByRole("button", {
+            name: "New conversation",
+          }).click();
+          await page.getByLabel("Message Hermes", { exact: true })
+            .fill("Model baseline conversation");
+          await page.getByRole("button", { name: "Send message", exact: true })
+            .click();
+          await expect(page.getByText(
+            "Received: Model baseline conversation",
+            { exact: true },
+          )).toBeVisible();
+          baselineTitle = requireValue(
+            await page.locator(".thread-row.selected .thread-select")
+              .getAttribute("aria-label"),
+            "baseline conversation title",
+          );
+          await page.getByRole("button", {
+            name: "Fixture conversation",
+            exact: true,
+          }).click();
         }
         await page.getByRole("button", { name: "Model", exact: true }).click();
         await expect(
@@ -155,11 +176,32 @@ Deno.test({
         a.getByRole("button", { name: "Model", exact: true }),
       ).toContainText("fixture-alternative");
       await a
-        .getByRole("button", { name: "Fixture conversation", exact: true })
+        .getByRole("button", { name: baselineTitle, exact: true })
         .click();
       await expect(
         a.getByRole("button", { name: "Model", exact: true }),
       ).toContainText("fixture-alternative");
+      await a.getByLabel("Message Hermes", { exact: true })
+        .fill("Keep the shared model in this chat");
+      await a.getByRole("button", { name: "Send message", exact: true })
+        .click();
+      await expect(
+        a.getByText("Received: Keep the shared model in this chat", {
+          exact: true,
+        }),
+      ).toBeVisible();
+      const reusedConversation = await a.evaluate(() =>
+        localStorage.getItem("arura.view")
+      );
+      const reusedRuntime = await a.request.post(`${url}/api/query`, {
+        headers: { Origin: url },
+        data: {
+          method: "session.context_breakdown",
+          conversation: reusedConversation,
+        },
+      });
+      expect(reusedRuntime.ok()).toBe(true);
+      expect((await reusedRuntime.json()).model).toBe("fixture-alternative");
       await mobile
         .getByRole("button", {
           name: "Unstar fixture-alternative · Fixture provider",

@@ -47,7 +47,7 @@ Deno.test({
         .locator(".essentials")
         .getByRole("button", { name: "Fixture conversation", exact: true });
       await expect(tile).toBeVisible();
-      expect((await tile.textContent())?.trim()).toBe("");
+      await expect(tile.locator(".essential-label")).toBeHidden();
       expect(await tile.getAttribute("title")).toBe("Fixture conversation");
       const box = await tile.boundingBox();
       const container = await a.locator(".essentials").boundingBox();
@@ -71,16 +71,21 @@ Deno.test({
       expect(sizing.paddingTop).toBeCloseTo(14 * 0.6, 1);
       expect(sizing.paddingBottom).toBeCloseTo(14 * 0.6, 1);
       expect(sizing.height).toBeLessThan(35);
-      const selectedBackground = await tile.evaluate((button) =>
-        getComputedStyle(button).backgroundColor
-      );
+      const selectedStyle = await tile.evaluate((button) => ({
+        background: getComputedStyle(button).backgroundColor,
+        border: getComputedStyle(button).borderTopColor,
+      }));
       await a.getByRole("button", { name: "New conversation", exact: true })
         .first().click();
-      const idleBackground = await tile.evaluate((button) =>
-        getComputedStyle(button).backgroundColor
-      );
-      expect(idleBackground).toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
-      expect(selectedBackground).not.toBe(idleBackground);
+      const idleStyle = await tile.evaluate((button) => ({
+        background: getComputedStyle(button).backgroundColor,
+        border: getComputedStyle(button).borderTopColor,
+      }));
+      expect(selectedStyle.background).toBe(idleStyle.background);
+      expect(selectedStyle.border).not.toBe(idleStyle.border);
+      await tile.hover();
+      await expect(tile.locator(".essential-label")).toBeVisible();
+      await expect(tile.locator(".icon")).toBeHidden();
       await tile.click();
       await tile.click({ button: "right" });
       await a.getByRole("button", { name: "Change icon", exact: true }).click();
@@ -129,14 +134,31 @@ Deno.test({
           exact: true,
         })
         .click();
-      await a.getByRole("button", { name: "New folder", exact: true }).click();
-      await a.getByRole("dialog").getByRole("textbox").fill("Saved");
-      await a
-        .getByRole("button", { name: "Create folder", exact: true })
-        .click();
       await actions();
+      await a.getByRole("button", { name: "Move to folder" }).click();
+      await a.getByRole("button", { name: "Create new folder" }).click();
+      const folderName = a.getByRole("textbox", { name: "Rename folder" });
+      await expect(folderName).toBeFocused();
+      await expect(folderName).toHaveValue("Untitled");
+      await folderName.fill("Saved");
+      await folderName.press("Enter");
+      await expect(a.locator(".folder").filter({ hasText: "Saved" }))
+        .toContainText("Fixture conversation");
+      await a.getByRole("button", { name: "Saved", exact: true }).dblclick();
+      await expect(folderName).toBeFocused();
+      await folderName.fill("Library");
+      await folderName.press("Enter");
+      await expect(a.getByRole("button", { name: "Library", exact: true }))
+        .toBeVisible();
+      await expect(a.getByRole("button", { name: "New folder" }))
+        .toHaveCount(0);
+      await actions();
+      await a.getByRole("button", { name: "Move to folder" }).click();
+      await a.getByRole("button", { name: "Remove from folder" }).click();
+      await actions();
+      await a.getByRole("button", { name: "Move to folder" }).click();
       await a
-        .getByRole("button", { name: "Move to Saved", exact: true })
+        .getByRole("button", { name: "Move to Library", exact: true })
         .click();
       await actions();
       await expect(

@@ -62,12 +62,12 @@
 }
 .turn-minimap-spine {
   position: absolute;
-  top: 0;
-  bottom: 0;
-  right: 10px;
+  top: 4px;
+  bottom: 4px;
+  right: 44px;
   width: 1px;
   background: var(--line);
-  opacity: 0.55;
+  opacity: 0.25;
 }
 .turn-minimap-mark {
   position: absolute;

@@ -1,6 +1,5 @@
 import { requireValue } from "./require_value.ts";
 import { openSettings, signIn } from "./sign_in.ts";
-import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect, type Page } from "@playwright/test";
 Deno.test({
   name:
@@ -28,7 +27,9 @@ Deno.test({
         .first()
         .click();
       await expect
-        .poll(() => page.evaluate(() => localStorage.getItem("arura.view")))
+        .poll(() =>
+          page.evaluate(() => localStorage.getItem("arura.view") ?? "")
+        )
         .toBe("");
       await expect(
         page.getByLabel("Message Hermes", { exact: true }),
@@ -70,16 +71,32 @@ Deno.test({
       await expect(a.locator(".topbar")).not.toContainText(
         requireValue(original, "original"),
       );
-      const title = `Garden notes ${crypto.randomUUID().slice(0, 6)}`;
+      let title = `Garden notes ${crypto.randomUUID().slice(0, 6)}`;
       await a
         .locator(
           '.thread-row.selected > .icon-button[aria-label^="Actions for"]',
         )
         .click();
-      void onceActionDialog(a, (dialog) => dialog.accept(title));
       await a.getByRole("button", { name: "Rename", exact: true }).click();
+      const renameInput = a.getByRole("textbox", {
+        name: "Rename conversation",
+      });
+      await expect(renameInput).toBeFocused();
+      await renameInput.fill(title);
+      await renameInput.press("Enter");
       await expect(
         b.getByRole("button", { name: title, exact: true }),
+      ).toBeVisible();
+      await b.getByRole("button", { name: title, exact: true }).dblclick();
+      const doubleClickRename = b.getByRole("textbox", {
+        name: "Rename conversation",
+      });
+      await expect(doubleClickRename).toBeFocused();
+      title += " revised";
+      await doubleClickRename.fill(title);
+      await doubleClickRename.press("Enter");
+      await expect(
+        a.getByRole("button", { name: title, exact: true }),
       ).toBeVisible();
       await b.getByRole("button", { name: title, exact: true }).click();
       const other = await newChat(a);
@@ -166,10 +183,21 @@ Deno.test({
           '.thread-row.selected > .icon-button[aria-label^="Actions for"]',
         )
         .click();
-      void onceActionDialog(a, (dialog) => dialog.accept());
+      await expect(
+        a.getByRole("button", { name: "Delete conversation", exact: true }),
+      ).toHaveCount(0);
+      await a.getByRole("button", { name: "Archive", exact: true }).click();
+      await a.getByRole("button", { name: "Archived", exact: true }).click();
+      await a.locator(".archive-list").getByRole("button", {
+        name: `Actions for ${title}`,
+        exact: true,
+      }).click();
       await a
         .getByRole("button", { name: "Delete conversation", exact: true })
         .click();
+      await a.getByRole("dialog", {
+        name: "Permanently delete this conversation?",
+      }).getByRole("button", { name: "Confirm", exact: true }).click();
       await expect(
         b.getByRole("button", { name: title, exact: true }),
       ).toHaveCount(0);

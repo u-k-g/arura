@@ -1,7 +1,7 @@
 import ProfilePicker from "./ProfilePicker.tsx";
 import SettingsFrame from "./SettingsFrame.tsx";
 import ActionDialog from "./ActionDialog.tsx";
-import { ask, confirmAction } from "./ActionDialog.tsx";
+import { confirmAction } from "./ActionDialog.tsx";
 import type { ConversationPage, Doc } from "../shared/contracts.ts";
 import { essentialIconChoices } from "../shared/essentialIcons.ts";
 import {
@@ -53,6 +53,47 @@ const Resources = lazy(() => import("./Resources.tsx"));
 const Messaging = lazy(() => import("./Messaging.tsx"));
 const Capabilities = lazy(() => import("./Capabilities.tsx"));
 const Artifacts = lazy(() => import("./Artifacts.tsx"));
+
+function InlineRename(props: {
+  initial: string;
+  label: string;
+  save: (name: string) => void;
+  cancel: () => void;
+}) {
+  let input!: HTMLInputElement;
+  let cancelled = false;
+  onMount(() =>
+    globalThis.queueMicrotask(() => {
+      input.scrollIntoView({ block: "nearest" });
+      input.focus();
+      input.select();
+    })
+  );
+  return (
+    <input
+      ref={input}
+      class="inline-rename"
+      aria-label={props.label}
+      value={props.initial}
+      onClick={(event) => event.stopPropagation()}
+      onDblClick={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key === "Enter") {
+          event.preventDefault();
+          input.blur();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          cancelled = true;
+          props.cancel();
+        }
+      }}
+      onBlur={() => {
+        if (!cancelled) props.save(input.value.trim());
+      }}
+    />
+  );
+}
 
 export default function App() {
   const [blankChatVersion, setBlankChatVersion] = createSignal(0);
@@ -180,8 +221,12 @@ export default function App() {
     [archiveLimit, setArchiveLimit] = createSignal(10);
   const [archiveHasMore, setArchiveHasMore] = createSignal(false);
   const [archiveReady, setArchiveReady] = createSignal(false);
-  const [menu, setMenu] = createSignal<Conversation>(),
-    [folderName, setFolderName] = createSignal<string | null>(null);
+  const [menu, setMenu] = createSignal<Conversation>();
+  const [folderPicker, setFolderPicker] = createSignal(false);
+  const [editing, setEditing] = createSignal<{
+    kind: "conversation" | "folder";
+    id: string;
+  }>();
   const [activeConversation, setActiveConversation] = createSignal<
     Conversation | null
   >(null);
@@ -422,7 +467,33 @@ export default function App() {
       x: event.clientX || bounds.left,
       y: event.clientY || bounds.bottom,
     });
+    setFolderPicker(false);
     setMenu(conversation);
+  };
+  const beginRename = (kind: "conversation" | "folder", id: string) => {
+    setMenu(undefined);
+    if (narrow()) setSheet(true);
+    setEditing({ kind, id });
+  };
+  const stopRename = (kind: "conversation" | "folder", id: string) => {
+    setEditing((current) =>
+      current?.kind === kind && current.id === id ? undefined : current
+    );
+  };
+  const saveRename = (
+    kind: "conversation" | "folder",
+    id: string,
+    initial: string,
+    name: string,
+  ) => {
+    if (editing()?.kind !== kind || editing()?.id !== id) return;
+    stopRename(kind, id);
+    if (!name || name === initial) return;
+    if (kind === "conversation") {
+      void run(() => command("rename", id, { title: name }));
+    } else {
+      void run(() => mutate("workspace.folder", { id, name }));
+    }
   };
   const destinations = [
     { id: "settings", label: "Settings", icon: "settings" },
@@ -441,16 +512,6 @@ export default function App() {
         icon: "plus",
         group: "Actions",
         run: () => void newChat(currentProfile()),
-      },
-      {
-        id: "folder",
-        label: "New folder",
-        icon: "folder",
-        group: "Actions",
-        run: () => {
-          setPalette(false);
-          setFolderName("");
-        },
       },
       {
         id: "sidebar",
@@ -539,7 +600,7 @@ export default function App() {
     if (ageStatus(c) === "warning") return "Automatic archive within one day";
     return undefined;
   };
-  const row = (c: Conversation) => (
+  const row = (c: Conversation, editable = true) => (
     <div
       class="thread-row"
       classList={{
@@ -548,43 +609,62 @@ export default function App() {
         draft: Boolean(draftFor(c.key, c.profile)),
       }}
     >
-      <button
-        type="button"
-        class="thread-select"
-        onContextMenu={(event) => {
-          event.preventDefault();
-          openMenu(c, event);
-        }}
-        aria-current={view() === c.key ? "page" : undefined}
-        title={c.title}
-        aria-label={c.title}
-        onClick={() => navigate(c.key)}
-      >
-        <span class="session-dot" />
-        <span>{c.title}</span>
-        <Show
-          when={draftFor(c.key, c.profile)}
-          fallback={
-            <time
-              class="session-age"
-              classList={{
-                "archive-warning": ageStatus(c) === "warning",
-                "archive-overdue": ageStatus(c) === "overdue",
-              }}
-              title={ageTitle(c)}
+      <Show
+        when={editable && editing()?.kind === "conversation" &&
+          editing()?.id === c.key}
+        fallback={
+          <button
+            type="button"
+            class="thread-select"
+            onContextMenu={(event) => {
+              event.preventDefault();
+              openMenu(c, event);
+            }}
+            aria-current={view() === c.key ? "page" : undefined}
+            title={c.title}
+            aria-label={c.title}
+            onClick={() => navigate(c.key)}
+            onDblClick={() => {
+              if (editable && !c.bot) beginRename("conversation", c.key);
+            }}
+          >
+            <span class="session-dot" />
+            <span>{c.title}</span>
+            <Show
+              when={draftFor(c.key, c.profile)}
+              fallback={
+                <time
+                  class="session-age"
+                  classList={{
+                    "archive-warning": ageStatus(c) === "warning",
+                    "archive-overdue": ageStatus(c) === "overdue",
+                  }}
+                  title={ageTitle(c)}
+                >
+                  {ageLabel(c)}
+                </time>
+              }
             >
-              {ageLabel(c)}
-            </time>
-          }
-        >
-          <i class="draft-indicator" title="Draft saved">
-            <Icon name="edit-pencil" />
-          </i>
-        </Show>
-        <Show when={c.running}>
-          <i class="busy-dot" />
-        </Show>
-      </button>
+              <i class="draft-indicator" title="Draft saved">
+                <Icon name="edit-pencil" />
+              </i>
+            </Show>
+            <Show when={c.running}>
+              <i class="busy-dot" />
+            </Show>
+          </button>
+        }
+      >
+        <div class="thread-select thread-rename">
+          <span class="session-dot" />
+          <InlineRename
+            initial={c.title}
+            label="Rename conversation"
+            save={(name) => saveRename("conversation", c.key, c.title, name)}
+            cancel={() => stopRename("conversation", c.key)}
+          />
+        </div>
+      </Show>
       <IconButton
         icon="archive"
         class="archive-button"
@@ -616,22 +696,17 @@ export default function App() {
       />
     </>
   );
+  const gatewayOnline = () => connected() && !!workspace()?.connection?.online;
   const gatewayStatus = () => (
     <button
       type="button"
       class="gateway-status"
+      aria-label={`Gateway ${gatewayOnline() ? "connected" : "disconnected"}`}
+      title={`Gateway ${gatewayOnline() ? "connected" : "disconnected"}`}
       onClick={() => navigate("resources:status")}
     >
-      <span
-        class="connection"
-        classList={{
-          offline: !connected() || !workspace()?.connection?.online,
-        }}
-      >
-        <i />
-        Gateway {workspace()?.connection?.online && connected()
-          ? "connected"
-          : "disconnected"}
+      <span class="connection" classList={{ offline: !gatewayOnline() }}>
+        <i aria-hidden="true" />
       </span>
     </button>
   );
@@ -645,6 +720,25 @@ export default function App() {
           onClick={toggleSidebar}
         />
         {gatewayStatus()}
+        <ProfilePicker
+          current={currentProfile()}
+          manage={() => navigate("resources:profiles")}
+          choose={(profile) => {
+            setChosenProfile(profile);
+            preferences.setItem("arura.profile", profile);
+            const latest = chats()
+              .filter(
+                (c) =>
+                  c.profile === profile &&
+                  c.section !== "archived" &&
+                  !c.backgroundSession,
+              )
+              .sort(
+                (a, b) => conversationActivity(b) - conversationActivity(a),
+              )[0];
+            navigate(latest?.key ?? "");
+          }}
+        />
         {navigationActions()}
       </header>
       <nav class="sidebar-sections" aria-label="Main navigation">
@@ -703,6 +797,9 @@ export default function App() {
                   <Icon
                     name={c.essentialIcon ?? (c.bot ? "bot" : "chat-bubble")}
                   />
+                  <span class="essential-label" aria-hidden="true">
+                    {c.title}
+                  </span>
                 </button>
               )}
             </For>
@@ -740,7 +837,7 @@ export default function App() {
             .filter((c) => c.section === "pinned" && !c.folderId)
             .sort((a, b) => a.rank - b.rank)}
         >
-          {row}
+          {(c) => row(c)}
         </For>
         <For each={workspace()?.folders ?? []}>
           {(folder) => (
@@ -760,17 +857,38 @@ export default function App() {
             >
               <summary>
                 <Icon name="folder" />
-                {folder.name}
+                <Show
+                  when={editing()?.kind === "folder" &&
+                    editing()?.id === folder._id}
+                  fallback={
+                    <button
+                      type="button"
+                      class="folder-name"
+                      onDblClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        beginRename("folder", folder._id);
+                      }}
+                    >
+                      {folder.name}
+                    </button>
+                  }
+                >
+                  <InlineRename
+                    initial={folder.name}
+                    label="Rename folder"
+                    save={(name) =>
+                      saveRename("folder", folder._id, folder.name, name)}
+                    cancel={() => stopRename("folder", folder._id)}
+                  />
+                </Show>
                 <IconButton
                   icon="edit-pencil"
                   label={`Rename folder ${folder.name}`}
-                  onClick={async () => {
-                    const name = await ask("Folder name", folder.name);
-                    if (name?.trim()) {
-                      void run(() =>
-                        mutate("workspace.folder", { id: folder._id, name })
-                      );
-                    }
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    beginRename("folder", folder._id);
                   }}
                 />
                 <IconButton
@@ -826,25 +944,13 @@ export default function App() {
                   .filter((c) => c.folderId === folder._id)
                   .sort((a, b) => a.rank - b.rank)}
               >
-                {row}
+                {(c) => row(c)}
               </For>
             </details>
           )}
         </For>
-        <div class="pinned-divider">
-          <IconButton
-            icon="folder"
-            class="pinned-divider-folder"
-            label="New folder"
-            onClick={() => setFolderName("")}
-          />
-          <IconButton
-            icon="plus"
-            label="New conversation"
-            onClick={() => void newChat(currentProfile())}
-          />
-        </div>
-        <For each={recentConversations()}>{row}</For>
+        <div class="pinned-divider" aria-hidden="true" />
+        <For each={recentConversations()}>{(c) => row(c)}</For>
         <Show when={workspace()?.recentHasMore}>
           <button
             type="button"
@@ -890,6 +996,10 @@ export default function App() {
                     title={c.title}
                     aria-label={c.title}
                     onClick={() => navigate(c.key)}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      openMenu(c, event);
+                    }}
                   >
                     <span>{c.title}</span>
                     <Show when={c.archivedAt}>
@@ -914,6 +1024,12 @@ export default function App() {
                         })
                       )}
                   />
+                  <IconButton
+                    icon="more-horiz"
+                    class="row-menu-button"
+                    label={`Actions for ${c.title}`}
+                    onClick={(event) => openMenu(c, event)}
+                  />
                 </div>
               )}
             </For>
@@ -930,26 +1046,7 @@ export default function App() {
         </Show>
       </div>
       <footer class="nav-footer">
-        <div class="profile-actions">
-          <ProfilePicker
-            current={currentProfile()}
-            manage={() => navigate("resources:profiles")}
-            choose={(profile) => {
-              setChosenProfile(profile);
-              preferences.setItem("arura.profile", profile);
-              const latest = chats()
-                .filter(
-                  (c) =>
-                    c.profile === profile &&
-                    c.section !== "archived" &&
-                    !c.backgroundSession,
-                )
-                .sort(
-                  (a, b) => conversationActivity(b) - conversationActivity(a),
-                )[0];
-              navigate(latest?.key ?? "");
-            }}
-          />
+        <div class="footer-actions">
           <IconButton
             icon="page"
             label="Artifacts"
@@ -960,6 +1057,8 @@ export default function App() {
             label="Settings"
             onClick={() => navigate("settings")}
           />
+          <span class="footer-spacer" />
+          {conversationActions()}
         </div>
       </footer>
     </div>
@@ -1056,7 +1155,7 @@ export default function App() {
               label="Open conversations"
               onClick={() => setSheet(true)}
             />
-            <Show when={narrow() && selected()}>{(c) => row(c())}</Show>
+            <Show when={narrow() && selected()}>{(c) => row(c(), false)}</Show>
             {navigationActions()}
             {conversationActions()}
           </header>
@@ -1180,31 +1279,6 @@ export default function App() {
           }}
         />
       </Show>
-      <Show when={folderName() !== null}>
-        <Dialog title="New folder" close={() => setFolderName(null)}>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void run(async () => {
-                await mutate("workspace.folder", { name: folderName() });
-                setFolderName(null);
-              });
-            }}
-          >
-            <Field label="Folder name">
-              <input
-                autofocus
-                required
-                value={folderName() ?? ""}
-                onInput={(e) => setFolderName(e.currentTarget.value)}
-              />
-            </Field>
-            <button type="submit" class="primary">
-              Create folder
-            </button>
-          </form>
-        </Dialog>
-      </Show>
       <Show when={iconPicker()}>
         {(conversation) => (
           <Dialog
@@ -1277,83 +1351,167 @@ export default function App() {
             close={() => setMenu(undefined)}
           >
             <div class="action-list">
-              <button
-                type="button"
-                disabled={c().section !== "archived" &&
-                  (c().running || c().pendingInput)}
-                onClick={() =>
-                  void run(async () => {
-                    await archiveConversation(c());
-                    setMenu(undefined);
-                  })}
+              <Show
+                when={folderPicker()}
+                fallback={
+                  <>
+                    <button
+                      type="button"
+                      disabled={c().section !== "archived" &&
+                        (c().running || c().pendingInput)}
+                      onClick={() =>
+                        void run(async () => {
+                          await archiveConversation(c());
+                          setMenu(undefined);
+                        })}
+                    >
+                      <Icon name="archive" />
+                      {c().section === "archived" ? "Unarchive" : "Archive"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void run(async () => {
+                          await mutate("workspace.markRead", {
+                            key: c().key,
+                            unread: !unread(c()),
+                          });
+                          setMenu(undefined);
+                        })}
+                    >
+                      <Icon name="chat-bubble" />
+                      {unread(c()) ? "Mark as read" : "Mark as unread"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void run(async () => {
+                          await navigator.clipboard.writeText(c().sourceId);
+                          setMenu(undefined);
+                          inform("Session ID copied");
+                        })}
+                    >
+                      <Icon name="page" />
+                      Copy session ID
+                    </button>
+                    <Show when={c().section === "essential"}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIconPicker(c());
+                          setMenu(undefined);
+                        }}
+                      >
+                        <Icon name="edit-pencil" />
+                        Change icon
+                      </button>
+                    </Show>
+                    <For
+                      each={[
+                        ["essential", "Toggle Essentials"],
+                        ["pinned", "Toggle pinned"],
+                      ]}
+                    >
+                      {([section, label]) => (
+                        <button
+                          type="button"
+                          aria-pressed={c().section === section}
+                          onClick={() =>
+                            void run(async () => {
+                              await mutate("workspace.move", {
+                                key: c().key,
+                                section: c().section === section
+                                  ? "recent"
+                                  : section,
+                              });
+                              setMenu(undefined);
+                            })}
+                        >
+                          <Icon
+                            name={section === "essential" ? "star" : "pin"}
+                          />
+                          {label}
+                        </button>
+                      )}
+                    </For>
+                    <button type="button" onClick={() => setFolderPicker(true)}>
+                      <Icon name="folder" />
+                      Move to folder
+                    </button>
+                    <Show when={!c().bot}>
+                      <button
+                        type="button"
+                        onClick={() => beginRename("conversation", c().key)}
+                      >
+                        <Icon name="edit-pencil" />
+                        Rename
+                      </button>
+                    </Show>
+                    <a
+                      href={`/api/download?type=conversation&id=${
+                        encodeURIComponent(
+                          c().sourceId,
+                        )
+                      }&profile=${encodeURIComponent(c().profile)}`}
+                      download=""
+                    >
+                      <Icon name="download" />
+                      Export conversation
+                    </a>
+                    <Show when={c().section === "archived"}>
+                      <button
+                        type="button"
+                        class="danger"
+                        onClick={async () => {
+                          if (
+                            await confirmAction(
+                              "Permanently delete this conversation?",
+                            )
+                          ) {
+                            const conversation = c();
+                            await run(async () => {
+                              await command("delete", conversation.key, {});
+                              if (view() === conversation.key) {
+                                setChosenProfile(conversation.profile);
+                                navigate("");
+                              }
+                            });
+                          }
+                          setMenu(undefined);
+                        }}
+                      >
+                        <Icon name="trash" />
+                        Delete conversation
+                      </button>
+                    </Show>
+                  </>
+                }
               >
-                <Icon name="archive" />
-                {c().section === "archived" ? "Unarchive" : "Archive"}
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  void run(async () => {
-                    await mutate("workspace.markRead", {
-                      key: c().key,
-                      unread: !unread(c()),
-                    });
-                    setMenu(undefined);
-                  })}
-              >
-                <Icon name="chat-bubble" />
-                {unread(c()) ? "Mark as read" : "Mark as unread"}
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  void run(async () => {
-                    await navigator.clipboard.writeText(c().sourceId);
-                    setMenu(undefined);
-                    inform("Session ID copied");
-                  })}
-              >
-                <Icon name="page" />
-                Copy session ID
-              </button>
-              <Show when={c().section === "essential"}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIconPicker(c());
-                    setMenu(undefined);
-                  }}
-                >
-                  <Icon name="edit-pencil" />
-                  Change icon
+                <button type="button" onClick={() => setFolderPicker(false)}>
+                  <Icon name="arrow-left" />
+                  Back
                 </button>
-              </Show>
-              <For
-                each={[
-                  ["essential", "Toggle Essentials"],
-                  ["pinned", "Toggle pinned"],
-                ]}
-              >
-                {([section, label]) => (
-                  <button
-                    type="button"
-                    aria-pressed={c().section === section}
-                    onClick={() =>
-                      void run(async () => {
-                        await mutate("workspace.move", {
-                          key: c().key,
-                          section: c().section === section ? "recent" : section,
-                        });
-                        setMenu(undefined);
-                      })}
-                  >
-                    <Icon name={section === "essential" ? "star" : "pin"} />
-                    {label}
-                  </button>
-                )}
-              </For>
-              <For each={workspace()?.folders ?? []}>
-                {(f) => (
+                <div class="folder-picker-heading">Move to folder</div>
+                <For each={workspace()?.folders ?? []}>
+                  {(f) => (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        void run(async () => {
+                          await mutate("workspace.move", {
+                            key: c().key,
+                            section: "pinned",
+                            folderId: f._id,
+                          });
+                          setMenu(undefined);
+                        })}
+                    >
+                      <Icon name="folder" />
+                      Move to {f.name}
+                    </button>
+                  )}
+                </For>
+                <Show when={c().folderId}>
                   <button
                     type="button"
                     onClick={() =>
@@ -1361,64 +1519,29 @@ export default function App() {
                         await mutate("workspace.move", {
                           key: c().key,
                           section: "pinned",
-                          folderId: f._id,
                         });
                         setMenu(undefined);
                       })}
                   >
-                    <Icon name="folder" />
-                    Move to {f.name}
+                    <Icon name="pin" />
+                    Remove from folder
                   </button>
-                )}
-              </For>
-              <Show when={!c().bot}>
+                </Show>
                 <button
                   type="button"
-                  onClick={async () => {
-                    const title = await ask("Conversation name", c().title);
-                    if (title) {
-                      void run(() => command("rename", c().key, { title }));
-                    }
-                    setMenu(undefined);
-                  }}
+                  onClick={() =>
+                    void run(async () => {
+                      const id = await mutate("workspace.folder", {
+                        name: "Untitled",
+                        conversationKey: c().key,
+                      });
+                      beginRename("folder", String(id));
+                    })}
                 >
-                  <Icon name="edit-pencil" />
-                  Rename
+                  <Icon name="plus" />
+                  Create new folder
                 </button>
               </Show>
-              <a
-                href={`/api/download?type=conversation&id=${
-                  encodeURIComponent(
-                    c().sourceId,
-                  )
-                }&profile=${encodeURIComponent(c().profile)}`}
-                download=""
-              >
-                <Icon name="download" />
-                Export conversation
-              </a>
-              <button
-                type="button"
-                class="danger"
-                onClick={async () => {
-                  if (
-                    await confirmAction("Permanently delete this conversation?")
-                  ) {
-                    const conversation = c();
-                    await run(async () => {
-                      await command("delete", conversation.key, {});
-                      if (view() === conversation.key) {
-                        setChosenProfile(conversation.profile);
-                        navigate("");
-                      }
-                    });
-                  }
-                  setMenu(undefined);
-                }}
-              >
-                <Icon name="trash" />
-                Delete conversation
-              </button>
             </div>
           </Dialog>
         )}

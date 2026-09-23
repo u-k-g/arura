@@ -196,18 +196,13 @@ export default function Chat(props: {
   const [currentProvider, setCurrentProvider] = createSignal("");
   const [currentModel, setCurrentModel] = createSignal("");
   const selectedModel = () => workspace()?.settings.chatModel;
-  const displayedModel = () =>
-    props.conversation
-      ? (currentModel() || selectedModel()?.label || "")
-      : (selectedModel()?.label || currentModel());
+  const displayedModel = () => selectedModel()?.label || currentModel();
   const [currentEffort, setCurrentEffort] = createSignal("");
   const displayedEffort = createMemo(() => {
     const effort = currentEffort();
     if (!effort) return "";
     const name = displayedModel();
-    const provider = props.conversation
-      ? currentProvider()
-      : (selectedModel()?.provider ?? currentProvider());
+    const provider = selectedModel()?.provider ?? currentProvider();
     const matches = models().filter((entry) =>
       [entry.id, entry.model, modelLabel(entry)].includes(name)
     );
@@ -628,9 +623,9 @@ export default function Chat(props: {
     let key = originalKey;
     setSending(true);
     try {
-      // An existing session was configured when the picker changed. A global
-      // default must not silently switch its model on every later send.
-      const modelSelection = key ? undefined : selectedModel();
+      // The composer selection follows the user across conversations. Hermes
+      // applies it only when a session's current model differs.
+      const modelSelection = selectedModel();
       const payload = {
         text: value,
         ...(modelSelection ? { model: { ...modelSelection } } : {}),
@@ -2004,9 +1999,7 @@ export default function Chat(props: {
           anchor={modelButton}
           models={models()}
           current={displayedModel()}
-          provider={props.conversation
-            ? currentProvider()
-            : (selectedModel()?.provider ?? currentProvider())}
+          provider={selectedModel()?.provider ?? currentProvider()}
           effort={currentEffort()}
           close={() => setModel("")}
           choose={async (m) => {

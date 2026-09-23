@@ -120,8 +120,9 @@ grace period.
   editor is not required.
 - **Essentials:** icon-only, manually chosen chats/bots, with names available as
   tooltips and accessible labels. Tiles flex and wrap to fill the available
-  width. Context-menu icon choices sync across devices. No folders. Never
-  autoarchive.
+  width. They keep a muted fill, show the name on hover, and use a border for
+  the selected entry. Context-menu icon choices sync across devices. No folders.
+  Never autoarchive.
 - The sidebar footer's thread actions include Archive (Unarchive for archived
   chats) for the open conversation, without a pin button.
 - Essentials and Pinned are context-menu toggles. Toggling the current section
@@ -144,7 +145,7 @@ grace period.
 - Scheduled jobs show all profiles together, with blueprints in the job list,
   compact timestamps and prompt previews, and primary actions above the details.
 - Settings has one gear button in the sidebar footer, not the top bar. The
-  footer profile selector chooses the profile for new chats. Archive is
+  sidebar header profile selector chooses the profile for new chats. Archive is
   available in both the top bar and each chat's context menu. Archiving or
   deleting the open chat returns to a blank new-chat screen in that profile.
 - Bot conversations display their bot's name rather than "Bot Chat". Preserve
@@ -207,7 +208,12 @@ assistant response and ends before the next user prompt.
 Sidebar organization intentionally differs from desktop: Essentials is an
 untitled icon grid with a searchable icon library; Pinned has no heading and
 ends with a separator above ordinary threads. Archived is a muted expandable
-section anchored above the footer. New thread and Archive sit at the footer’s
-bottom right; Search sits at the top right, beside New folder. The duplicate
-global conversation menu is removed; thread context menus remain. On mobile the
-top bar shows the open thread with its context-menu action.
+section anchored above the footer. Search sits at the top right. The sidebar
+footer has Artifacts and Settings on the left and New conversation on the right.
+The header holds the profile selector and a dot-only gateway status control.
+Create a folder from a chat's Move to folder menu; it starts as Untitled,
+contains that chat, and opens inline rename. Chat and folder names can be
+renamed in place by double-clicking or using their existing Rename controls.
+Delete appears only for archived chats. The duplicate global conversation menu
+is removed; thread context menus remain. On mobile the top bar shows the open
+thread with its context-menu action.

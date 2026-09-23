@@ -21,9 +21,28 @@ Deno.test({
       await expect(page.locator(".main-view > .topbar")).toBeHidden();
       await expect(
         page
-          .locator(".pinned-divider")
+          .locator(".nav-footer")
           .getByRole("button", { name: "New conversation", exact: true }),
       ).toBeVisible();
+      await expect(
+        page.locator(".pinned-divider").getByRole("button"),
+      ).toHaveCount(0);
+      const footer = page.locator(".nav-footer");
+      const artifactsBox = await footer.getByRole("button", {
+        name: "Artifacts",
+      }).boundingBox();
+      const settingsBox = await footer.getByRole("button", {
+        name: "Settings",
+      }).boundingBox();
+      const newChatBox = await footer.getByRole("button", {
+        name: "New conversation",
+      }).boundingBox();
+      expect(requireValue(artifactsBox, "artifacts box").x).toBeLessThan(
+        requireValue(settingsBox, "settings box").x,
+      );
+      expect(requireValue(settingsBox, "settings box").x).toBeLessThan(
+        requireValue(newChatBox, "new chat box").x,
+      );
       await expect(
         page.locator(".thread-row.selected").getByRole("button", {
           name: "Archive Fixture conversation",
@@ -50,6 +69,17 @@ Deno.test({
           .getByRole("button", { name: "Settings", exact: true }),
       ).toBeVisible();
       await expect(page.getByLabel("Select profile")).toContainText("default");
+      await expect(
+        page.locator(".sidebar-titlebar").getByLabel("Select profile"),
+      ).toBeVisible();
+      await expect(
+        page.locator(".nav-footer").getByLabel("Select profile"),
+      ).toHaveCount(0);
+      const gateway = page
+        .locator(".sidebar-titlebar")
+        .getByRole("button", { name: /^Gateway (connected|disconnected)$/ });
+      await expect(gateway).toBeVisible();
+      expect((await gateway.textContent())?.trim()).toBe("");
       await expect(
         page.getByRole("button", { name: "Files", exact: true }),
       ).toHaveCount(0);
@@ -132,6 +162,14 @@ Deno.test({
       );
       expect(created.ok()).toBe(true);
       await page.getByLabel("Select profile").click();
+      const profileTrigger = await page.getByLabel("Select profile")
+        .boundingBox();
+      const profilePanel = await page
+        .getByRole("dialog", { name: "Switch profile" })
+        .boundingBox();
+      expect(profilePanel?.y).toBeGreaterThanOrEqual(
+        (profileTrigger?.y ?? 0) + (profileTrigger?.height ?? 0),
+      );
       await expect(
         page
           .getByRole("dialog", { name: "Switch profile" })
@@ -166,6 +204,13 @@ Deno.test({
           '.thread-row.selected > .icon-button[aria-label^="Actions for"]',
         )
         .click();
+      await expect(
+        page.getByRole("button", { name: "Delete conversation", exact: true }),
+      ).toHaveCount(0);
+      await page.getByRole("button", { name: "Archive", exact: true }).click();
+      await page.getByRole("button", { name: "Archived", exact: true }).click();
+      await page.locator(".archive-list .thread-row").first()
+        .locator(".row-menu-button").click();
       await page
         .getByRole("button", { name: "Delete conversation", exact: true })
         .click();
@@ -173,6 +218,16 @@ Deno.test({
       await expect
         .poll(() => page.evaluate(() => localStorage.getItem("arura.view")))
         .toBe("");
+      await page.setViewportSize({ width: 390, height: 800 });
+      await page
+        .getByRole("button", { name: "Open conversations", exact: true })
+        .click();
+      const sheet = page.getByRole("dialog", { name: "Conversations" });
+      await expect(sheet.locator(".sidebar-titlebar")).toBeVisible();
+      await sheet.getByRole("button", { name: "Select profile" }).click();
+      await expect(
+        page.getByRole("dialog", { name: "Switch profile" }),
+      ).toBeVisible();
     } finally {
       await browser.close();
     }

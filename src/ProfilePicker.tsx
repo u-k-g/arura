@@ -49,14 +49,20 @@ export default function ProfilePicker(props: {
   });
   const position = () => {
     const rect = trigger.getBoundingClientRect();
+    const top = Math.max(
+      8,
+      Math.min(rect.bottom + 6, globalThis.innerHeight - 88),
+    );
     panel.style.left = `${
       Math.max(
         8,
-        Math.min(rect.left, innerWidth - 268),
+        Math.min(rect.left, globalThis.innerWidth - 268),
       )
     }px`;
-    panel.style.bottom = `${Math.max(8, innerHeight - rect.top + 6)}px`;
-    panel.style.maxHeight = `${Math.max(80, rect.top - 16)}px`;
+    panel.style.top = `${top}px`;
+    panel.style.maxHeight = `${
+      Math.max(80, globalThis.innerHeight - top - 8)
+    }px`;
   };
   return (
     <>
@@ -71,11 +77,13 @@ export default function ProfilePicker(props: {
           void refresh();
         }}
       >
-        {label(
-          profiles().find((profile) => profile.name === props.current) ?? {
-            name: props.current,
-          },
-        )}
+        <span class="profile-label">
+          {label(
+            profiles().find((profile) => profile.name === props.current) ?? {
+              name: props.current,
+            },
+          )}
+        </span>
         <Icon name="nav-arrow-down" />
       </button>
       <div
