@@ -542,9 +542,27 @@ dialog.conversation-menu {
   .palette-help {
     display: none;
   }
+  dialog.command-palette {
+    --palette-height: min(420px, calc(var(--app-viewport-height, 100dvh) - 8px));
+    position: fixed;
+    inset: auto 0 auto 0;
+    top: calc(var(--app-viewport-top, 0px) + var(--app-viewport-height, 100dvh) - var(--palette-height));
+    height: var(--palette-height);
+    max-height: calc(var(--app-viewport-height, 100dvh) - 8px);
+    margin: 0;
+    overflow: hidden;
+  }
+  .command-palette .dialog-inner {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
   .command-palette .palette-results {
-    max-height: 50dvh;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    padding-bottom: max(8px, var(--app-bottom-inset, env(safe-area-inset-bottom)));
   }
   .command-palette .palette-search {
     min-height: 44px;
@@ -697,6 +715,9 @@ dialog.conversation-menu {
   }
   .navigation-sheet .navigation {
     overscroll-behavior-y: contain;
+  }
+  .navigation-sheet .thread-row > .icon-button {
+    display: none;
   }
 }
 .conversation-menu .action-list .icon {

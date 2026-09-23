@@ -29,6 +29,34 @@ Deno.test({
         if (!viewport) throw new Error("VisualViewport unavailable");
         Object.defineProperty(viewport, "height", {
           configurable: true,
+          value: 800,
+        });
+        Object.defineProperty(viewport, "offsetTop", {
+          configurable: true,
+          value: 0,
+        });
+        viewport.dispatchEvent(new Event("resize"));
+      });
+      await expect.poll(async () =>
+        await page.locator(".app-shell").evaluate((element) =>
+          Math.round(element.getBoundingClientRect().height)
+        )
+      ).toBe(800);
+      await expect.poll(async () =>
+        await page.locator(".composer-bottom").evaluate((element) =>
+          Math.round(element.getBoundingClientRect().bottom)
+        )
+      ).toBeLessThanOrEqual(800);
+      await page.keyboard.press("Meta+k");
+      await expect(page.locator(".command-palette")).toBeVisible();
+      const normalResultsHeight = await page.locator(".palette-results")
+        .evaluate((element) => Math.round(element.getBoundingClientRect().height));
+      await page.keyboard.press("Escape");
+      await page.evaluate(() => {
+        const viewport = globalThis.visualViewport;
+        if (!viewport) throw new Error("VisualViewport unavailable");
+        Object.defineProperty(viewport, "height", {
+          configurable: true,
           value: 430,
         });
         Object.defineProperty(viewport, "offsetTop", {
@@ -43,6 +71,19 @@ Deno.test({
         )
       ).toBeLessThanOrEqual(446);
       await expect(input).toBeVisible();
+      await page.keyboard.press("Meta+k");
+      await expect(page.locator(".command-palette")).toBeVisible();
+      await expect.poll(async () =>
+        await page.locator(".palette-results").evaluate((element) =>
+          Math.round(element.getBoundingClientRect().height)
+        )
+      ).toBeGreaterThanOrEqual(normalResultsHeight - 2);
+      await expect.poll(async () =>
+        await page.locator(".command-palette").evaluate((element) =>
+          Math.round(element.getBoundingClientRect().bottom)
+        )
+      ).toBeLessThanOrEqual(446);
+      await page.keyboard.press("Escape");
       await page.evaluate(() => {
         const viewport = globalThis.visualViewport;
         if (!viewport) throw new Error("VisualViewport unavailable");

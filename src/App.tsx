@@ -517,6 +517,72 @@ export default function App() {
     titlePressTimer = undefined;
   };
   onCleanup(cancelTitlePress);
+  let threadPress:
+    | {
+      pointer: number;
+      x: number;
+      y: number;
+      conversation: Conversation;
+      triggered: boolean;
+      timer: ReturnType<typeof setTimeout>;
+    }
+    | undefined;
+  let suppressedThreadClick: string | undefined;
+  const cancelThreadPress = () => {
+    if (threadPress) clearTimeout(threadPress.timer);
+    threadPress = undefined;
+  };
+  onCleanup(cancelThreadPress);
+  const startThreadPress = (c: Conversation, event: PointerEvent) => {
+    if (!narrow() || !sheet()) return;
+    suppressedThreadClick = undefined;
+    if (event.pointerType === "mouse") return;
+    cancelThreadPress();
+    const { clientX: x, clientY: y, pointerId: pointer } = event;
+    threadPress = {
+      pointer,
+      x,
+      y,
+      conversation: c,
+      triggered: false,
+      timer: setTimeout(() => {
+        if (threadPress?.pointer === pointer) threadPress.triggered = true;
+      }, 500),
+    };
+  };
+  const moveThreadPress = (event: PointerEvent) => {
+    if (threadPress?.pointer !== event.pointerId) return;
+    if (
+      Math.hypot(event.clientX - threadPress.x, event.clientY - threadPress.y) >
+        10
+    ) {
+      cancelThreadPress();
+    }
+  };
+  const finishThreadPress = () => {
+    const press = threadPress;
+    cancelThreadPress();
+    if (!press?.triggered) return;
+    suppressedThreadClick = press.conversation.key;
+    setTimeout(() => openMenuAt(press.conversation, press.x, press.y), 0);
+  };
+  const threadContextMenu = (c: Conversation, event: MouseEvent) => {
+    event.preventDefault();
+    if (narrow() && sheet() && threadPress) {
+      threadPress.triggered = true;
+      return;
+    }
+    cancelThreadPress();
+    if (narrow() && sheet()) suppressedThreadClick = c.key;
+    openMenu(c, event);
+  };
+  const selectThread = (c: Conversation) => {
+    if (suppressedThreadClick === c.key) {
+      suppressedThreadClick = undefined;
+      return;
+    }
+    navigate(c.key);
+  };
   const stopRename = (kind: "conversation" | "folder", id: string) => {
     setEditing((current) =>
       current?.kind === kind && current.id === id ? undefined : current,
@@ -693,14 +759,16 @@ export default function App() {
           <button
             type="button"
             class="thread-select"
-            onContextMenu={(event) => {
-              event.preventDefault();
-              openMenu(c, event);
-            }}
+            onContextMenu={(event) => threadContextMenu(c, event)}
+            onPointerDown={(event) => startThreadPress(c, event)}
+            onPointerMove={moveThreadPress}
+            onPointerUp={finishThreadPress}
+            onPointerCancel={cancelThreadPress}
+            onPointerLeave={cancelThreadPress}
             aria-current={view() === c.key ? "page" : undefined}
             title={c.title}
             aria-label={c.title}
-            onClick={() => navigate(c.key)}
+            onClick={() => selectThread(c)}
             onDblClick={() => {
               if (editable && !c.bot) beginRename("conversation", c.key);
             }}
@@ -1065,11 +1133,13 @@ export default function App() {
                       class="thread-select"
                       title={c.title}
                       aria-label={c.title}
-                      onClick={() => navigate(c.key)}
-                      onContextMenu={(event) => {
-                        event.preventDefault();
-                        openMenu(c, event);
-                      }}
+                      onClick={() => selectThread(c)}
+                      onContextMenu={(event) => threadContextMenu(c, event)}
+                      onPointerDown={(event) => startThreadPress(c, event)}
+                      onPointerMove={moveThreadPress}
+                      onPointerUp={finishThreadPress}
+                      onPointerCancel={cancelThreadPress}
+                      onPointerLeave={cancelThreadPress}
                     >
                       <span>{c.title}</span>
                       <Show when={c.archivedAt}>

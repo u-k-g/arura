@@ -31,6 +31,32 @@ Deno.test({
         sheet.getByRole("heading", { name: "Conversations", exact: true }),
       ).toBeVisible();
       const client = await page.context().newCDPSession(page);
+      await expect(
+        sheet.locator(".thread-row > .icon-button:visible"),
+      ).toHaveCount(0);
+      const thread = sheet.getByRole("button", {
+        name: "Fixture conversation",
+        exact: true,
+      });
+      await thread.scrollIntoViewIfNeeded();
+      const bounds = await thread.boundingBox();
+      if (!bounds) throw new Error("Missing fixture conversation");
+      const pressX = bounds.x + bounds.width / 2;
+      const pressY = bounds.y + bounds.height / 2;
+      await client.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x: pressX, y: pressY }],
+      });
+      await page.waitForTimeout(600);
+      await client.send("Input.dispatchTouchEvent", {
+        type: "touchEnd",
+        touchPoints: [],
+      });
+      await expect(page.getByRole("dialog", {
+        name: "Fixture conversation",
+      })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(sheet).toBeVisible();
       const drag = async (distance: number, cancel = false) => {
         const handle = await sheet.locator(".sheet-handle").boundingBox();
         if (!handle) throw new Error("Missing sheet handle");

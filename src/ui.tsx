@@ -49,6 +49,7 @@ export function Dialog(props: {
     | undefined;
   let suppressHandleClick = false;
   let settling: Animation | undefined;
+  let openedAt = 0;
   const mobileSheet = () =>
     props.class?.split(" ").includes("navigation-sheet") &&
     matchMedia("(max-width: 720px), (pointer: coarse) and (hover: none)")
@@ -137,6 +138,7 @@ export function Dialog(props: {
   };
   onMount(() => {
     el.showModal();
+    openedAt = globalThis.performance.now();
     position();
     if (props.anchor) globalThis.addEventListener("resize", position);
   });
@@ -180,7 +182,11 @@ export function Dialog(props: {
         props.close();
       }}
       onClick={(e) => {
-        if (e.target === el) props.close();
+        if (
+          e.target === el &&
+          !(props.class === "conversation-menu" &&
+            globalThis.performance.now() - openedAt < 400)
+        ) props.close();
       }}
     >
       <div class="dialog-inner">

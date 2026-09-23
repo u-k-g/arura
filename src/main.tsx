@@ -4,21 +4,25 @@ import "./style.css";
 import "./chrome.css";
 import "./desktop-parity.css";
 
-// Mobile keyboards shrink the visual viewport while 100dvh can still describe
-// the taller layout viewport. Keep the app's own scroll areas above the keys.
+// Browser chrome and keyboards can both make 100dvh taller than the visible
+// screen. Keep the app's own scroll areas inside the visual viewport.
 const visualViewport = globalThis.visualViewport;
 if (visualViewport) {
   const updateViewport = () => {
     const layoutHeight = globalThis.document.documentElement.clientHeight;
     const keyboardHeight = layoutHeight - visualViewport.height;
     const style = globalThis.document.documentElement.style;
-    if (visualViewport.scale > 1.05 || keyboardHeight < 120) {
+    if (visualViewport.scale > 1.05) {
       style.removeProperty("--app-viewport-height");
       style.removeProperty("--app-viewport-top");
       style.removeProperty("--app-bottom-inset");
       return;
     }
-    style.setProperty("--app-bottom-inset", "0px");
+    if (keyboardHeight >= 120) {
+      style.setProperty("--app-bottom-inset", "0px");
+    } else {
+      style.removeProperty("--app-bottom-inset");
+    }
     style.setProperty(
       "--app-viewport-height",
       `${Math.round(visualViewport.height)}px`,
@@ -31,6 +35,8 @@ if (visualViewport) {
   visualViewport.addEventListener("resize", updateViewport);
   visualViewport.addEventListener("scroll", updateViewport);
   globalThis.addEventListener("resize", updateViewport);
+  globalThis.addEventListener("pageshow", updateViewport);
+  globalThis.document.addEventListener("visibilitychange", updateViewport);
   updateViewport();
 }
 
