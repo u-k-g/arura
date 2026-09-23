@@ -21,11 +21,17 @@
 .turn-minimap-step {
   width: 32px;
   height: 24px;
+  align-self: flex-start;
+  margin-left: 5px;
   padding: 2px;
   border: 0;
   color: var(--muted);
   opacity: 1;
   transition: background-color 120ms ease;
+}
+.turn-minimap-step.is-hidden {
+  visibility: hidden;
+  pointer-events: none;
 }
 .turn-minimap-track {
   position: relative;

@@ -30,7 +30,7 @@ Deno.test({
         if (index === 1) {
           await expect(page.getByRole("button", {
             name: "Jump to latest messages",
-          })).toBeVisible();
+          })).toHaveCount(0);
         }
       }
       const rail = page.getByRole("button", { name: /Jump to a turn/ });
@@ -48,6 +48,7 @@ Deno.test({
       );
       const spine = page.locator(".turn-minimap-spine");
       const spineBox = requireValue(await spine.boundingBox(), "spine bounds");
+      await expect(page.locator(".turn-minimap-mark.current")).toBeVisible();
       const currentMarkBox = requireValue(
         await page.locator(".turn-minimap-mark.current").boundingBox(),
         "current mark bounds",
@@ -109,14 +110,34 @@ Deno.test({
         name: "Jump to latest messages",
       });
       await expect(latest).toBeVisible();
+      await page.mouse.move(0, 0);
+      await expect(firstMark).toHaveCSS("width", "10px");
+      const tickBox = requireValue(
+        await firstMark.boundingBox(),
+        "tick bounds",
+      );
+      const arrowBox = requireValue(
+        await latest.locator(".icon").boundingBox(),
+        "jump arrow bounds",
+      );
+      expect(
+        Math.abs(
+          tickBox.x + tickBox.width / 2 -
+            (arrowBox.x + arrowBox.width / 2),
+        ),
+      ).toBeLessThan(0.5);
       await latest.click();
       await expect.poll(() =>
         transcript.evaluate((node) =>
           node.scrollHeight - node.scrollTop - node.clientHeight
         )
       ).toBeLessThanOrEqual(1);
+      await expect(latest).toHaveCount(0);
+      await expect(page.locator(".turn-minimap-step")).toBeHidden();
+      await transcript.evaluate((node) => node.scrollTo(0, 0));
       await expect(latest).toBeVisible();
-      await latest.click();
+      await transcript.evaluate((node) => node.scrollTo(0, node.scrollHeight));
+      await expect(latest).toHaveCount(0);
       await rail.focus();
       await rail.press("End");
       await rail.press("Enter");

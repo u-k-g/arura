@@ -1219,7 +1219,7 @@ export default function Chat(props: {
         >
           <Show when={!props.conversation}>
             <div class="new-session-welcome">
-              <h1>HERMES AGENT</h1>
+              <h1>HERMES</h1>
               <p>Your personal AI assistant.</p>
             </div>
           </Show>
@@ -1486,6 +1486,7 @@ export default function Chat(props: {
           currentIndex={currentTurnIndex()}
           select={jumpToTurn}
           jumpToLatest={scrollToLatest}
+          showJumpToLatest={awayFromBottom()}
         />
       </div>
       <div class="compose-area">

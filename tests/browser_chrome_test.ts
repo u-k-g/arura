@@ -22,13 +22,13 @@ Deno.test({
       await signIn(page, "Navigation review");
       await expect(
         page.getByRole("heading", {
-          name: "HERMES AGENT",
+          name: "HERMES",
           exact: true,
         }),
       ).toBeVisible();
       expect(
         await page.getByRole("heading", {
-          name: "HERMES AGENT",
+          name: "HERMES",
           exact: true,
         }).evaluate(async (heading) => {
           await document.fonts.ready;

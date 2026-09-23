@@ -16,6 +16,7 @@ export default function TurnMinimap(props: {
   currentIndex: number;
   select: (item: TurnMinimapItem, index: number) => void;
   jumpToLatest: () => void;
+  showJumpToLatest: boolean;
 }) {
   const [activeIndex, setActiveIndex] = createSignal<number>();
   const [railScroll, setRailScroll] = createSignal(0);
@@ -156,6 +157,7 @@ export default function TurnMinimap(props: {
         <button
           type="button"
           class="turn-minimap-step"
+          classList={{ "is-hidden": !props.showJumpToLatest }}
           aria-label="Jump to latest messages"
           onClick={props.jumpToLatest}
         >

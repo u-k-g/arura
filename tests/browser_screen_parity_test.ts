@@ -22,7 +22,7 @@ Deno.test({
       );
       await signIn(page, "Screen comparison");
       await expect(
-        page.getByRole("heading", { name: "HERMES AGENT" }),
+        page.getByRole("heading", { name: "HERMES" }),
       ).toBeVisible();
       const input = page.getByLabel("Message Hermes", { exact: true });
       await input.fill(
