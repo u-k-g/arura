@@ -106,6 +106,23 @@ export default function Chat(props: {
     [sending, setSending] = createSignal(false),
     [pages, setPages] = createSignal(1);
   const [queueOpen, setQueueOpen] = createSignal(true);
+  const [expandedWork, setExpandedWork] = createSignal<ReadonlySet<string>>(
+    new Set(),
+  );
+  const workExpanded = (key: string) => expandedWork().has(key);
+  const setWorkExpanded = (key: string, open: boolean) => {
+    setExpandedWork((current) => {
+      if (current.has(key) === open) return current;
+      const next = new Set(current);
+      if (open) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  };
+  const workKey = (group: ReturnType<typeof groupMessages>[number]) =>
+    `${props.conversation}:${
+      group.prompt?.id ?? group.event?.id ?? group.work[0]?.id ?? "work"
+    }`;
   const draftConfig = new Map<string, Record<string, unknown>>();
   const profileOf = (key: string) =>
     key ? (JSON.parse(key)[0] as string) : (props.profile ?? "default");
@@ -859,10 +876,18 @@ export default function Chat(props: {
     estimateSize: () => 180,
     getItemKey: (index) => {
       const group = groups()[index];
-      return group?.prompt?.id ?? group?.event?.id ?? group?.work[0]?.id ??
-        index;
+      return `${props.conversation}:${
+        group?.prompt?.id ?? group?.event?.id ?? group?.work[0]?.id ?? index
+      }`;
     },
     overscan: 5,
+  });
+  let measuredConversation = props.conversation;
+  createEffect(() => {
+    const key = props.conversation;
+    if (key === measuredConversation) return;
+    measuredConversation = key;
+    historyVirtualizer.measure();
   });
   const minimapItems = createMemo<TurnMinimapItem[]>(() =>
     groups().flatMap((group) =>
@@ -967,7 +992,15 @@ export default function Chat(props: {
           </div>
         }
       >
-        <details class="work-summary">
+        <details
+          class="work-summary"
+          open={workExpanded(`${props.conversation}:live:${t.startedAt}`)}
+          onToggle={(event) =>
+            setWorkExpanded(
+              `${props.conversation}:live:${t.startedAt}`,
+              event.currentTarget.open,
+            )}
+        >
           <summary>
             {t.state === "running" ? "Working" : "Worked"} for{" "}
             {elapsed(t.startedAt, t.finishedAt ?? clock())}
@@ -978,7 +1011,11 @@ export default function Chat(props: {
             </span>
             <Icon name="nav-arrow-down" />
           </summary>
-          <For each={t.activity}>{renderActivity}</For>
+          <Show
+            when={workExpanded(`${props.conversation}:live:${t.startedAt}`)}
+          >
+            <For each={t.activity}>{renderActivity}</For>
+          </Show>
         </details>
       </Show>
     </Show>
@@ -1217,7 +1254,15 @@ export default function Chat(props: {
                                 virtualRow.index === groups().length - 1
                               )}
                           >
-                            <details class="work-summary history-work">
+                            <details
+                              class="work-summary history-work"
+                              open={workExpanded(workKey(group))}
+                              onToggle={(event) =>
+                                setWorkExpanded(
+                                  workKey(group),
+                                  event.currentTarget.open,
+                                )}
+                            >
                               <summary>
                                 Worked
                                 <Show
@@ -1237,20 +1282,23 @@ export default function Chat(props: {
                                 </Show>
                                 <Icon name="nav-arrow-down" />
                               </summary>
-                              <For each={group.work}>{renderMessage}</For>
-                              <Show when={group === settledHistoryGroup()}>
-                                <For
-                                  each={turn()?.activity.filter(
-                                    (activity) =>
-                                      !group.work.some(
-                                        (message) =>
-                                          message.toolCallId === activity.id ||
-                                          message.tool === activity.label,
-                                      ),
-                                  )}
-                                >
-                                  {renderActivity}
-                                </For>
+                              <Show when={workExpanded(workKey(group))}>
+                                <For each={group.work}>{renderMessage}</For>
+                                <Show when={group === settledHistoryGroup()}>
+                                  <For
+                                    each={turn()?.activity.filter(
+                                      (activity) =>
+                                        !group.work.some(
+                                          (message) =>
+                                            message.toolCallId ===
+                                              activity.id ||
+                                            message.tool === activity.label,
+                                        ),
+                                    )}
+                                  >
+                                    {renderActivity}
+                                  </For>
+                                </Show>
                               </Show>
                             </details>
                           </Show>

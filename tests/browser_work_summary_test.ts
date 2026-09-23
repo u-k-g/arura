@@ -30,6 +30,7 @@ Deno.test({
       await expect(answer).toBeVisible();
       const summary = page.locator(".history-work").last();
       await expect(summary).toBeVisible();
+      await expect(summary.locator(".past-tool")).toHaveCount(0);
       expect(
         requireValue(await summary.boundingBox(), "summary bounds").y,
       ).toBeLessThan(
@@ -43,6 +44,8 @@ Deno.test({
         page.getByRole("button", { name: "Inspect result", exact: true }),
       ).toHaveCount(0);
       await expect(page.locator(".live-message .work-summary")).toHaveCount(0);
+      await summary.locator(":scope > summary").click();
+      await expect(summary.locator(".past-tool")).toHaveCount(0);
       await page.screenshot({ path: "/var/tmp/arura-work-layout.png" });
       await page
         .getByRole("button", { name: "Cron jobs", exact: true })
