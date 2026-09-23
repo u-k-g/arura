@@ -29,9 +29,14 @@ export default function CommandPalette(props: {
     const count = items().length;
     if (!count) return;
     setActive((next + count) % count);
-    document
+    globalThis.document
       .getElementById(`palette-option-${active()}`)
       ?.scrollIntoView({ block: "nearest" });
+  };
+  const choose = (item: PaletteItem | undefined) => {
+    if (!item) return;
+    props.close();
+    item.run();
   };
   return (
     <Dialog title="Find anything" class="command-palette" close={props.close}>
@@ -60,7 +65,7 @@ export default function CommandPalette(props: {
               move(active() + (event.key === "ArrowDown" ? 1 : -1));
             } else if (event.key === "Enter") {
               event.preventDefault();
-              items()[active()]?.run();
+              choose(items()[active()]);
             }
           }}
         />
@@ -89,7 +94,8 @@ export default function CommandPalette(props: {
                 aria-selected={index() === active()}
                 tabindex="-1"
                 onMouseMove={() => setActive(index())}
-                onClick={item.run}
+                onClick={() =>
+                  choose(item)}
               >
                 <Icon name={item.icon} />
                 <span class="palette-item-text">

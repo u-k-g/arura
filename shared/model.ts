@@ -207,6 +207,16 @@ export function conversationActivity(
 ): number {
   return c.messageActivityAt ?? c.activityAt;
 }
+export function conversationArchiveActivity(
+  c: Pick<Conversation, "activityAt" | "messageActivityAt" | "unarchivedAt">,
+): number {
+  return Math.max(conversationActivity(c), c.unarchivedAt ?? 0);
+}
+export function conversationReadActivity(
+  c: Pick<Conversation, "activityAt" | "messageActivityAt">,
+): number {
+  return Math.max(c.activityAt, c.messageActivityAt ?? 0);
+}
 export function shouldArchive(
   c: Conversation,
   days: number,
@@ -218,7 +228,7 @@ export function shouldArchive(
     !c.folderId &&
     !c.running &&
     !c.pendingInput &&
-    now - Math.max(conversationActivity(c), c.unarchivedAt ?? 0) >=
+    now - conversationArchiveActivity(c) >=
       days * 86_400_000
   );
 }

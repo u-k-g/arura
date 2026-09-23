@@ -3,6 +3,7 @@ import { fileReferences } from "../shared/artifacts.ts";
 import {
   archiveAgeStatus,
   type Conversation,
+  conversationArchiveActivity,
   groupMessages,
   interactionFromEvent,
   mergeHistoryMessages,
@@ -347,6 +348,14 @@ Deno.test("archive age warnings share archive eligibility and restored inactivit
     activityAt: now - 13 * 86400000,
   } as Conversation;
   equal(archiveAgeStatus(c, 14, now), "warning");
+  equal(
+    archiveAgeStatus({ ...c, activityAt: now - 6 * 86400000 }, 7, now),
+    "warning",
+  );
+  equal(
+    conversationArchiveActivity({ ...c, unarchivedAt: now - 86400000 }),
+    now - 86400000,
+  );
   equal(archiveAgeStatus(c, 14, now + 86400000), "overdue");
   equal(archiveAgeStatus(c, 14, now - 1), undefined);
   equal(archiveAgeStatus(c, 14, now, false), undefined);

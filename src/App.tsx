@@ -43,6 +43,8 @@ import {
   archiveAgeStatus,
   type Conversation,
   conversationActivity,
+  conversationArchiveActivity,
+  conversationReadActivity,
 } from "../shared/model.ts";
 import CommandPalette, { type PaletteItem } from "./CommandPalette.tsx";
 const Chat = lazy(() => import("./Chat.tsx"));
@@ -344,35 +346,40 @@ export default function App() {
     );
     return (
       state?.unread ||
-      conversationActivity(conversation) >
+      conversationReadActivity(conversation) >
         (state?.activityAt ?? workspace()?.readBaseline ?? Infinity)
     );
   };
   onMount(() => {
     const markVisible = () => {
       const current = selected();
-      if (connected() && current && document.visibilityState === "visible") {
+      if (
+        connected() && current &&
+        globalThis.document.visibilityState === "visible"
+      ) {
         void mutate("workspace.markRead", {
           key: current.key,
           unread: false,
         }).catch(() => {});
       }
     };
-    document.addEventListener("visibilitychange", markVisible);
+    globalThis.document.addEventListener("visibilitychange", markVisible);
     onCleanup(() =>
-      document.removeEventListener("visibilitychange", markVisible)
+      globalThis.document.removeEventListener("visibilitychange", markVisible)
     );
   });
   const viewedRevision = createMemo(() => {
     const current = selected();
-    return current ? `${current.key}:${conversationActivity(current)}` : "";
+    return current ? `${current.key}:${conversationReadActivity(current)}` : "";
   });
   createEffect(() => {
     viewedRevision();
     const online = connected();
     untrack(() => {
       const current = selected();
-      if (online && document.visibilityState === "visible" && current) {
+      if (
+        online && globalThis.document.visibilityState === "visible" && current
+      ) {
         void mutate("workspace.markRead", {
           key: current.key,
           unread: false,
@@ -431,7 +438,7 @@ export default function App() {
       {
         id: "new",
         label: "New conversation",
-        icon: "edit-pencil",
+        icon: "plus",
         group: "Actions",
         run: () => void newChat(currentProfile()),
       },
@@ -506,7 +513,32 @@ export default function App() {
     if (hours < 24) return `${hours}h`;
     return `${Math.floor(hours / 24)}d`;
   };
-  const ageLabel = (c: Conversation) => ageFrom(conversationActivity(c));
+  const ageLabel = (c: Conversation) => {
+    const activity = c.section === "recent" &&
+        workspace()?.settings.archiveEnabled !== false
+      ? conversationArchiveActivity(c)
+      : conversationActivity(c);
+    return ageFrom(activity);
+  };
+  const ageTitle = (c: Conversation) => {
+    if (
+      c.section !== "recent" ||
+      c.bot ||
+      c.folderId ||
+      workspace()?.settings.archiveEnabled === false
+    ) return undefined;
+    if (c.pendingInput) {
+      return "Automatic archive paused while input is pending";
+    }
+    if (c.running) return "Automatic archive paused while the agent is working";
+    if (
+      c.section === "recent" &&
+      (c.unarchivedAt ?? 0) > conversationActivity(c)
+    ) return "Time since restoration; the archive clock restarted";
+    if (ageStatus(c) === "overdue") return "Due for automatic archive";
+    if (ageStatus(c) === "warning") return "Automatic archive within one day";
+    return undefined;
+  };
   const row = (c: Conversation) => (
     <div
       class="thread-row"
@@ -528,7 +560,7 @@ export default function App() {
         aria-label={c.title}
         onClick={() => navigate(c.key)}
       >
-        <span class="session-dot" classList={{ running: c.running }} />
+        <span class="session-dot" />
         <span>{c.title}</span>
         <Show
           when={draftFor(c.key, c.profile)}
@@ -539,11 +571,7 @@ export default function App() {
                 "archive-warning": ageStatus(c) === "warning",
                 "archive-overdue": ageStatus(c) === "overdue",
               }}
-              title={ageStatus(c) === "overdue"
-                ? "Due for automatic archive"
-                : ageStatus(c) === "warning"
-                ? "Automatic archive within one day"
-                : undefined}
+              title={ageTitle(c)}
             >
               {ageLabel(c)}
             </time>
@@ -566,6 +594,7 @@ export default function App() {
       />
       <IconButton
         icon="more-horiz"
+        class="row-menu-button"
         label={`Actions for ${c.title}`}
         onClick={(event) => openMenu(c, event)}
       />
@@ -573,7 +602,7 @@ export default function App() {
   );
   const conversationActions = () => (
     <IconButton
-      icon="edit-pencil"
+      icon="plus"
       label="New conversation"
       onClick={() => void newChat(currentProfile())}
     />
@@ -810,7 +839,7 @@ export default function App() {
             onClick={() => setFolderName("")}
           />
           <IconButton
-            icon="edit-pencil"
+            icon="plus"
             label="New conversation"
             onClick={() => void newChat(currentProfile())}
           />

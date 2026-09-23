@@ -57,6 +57,31 @@ Deno.test({
             requireValue(container, "container").width,
         ),
       ).toBeLessThan(2);
+      const sizing = await tile.evaluate((button) => {
+        const style = getComputedStyle(button);
+        const icon = button.querySelector(".icon");
+        return {
+          height: button.getBoundingClientRect().height,
+          iconHeight: icon?.getBoundingClientRect().height,
+          paddingTop: Number.parseFloat(style.paddingTop),
+          paddingBottom: Number.parseFloat(style.paddingBottom),
+        };
+      });
+      expect(sizing.iconHeight).toBe(14);
+      expect(sizing.paddingTop).toBeCloseTo(14 * 0.6, 1);
+      expect(sizing.paddingBottom).toBeCloseTo(14 * 0.6, 1);
+      expect(sizing.height).toBeLessThan(35);
+      const selectedBackground = await tile.evaluate((button) =>
+        getComputedStyle(button).backgroundColor
+      );
+      await a.getByRole("button", { name: "New conversation", exact: true })
+        .first().click();
+      const idleBackground = await tile.evaluate((button) =>
+        getComputedStyle(button).backgroundColor
+      );
+      expect(idleBackground).toMatch(/^(transparent|rgba\(0, 0, 0, 0\))$/);
+      expect(selectedBackground).not.toBe(idleBackground);
+      await tile.click();
       await tile.click({ button: "right" });
       await a.getByRole("button", { name: "Change icon", exact: true }).click();
       await a
@@ -88,11 +113,9 @@ Deno.test({
       await a.screenshot({
         path: `${Deno.env.get("TMPDIR")}/essentials-desktop.png`,
       });
+      await tile.click({ button: "right" });
       await a
-        .getByRole("button", {
-          name: "Archive Fixture conversation",
-          exact: true,
-        })
+        .getByRole("button", { name: "Archive", exact: true })
         .click();
       await expect(tile).toHaveCount(0);
       await a.getByRole("button", { name: "Archived", exact: true }).click();

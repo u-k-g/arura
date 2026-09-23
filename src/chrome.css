@@ -100,9 +100,6 @@
   background: var(--subtle);
   flex: none;
 }
-.session-dot.running {
-  background: var(--accent);
-}
 .session-age {
   margin-left: auto;
   color: var(--subtle);
@@ -833,9 +830,6 @@ dialog.conversation-menu {
 .thread-row.draft .draft-indicator {
   color: var(--warning);
 }
-.thread-row.draft .session-dot {
-  background: var(--warning);
-}
 .nav-scroll .thread-row,
 .topbar > .thread-row {
   position: relative;
@@ -859,4 +853,19 @@ dialog.conversation-menu {
 .topbar > .thread-row:hover .session-age,
 .topbar > .thread-row:focus-within .session-age {
   visibility: hidden;
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav-scroll .thread-row > .icon-button.row-menu-button {
+    left: 0;
+    right: auto;
+    width: 20px;
+    min-width: 20px;
+  }
+  .nav-scroll .thread-row > .icon-button.archive-button {
+    right: 0;
+  }
+  .nav-scroll .thread-row:hover .session-dot,
+  .nav-scroll .thread-row:focus-within .session-dot {
+    visibility: hidden;
+  }
 }

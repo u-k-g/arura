@@ -1,7 +1,7 @@
 import { anyApi } from "convex/server";
 import { v } from "convex/values";
 import { incomingOrganization } from "../shared/organization.ts";
-import { conversationActivity, shouldArchive } from "../shared/model.ts";
+import { conversationReadActivity, shouldArchive } from "../shared/model.ts";
 import {
   internalMutation,
   mutation,
@@ -23,6 +23,7 @@ const section = v.union(
   v.literal("recent"),
   v.literal("archived"),
 );
+const sharedReadDevice = "__shared__";
 export const runtimeView = query({
   args: { key: v.string() },
   handler: async (ctx, args) => {
@@ -98,6 +99,20 @@ export const overview = query({
   args: {},
   handler: async (ctx) => {
     const self = await device(ctx);
+    const [allReads, devices] = await Promise.all([
+      ctx.db.query("conversationReads").collect(),
+      ctx.db.query("devices").collect(),
+    ]);
+    const reads = new Map<string, (typeof allReads)[number]>();
+    for (const read of allReads) {
+      const previous = reads.get(read.key);
+      if (
+        !previous ||
+        read.device === sharedReadDevice ||
+        (previous.device !== sharedReadDevice &&
+          read.activityAt > previous.activityAt)
+      ) reads.set(read.key, read);
+    }
     const pinned = await ctx.db
       .query("conversations")
       .withIndex(
@@ -118,11 +133,8 @@ export const overview = query({
     );
     return {
       deviceId: self.id,
-      readBaseline: self.createdAt,
-      reads: await ctx.db
-        .query("conversationReads")
-        .withIndex("device", (q) => q.eq("device", self.id))
-        .collect(),
+      readBaseline: Math.min(...devices.map((row) => row.createdAt)),
+      reads: [...reads.values()],
       conversations: [...pinned, ...recent.page],
       recentCursor: recent.continueCursor,
       recentHasMore: !recent.isDone,
@@ -259,8 +271,8 @@ export const transcript = query({
 export const markRead = mutation({
   args: { key: v.string(), unread: v.boolean() },
   handler: async (ctx, args) => {
-    const self = await device(ctx),
-      key = await resolveKey(ctx, args.key);
+    await device(ctx);
+    const key = await resolveKey(ctx, args.key);
     const conversation = await ctx.db
       .query("conversations")
       .withIndex("key", (q) => q.eq("key", key))
@@ -268,12 +280,15 @@ export const markRead = mutation({
     if (!conversation) return;
     const old = await ctx.db
       .query("conversationReads")
-      .withIndex("device", (q) => q.eq("device", self.id).eq("key", key))
+      .withIndex(
+        "device",
+        (q) => q.eq("device", sharedReadDevice).eq("key", key),
+      )
       .unique();
     const value = {
-      device: self.id,
+      device: sharedReadDevice,
       key,
-      activityAt: conversationActivity(conversation),
+      activityAt: conversationReadActivity(conversation),
       unread: args.unread,
     };
     if (

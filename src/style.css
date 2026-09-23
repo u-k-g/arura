@@ -225,24 +225,29 @@ small {
   padding: 8px 0 12px;
 }
 .essentials > button {
+  --essential-icon-size: 14px;
   flex: 1 0 48px;
   min-width: 44px;
-  height: 44px;
+  height: auto;
   border: 0;
-  background: var(--panel);
+  background: transparent;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
   font-size: 12px;
-  padding: 6px 4px;
+  padding: calc(var(--essential-icon-size) * 0.6) 4px;
   box-shadow: none;
 }
 .essentials .icon {
-  width: 16px;
-  height: 16px;
-  color: var(--muted);
-  opacity: 0.7;
+  width: var(--essential-icon-size);
+  height: var(--essential-icon-size);
+  color: var(--essential-icon-color, var(--muted));
+  opacity: var(--essential-icon-opacity, 0.7);
+}
+.essentials > button:hover {
+  background: var(--hover);
 }
 .essential-icon-picker {
   display: grid;
@@ -260,8 +265,14 @@ small {
   color: var(--accent);
 }
 .essentials > .selected {
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: light-dark(var(--surface), var(--ink));
+  color: light-dark(var(--ink), var(--panel));
+  --essential-icon-color: light-dark(var(--ink), var(--panel));
+  --essential-icon-opacity: 1;
+  box-shadow: 0 1px 3px color-mix(in srgb, black 18%, transparent);
+}
+.essentials > .selected:hover {
+  background: light-dark(var(--surface), var(--ink));
 }
 .section-heading {
   display: flex;

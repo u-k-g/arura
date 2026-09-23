@@ -502,7 +502,7 @@
 }
 
 .new-session-welcome h1 {
-  font-family: "Hermes Display", var(--sans);
+  font-family: "Hermes Display", Georgia, serif;
   font-weight: 700;
   font-size: clamp(44px, 9vw, 120px);
   letter-spacing: -0.02em;

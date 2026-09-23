@@ -2,7 +2,10 @@ import { toolPresentation } from "../shared/tool-presentation.ts";
 import { workGroup } from "../shared/model.ts";
 import { ask, confirmAction, rejectAction } from "./ActionDialog.tsx";
 import ModelPicker, { modelLabel, type ModelOption } from "./ModelPicker.tsx";
-import { clearsStaleEffort, reasoningLevels } from "../shared/model-reasoning.ts";
+import {
+  clearsStaleEffort,
+  reasoningLevels,
+} from "../shared/model-reasoning.ts";
 import { record, type Transcript } from "../shared/contracts.ts";
 import {
   attachmentHref,
@@ -50,6 +53,7 @@ import {
   workspace,
 } from "./client.ts";
 import ComposerInput, { type ComposerHandle } from "./ComposerInput.tsx";
+import TurnMinimap, { type TurnMinimapItem } from "./TurnMinimap.tsx";
 import type { ControlView } from "./RunControls.tsx";
 import { Dialog, Field, Icon, IconButton, run } from "./ui.tsx";
 
@@ -272,6 +276,7 @@ export default function Chat(props: {
         value,
       );
   let scroller!: HTMLElement;
+  let transcriptInner!: HTMLDivElement;
   const [awayFromBottom, setAwayFromBottom] = createSignal(false);
   let needsInitialScroll = true;
   let scrollFrame: number | undefined;
@@ -840,6 +845,88 @@ export default function Chat(props: {
     setCompletions([]);
   }
   const groups = createMemo(() => groupMessages(messages()));
+  const minimapItems = createMemo<TurnMinimapItem[]>(() =>
+    groups().flatMap((group) =>
+      group.prompt
+        ? [{
+          id: group.prompt.id,
+          prompt: userMessageText(group.prompt.text).replace(/\s+/g, " ").trim()
+            .slice(0, 300),
+          answer: (group.answer?.text ?? "").replace(/\s+/g, " ").trim()
+            .slice(0, 300),
+        }]
+        : []
+    )
+  );
+  const [currentTurnIndex, setCurrentTurnIndex] = createSignal(0);
+  let minimapFrame: number | undefined;
+  const updateMinimap = () => {
+    const items = minimapItems();
+    if (!items.length || !scroller || !transcriptInner) return;
+    const markers = transcriptInner.querySelectorAll<HTMLElement>(
+      ":scope > article.message.user[data-message-id]",
+    );
+    if (!markers.length) return;
+    if (
+      scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= 40
+    ) {
+      setCurrentTurnIndex(items.length - 1);
+      return;
+    }
+    const boundary = scroller.getBoundingClientRect().top +
+      Math.min(90, scroller.clientHeight * 0.28);
+    let low = 0;
+    let high = markers.length;
+    while (low < high) {
+      const middle = (low + high) >>> 1;
+      if (markers[middle].getBoundingClientRect().top <= boundary) {
+        low = middle + 1;
+      } else high = middle;
+    }
+    const id = markers[Math.max(0, low - 1)].dataset.messageId;
+    const index = items.findIndex((item) => item.id === id);
+    if (index >= 0) setCurrentTurnIndex(index);
+  };
+  const scheduleMinimapUpdate = () => {
+    if (minimapFrame !== undefined) return;
+    minimapFrame = requestAnimationFrame(() => {
+      minimapFrame = undefined;
+      updateMinimap();
+    });
+  };
+  const jumpToTurn = (item: TurnMinimapItem, index: number) => {
+    const target = Array.from(
+      transcriptInner.querySelectorAll<HTMLElement>(
+        ":scope > article.message.user[data-message-id]",
+      ),
+    ).find((element) => element.dataset.messageId === item.id);
+    if (!target) return;
+    userScroll();
+    setCurrentTurnIndex(index);
+    setAwayFromBottom(true);
+    scroller.scrollTo({
+      top: scroller.scrollTop + target.getBoundingClientRect().top -
+        scroller.getBoundingClientRect().top - 16,
+      behavior: globalThis.matchMedia("(prefers-reduced-motion: reduce)")
+          .matches
+        ? "instant"
+        : "smooth",
+    });
+  };
+  createEffect(() => {
+    minimapItems();
+    scheduleMinimapUpdate();
+  });
+  onMount(() => {
+    const observer = new globalThis.ResizeObserver(scheduleMinimapUpdate);
+    observer.observe(scroller);
+    observer.observe(transcriptInner);
+    scheduleMinimapUpdate();
+    onCleanup(() => {
+      observer.disconnect();
+      if (minimapFrame !== undefined) cancelAnimationFrame(minimapFrame);
+    });
+  });
   const settledHistoryGroup = createMemo(() =>
     turn()?.state !== "running" && turnIsInHistory()
       ? groups().findLast((group) => group.answer)
@@ -1042,289 +1129,300 @@ export default function Chat(props: {
         void run(() => upload(e.dataTransfer?.files ?? null));
       }}
     >
-      <section
-        class="transcript"
-        aria-label="Conversation history"
-        ref={scroller}
-        onWheel={userScroll}
-        onTouchStart={userScroll}
-        onPointerDown={userScroll}
-        onKeyDown={userScroll}
-        onScroll={() => {
-          if (scrollFrame === undefined) {
-            setAwayFromBottom(
-              scroller.scrollHeight -
-                  scroller.scrollTop -
-                  scroller.clientHeight >
-                40,
-            );
-          }
-        }}
-      >
-        <Show when={!props.conversation}>
-          <div class="new-session-welcome">
-            <h1>HERMES AGENT</h1>
-            <p>Your personal AI assistant.</p>
-          </div>
-        </Show>
-        <div class="transcript-inner">
-          <Show when={historyPages().at(-1)?.hasMore}>
-            <button
-              type="button"
-              class="load-earlier"
-              disabled={historyLoading() || !connected()}
-              aria-busy={historyLoading()}
-              onClick={() => {
-                setHistoryLoading(true);
-                setPages(historyPages().length + 1);
-                setHistoryRetry((value) => value + 1);
-              }}
-            >
-              {historyLoading()
-                ? "Loading earlier messages…"
-                : "Load earlier messages"}
-            </button>
+      <div class="transcript-shell">
+        <section
+          class="transcript"
+          aria-label="Conversation history"
+          ref={scroller}
+          onWheel={userScroll}
+          onTouchStart={userScroll}
+          onPointerDown={userScroll}
+          onKeyDown={userScroll}
+          onScroll={() => {
+            scheduleMinimapUpdate();
+            if (scrollFrame === undefined) {
+              setAwayFromBottom(
+                scroller.scrollHeight -
+                    scroller.scrollTop -
+                    scroller.clientHeight >
+                  40,
+              );
+            }
+          }}
+        >
+          <Show when={!props.conversation}>
+            <div class="new-session-welcome">
+              <h1>HERMES AGENT</h1>
+              <p>Your personal AI assistant.</p>
+            </div>
           </Show>
-          <For each={groups()}>
-            {(group, index) => (
-              <>
-                <Show when={group.event}>
-                  <p class="timeline-event" role="status">
-                    {group.event?.text}
-                  </p>
-                </Show>
-                <Show when={group.prompt}>
-                  {(message) => renderMessage(message())}
-                </Show>
-                <Show
-                  when={group === liveWorkGroup() && hasTurnOutput() && turn()}
-                >
-                  {(t) => renderLiveWork(t())}
-                </Show>
-                <Show
-                  when={turn()?.state === "running" &&
-                    index() === groups().length - 1}
-                >
-                  <For
-                    each={group.work.filter(
-                      (message) => message.role === "assistant",
-                    )}
-                  >
-                    {renderMessage}
-                  </For>
-                </Show>
-                <Show
-                  when={group.work.length &&
-                    !(
-                      turn()?.state === "running" &&
-                      index() === groups().length - 1
-                    )}
-                >
-                  <details class="work-summary history-work">
-                    <summary>
-                      Worked
-                      <Show
-                        when={group === settledHistoryGroup() ||
-                          (group.prompt?.createdAt && group.answer?.createdAt)}
-                      >
-                        {" "}
-                        for {elapsed(
-                          group === settledHistoryGroup()
-                            ? (turn()?.startedAt ?? 0)
-                            : (group.prompt?.createdAt ?? 0),
-                          group === settledHistoryGroup()
-                            ? (turn()?.finishedAt ?? clock())
-                            : (group.answer?.createdAt ?? 0),
-                        )}
-                      </Show>
-                      <Icon name="nav-arrow-down" />
-                    </summary>
-                    <For each={group.work}>{renderMessage}</For>
-                    <Show when={group === settledHistoryGroup()}>
-                      <For
-                        each={turn()?.activity.filter(
-                          (activity) =>
-                            !group.work.some(
-                              (message) =>
-                                message.toolCallId === activity.id ||
-                                message.tool === activity.label,
-                            ),
-                        )}
-                      >
-                        {renderActivity}
-                      </For>
-                    </Show>
-                  </details>
-                </Show>
-                <Show when={group.answer}>
-                  {(message) => renderMessage(message())}
-                </Show>
-              </>
-            )}
-          </For>
-          <Show when={visiblePendingPrompt()}>
-            {(pending) => (
-              <article class="message user pending-prompt" role="status">
-                <Markdown text={userMessageText(pending().text)} />
-                <small>Sending…</small>
-              </article>
-            )}
-          </Show>
-          <Show when={thinking()}>
-            <article class="message assistant">
-              <p class="thinking-label" role="status">
-                Thinking…
-              </p>
-            </article>
-          </Show>
-          <Show when={turn()}>
-            {(t) => (
-              <article
-                class="message assistant live-message"
-                hidden={(historyOwnsWork() ||
-                  (t().state !== "running" &&
-                    turnIsInHistory() &&
-                    !t().activity.length)) &&
-                  !t().error &&
-                  !t().recovering &&
-                  !t().interactions.length}
-                classList={{
-                  "settled-work": t().state !== "running" && turnIsInHistory(),
+          <div class="transcript-inner" ref={transcriptInner}>
+            <Show when={historyPages().at(-1)?.hasMore}>
+              <button
+                type="button"
+                class="load-earlier"
+                disabled={historyLoading() || !connected()}
+                aria-busy={historyLoading()}
+                onClick={() => {
+                  setHistoryLoading(true);
+                  setPages(historyPages().length + 1);
+                  setHistoryRetry((value) => value + 1);
                 }}
               >
-                <Show when={t().recovering}>
-                  <p class="subtitle" role="status">
-                    Recovering live progress from Hermes…
-                  </p>
-                </Show>
-                <Show when={!liveWorkGroup() || !hasTurnOutput()}>
-                  {renderLiveWork(t())}
-                </Show>
-                <Show when={t().text && !turnIsInHistory()}>
-                  <Markdown text={t().text} />
-                </Show>
-                <Show
-                  when={t().state === "running" &&
-                    t().activity.findLast((a) => a.state === "running")}
-                >
-                  {(activity) => (
-                    <div class="current-activity" role="status">
-                      <Icon name="clock" />
-                      {activity().label}
-                    </div>
-                  )}
-                </Show>
-                <For each={t().interactions.map((item) => item.id)}>
-                  {(id) => {
-                    const interaction = () =>
-                      t().interactions.find((item) => item.id === id);
-                    return (
-                      <Show when={interaction()}>
-                        {(i) => (
-                          <div class="interaction">
-                            <h3>
-                              {i().kind === "approval"
-                                ? "Approval needed"
-                                : i().kind === "secret"
-                                ? "Input needed"
-                                : "A question from Hermes"}
-                            </h3>
-                            <p>{i().text}</p>
-                            <Show
-                              when={i().kind === "approval"}
-                              fallback={
-                                <Show
-                                  when={i().kind === "clarify"}
-                                  fallback={
-                                    <form
-                                      onSubmit={(e) => {
-                                        e.preventDefault();
-                                        const value = new FormData(
-                                          e.currentTarget,
-                                        ).get("answer");
-                                        e.currentTarget.reset();
-                                        void run(() =>
-                                          request("/api/respond", {
-                                            conversation: props.conversation,
-                                            requestId: i().id,
-                                            value,
-                                          })
-                                        );
-                                      }}
-                                    >
-                                      <input
-                                        name="answer"
-                                        aria-label="Secret or verification code"
-                                        type="password"
-                                        autocomplete="off"
-                                        required
-                                      />
-                                      <button type="submit" class="primary">
-                                        Answer
-                                      </button>
-                                    </form>
-                                  }
-                                >
-                                  <Clarification
-                                    interaction={i()}
-                                    respond={(params) =>
-                                      rpc("clarify.respond", params)}
-                                  />
-                                </Show>
-                              }
-                            >
-                              <button
-                                type="button"
-                                class="primary"
-                                onClick={() =>
-                                  void run(() =>
-                                    rpc("approval.respond", {
-                                      request_id: i().id,
-                                      choice: "once",
-                                    })
-                                  )}
-                              >
-                                Allow once
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  void run(() =>
-                                    rpc("approval.respond", {
-                                      request_id: i().id,
-                                      choice: "deny",
-                                    })
-                                  )}
-                              >
-                                Deny
-                              </button>
-                            </Show>
-                          </div>
-                        )}
+                {historyLoading()
+                  ? "Loading earlier messages…"
+                  : "Load earlier messages"}
+              </button>
+            </Show>
+            <For each={groups()}>
+              {(group, index) => (
+                <>
+                  <Show when={group.event}>
+                    <p class="timeline-event" role="status">
+                      {group.event?.text}
+                    </p>
+                  </Show>
+                  <Show when={group.prompt}>
+                    {(message) => renderMessage(message())}
+                  </Show>
+                  <Show
+                    when={group === liveWorkGroup() && hasTurnOutput() &&
+                      turn()}
+                  >
+                    {(t) => renderLiveWork(t())}
+                  </Show>
+                  <Show
+                    when={turn()?.state === "running" &&
+                      index() === groups().length - 1}
+                  >
+                    <For
+                      each={group.work.filter(
+                        (message) => message.role === "assistant",
+                      )}
+                    >
+                      {renderMessage}
+                    </For>
+                  </Show>
+                  <Show
+                    when={group.work.length &&
+                      !(
+                        turn()?.state === "running" &&
+                        index() === groups().length - 1
+                      )}
+                  >
+                    <details class="work-summary history-work">
+                      <summary>
+                        Worked
+                        <Show
+                          when={group === settledHistoryGroup() ||
+                            (group.prompt?.createdAt &&
+                              group.answer?.createdAt)}
+                        >
+                          {" "}
+                          for {elapsed(
+                            group === settledHistoryGroup()
+                              ? (turn()?.startedAt ?? 0)
+                              : (group.prompt?.createdAt ?? 0),
+                            group === settledHistoryGroup()
+                              ? (turn()?.finishedAt ?? clock())
+                              : (group.answer?.createdAt ?? 0),
+                          )}
+                        </Show>
+                        <Icon name="nav-arrow-down" />
+                      </summary>
+                      <For each={group.work}>{renderMessage}</For>
+                      <Show when={group === settledHistoryGroup()}>
+                        <For
+                          each={turn()?.activity.filter(
+                            (activity) =>
+                              !group.work.some(
+                                (message) =>
+                                  message.toolCallId === activity.id ||
+                                  message.tool === activity.label,
+                              ),
+                          )}
+                        >
+                          {renderActivity}
+                        </For>
                       </Show>
-                    );
-                  }}
-                </For>
-              </article>
-            )}
-          </Show>
-          <For
-            each={activity().commands.filter(
-              (c) =>
-                c.status === "complete" &&
-                c.kind === "send" &&
-                c.result?.output,
-            )}
-          >
-            {(c) => (
+                    </details>
+                  </Show>
+                  <Show when={group.answer}>
+                    {(message) => renderMessage(message())}
+                  </Show>
+                </>
+              )}
+            </For>
+            <Show when={visiblePendingPrompt()}>
+              {(pending) => (
+                <article class="message user pending-prompt" role="status">
+                  <Markdown text={userMessageText(pending().text)} />
+                  <small>Sending…</small>
+                </article>
+              )}
+            </Show>
+            <Show when={thinking()}>
               <article class="message assistant">
-                <div class="message-label">Command result</div>
-                <Markdown text={c.result.output} />
+                <p class="thinking-label" role="status">
+                  Thinking…
+                </p>
               </article>
-            )}
-          </For>
-        </div>
-      </section>
+            </Show>
+            <Show when={turn()}>
+              {(t) => (
+                <article
+                  class="message assistant live-message"
+                  hidden={(historyOwnsWork() ||
+                    (t().state !== "running" &&
+                      turnIsInHistory() &&
+                      !t().activity.length)) &&
+                    !t().error &&
+                    !t().recovering &&
+                    !t().interactions.length}
+                  classList={{
+                    "settled-work": t().state !== "running" &&
+                      turnIsInHistory(),
+                  }}
+                >
+                  <Show when={t().recovering}>
+                    <p class="subtitle" role="status">
+                      Recovering live progress from Hermes…
+                    </p>
+                  </Show>
+                  <Show when={!liveWorkGroup() || !hasTurnOutput()}>
+                    {renderLiveWork(t())}
+                  </Show>
+                  <Show when={t().text && !turnIsInHistory()}>
+                    <Markdown text={t().text} />
+                  </Show>
+                  <Show
+                    when={t().state === "running" &&
+                      t().activity.findLast((a) => a.state === "running")}
+                  >
+                    {(activity) => (
+                      <div class="current-activity" role="status">
+                        <Icon name="clock" />
+                        {activity().label}
+                      </div>
+                    )}
+                  </Show>
+                  <For each={t().interactions.map((item) => item.id)}>
+                    {(id) => {
+                      const interaction = () =>
+                        t().interactions.find((item) => item.id === id);
+                      return (
+                        <Show when={interaction()}>
+                          {(i) => (
+                            <div class="interaction">
+                              <h3>
+                                {i().kind === "approval"
+                                  ? "Approval needed"
+                                  : i().kind === "secret"
+                                  ? "Input needed"
+                                  : "A question from Hermes"}
+                              </h3>
+                              <p>{i().text}</p>
+                              <Show
+                                when={i().kind === "approval"}
+                                fallback={
+                                  <Show
+                                    when={i().kind === "clarify"}
+                                    fallback={
+                                      <form
+                                        onSubmit={(e) => {
+                                          e.preventDefault();
+                                          const value = new FormData(
+                                            e.currentTarget,
+                                          ).get("answer");
+                                          e.currentTarget.reset();
+                                          void run(() =>
+                                            request("/api/respond", {
+                                              conversation: props.conversation,
+                                              requestId: i().id,
+                                              value,
+                                            })
+                                          );
+                                        }}
+                                      >
+                                        <input
+                                          name="answer"
+                                          aria-label="Secret or verification code"
+                                          type="password"
+                                          autocomplete="off"
+                                          required
+                                        />
+                                        <button type="submit" class="primary">
+                                          Answer
+                                        </button>
+                                      </form>
+                                    }
+                                  >
+                                    <Clarification
+                                      interaction={i()}
+                                      respond={(params) =>
+                                        rpc("clarify.respond", params)}
+                                    />
+                                  </Show>
+                                }
+                              >
+                                <button
+                                  type="button"
+                                  class="primary"
+                                  onClick={() =>
+                                    void run(() =>
+                                      rpc("approval.respond", {
+                                        request_id: i().id,
+                                        choice: "once",
+                                      })
+                                    )}
+                                >
+                                  Allow once
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    void run(() =>
+                                      rpc("approval.respond", {
+                                        request_id: i().id,
+                                        choice: "deny",
+                                      })
+                                    )}
+                                >
+                                  Deny
+                                </button>
+                              </Show>
+                            </div>
+                          )}
+                        </Show>
+                      );
+                    }}
+                  </For>
+                </article>
+              )}
+            </Show>
+            <For
+              each={activity().commands.filter(
+                (c) =>
+                  c.status === "complete" &&
+                  c.kind === "send" &&
+                  c.result?.output,
+              )}
+            >
+              {(c) => (
+                <article class="message assistant">
+                  <div class="message-label">Command result</div>
+                  <Markdown text={c.result.output} />
+                </article>
+              )}
+            </For>
+          </div>
+        </section>
+        <TurnMinimap
+          items={minimapItems()}
+          currentIndex={currentTurnIndex()}
+          select={jumpToTurn}
+        />
+      </div>
       <div class="compose-area">
         <Show when={historyFailure()}>
           <div class="history-error chat-issue" role="alert">
@@ -1732,7 +1830,9 @@ export default function Chat(props: {
             >
               {displayedModel() || "Select model"}
               {displayedEffort()
-                ? ` · ${displayedEffort() === "none" ? "Off" : displayedEffort()}`
+                ? ` · ${
+                  displayedEffort() === "none" ? "Off" : displayedEffort()
+                }`
                 : ""}
               <Icon name="nav-arrow-down" />
             </button>

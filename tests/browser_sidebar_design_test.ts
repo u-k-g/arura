@@ -19,6 +19,46 @@ Deno.test({
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .click();
+      const row = page.locator(".nav-scroll .thread-row.selected");
+      await page.mouse.move(900, 700);
+      await expect(row.locator(".session-dot")).toBeVisible();
+      await expect(row.locator(".session-age")).toBeVisible();
+      await row.hover();
+      const hoverLayout = await row.evaluate((element) => {
+        const dot = element.querySelector(".session-dot")!;
+        const age = element.querySelector(".session-age")!;
+        const menu = element.querySelector(".row-menu-button")!;
+        const archive = element.querySelector(".archive-button")!;
+        return {
+          dotHidden: getComputedStyle(dot).visibility === "hidden",
+          ageHidden: getComputedStyle(age).visibility === "hidden",
+          menuLeft: menu.getBoundingClientRect().left,
+          archiveRight: archive.getBoundingClientRect().right,
+          rowLeft: element.getBoundingClientRect().left,
+          rowRight: element.getBoundingClientRect().right,
+        };
+      });
+      expect(hoverLayout.dotHidden).toBe(true);
+      expect(hoverLayout.ageHidden).toBe(true);
+      expect(hoverLayout.menuLeft - hoverLayout.rowLeft).toBeLessThan(3);
+      expect(hoverLayout.rowRight - hoverLayout.archiveRight).toBeLessThan(3);
+      await row.getByRole("button", {
+        name: "Actions for Fixture conversation",
+      }).click();
+      await page.getByRole("button", { name: "Mark as unread" }).click();
+      await expect(row).toHaveClass(/unread/);
+      const unreadColor = await row.locator(".session-dot").evaluate((dot) =>
+        getComputedStyle(dot).backgroundColor
+      );
+      await row.getByRole("button", {
+        name: "Actions for Fixture conversation",
+      }).click();
+      await page.getByRole("button", { name: "Mark as read" }).click();
+      await expect(row).not.toHaveClass(/unread/);
+      const readColor = await row.locator(".session-dot").evaluate((dot) =>
+        getComputedStyle(dot).backgroundColor
+      );
+      expect(unreadColor).not.toBe(readColor);
       await page
         .getByRole("button", {
           name: "Actions for Fixture conversation",

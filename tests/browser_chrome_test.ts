@@ -26,6 +26,17 @@ Deno.test({
           exact: true,
         }),
       ).toBeVisible();
+      expect(
+        await page.getByRole("heading", {
+          name: "HERMES AGENT",
+          exact: true,
+        }).evaluate(async (heading) => {
+          await document.fonts.ready;
+          return getComputedStyle(heading).fontFamily.startsWith(
+            '"Hermes Display"',
+          ) && document.fonts.check('700 48px "Hermes Display"');
+        }),
+      ).toBe(true);
       await page
         .getByRole("button", { name: "Collapse sidebar", exact: true })
         .click();
@@ -36,6 +47,18 @@ Deno.test({
       await expect(
         page.getByRole("button", { name: "Expand sidebar", exact: true }),
       ).toBeVisible();
+      await page.keyboard.press("Meta+k");
+      const palette = page.getByRole("dialog", {
+        name: "Find anything",
+        exact: true,
+      });
+      await expect(palette).toBeVisible();
+      await palette.getByRole("combobox").press("Enter");
+      await expect(palette).toHaveCount(0);
+      await page.keyboard.press("Meta+k");
+      await expect(palette).toBeVisible();
+      await palette.getByRole("combobox").press("Enter");
+      await expect(palette).toHaveCount(0);
       await page.keyboard.press("Control+k");
       await expect(
         page.getByRole("dialog", { name: "Find anything", exact: true }),

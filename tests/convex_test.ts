@@ -99,6 +99,40 @@ Deno.test({
           }) => c.key === key,
         )
       );
+      await a.mutation(api.workspace.markRead, { key, unread: false });
+      const readOnB = (await b.query(api.workspace.overview, {})).reads?.find(
+        (read: { key: string }) => read.key === key,
+      );
+      assert(readOnB);
+      assert.equal(readOnB.unread, false);
+      await adapter.mutation(api.workspace.ingest, {
+        conversations: [{
+          key,
+          sourceId: key,
+          profile: "test",
+          title: "Original",
+          activityAt: readOnB.activityAt + 1000,
+        }],
+      });
+      const changedOnB = await b.query(api.workspace.overview, {});
+      assert(
+        changedOnB.conversations.find((c: { key: string }) => c.key === key)!
+          .activityAt > readOnB.activityAt,
+      );
+      await b.mutation(api.workspace.markRead, { key, unread: false });
+      const readOnA = (await a.query(api.workspace.overview, {})).reads?.find(
+        (read: { key: string }) => read.key === key,
+      );
+      assert(readOnA);
+      assert.equal(readOnA.activityAt, readOnB.activityAt + 1000);
+      await b.mutation(api.workspace.markRead, { key, unread: true });
+      assert.equal(
+        (await a.query(api.workspace.overview, {})).reads?.find(
+          (read: { key: string }) => read.key === key,
+        )?.unread,
+        true,
+      );
+      await a.mutation(api.workspace.markRead, { key, unread: false });
       const folderName = `Folder ${crypto.randomUUID()}`;
       await a.mutation(api.workspace.folder, { name: folderName });
       await until(() =>
