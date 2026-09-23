@@ -6,7 +6,11 @@ import {
   clearsStaleEffort,
   reasoningLevels,
 } from "../shared/model-reasoning.ts";
-import { record, type Transcript } from "../shared/contracts.ts";
+import {
+  type HistoryIndexItem,
+  record,
+  type Transcript,
+} from "../shared/contracts.ts";
 import {
   attachmentHref,
   contextReference,
@@ -59,6 +63,10 @@ import { Dialog, Field, Icon, IconButton, run } from "./ui.tsx";
 
 const RunControls = lazy(() => import("./RunControls.tsx"));
 const Clarification = lazy(() => import("./Clarification.tsx"));
+const historyIndexCache = new Map<
+  string,
+  { revision: string; items: HistoryIndexItem[] }
+>();
 
 DOMPurify.addHook("beforeSanitizeAttributes", (node) => {
   if (node.nodeName !== "A") return;
@@ -195,11 +203,14 @@ export default function Chat(props: {
       : undefined;
   });
   const commandIssues = createMemo(() =>
-    activity().commands.filter((item) =>
-      ["error", "unknown"].includes(item.status) &&
-      item.kind !== "load" &&
-      !errorDismissed(item._id)
-    ).sort((a, b) => b.createdAt - a.createdAt)
+    activity()
+      .commands.filter(
+        (item) =>
+          ["error", "unknown"].includes(item.status) &&
+          item.kind !== "load" &&
+          !errorDismissed(item._id),
+      )
+      .sort((a, b) => b.createdAt - a.createdAt)
   );
   const [edit, setEdit] = createSignal<string>(),
     [controls, setControls] = createSignal<ControlView>();
@@ -290,11 +301,16 @@ export default function Chat(props: {
   let scroller!: HTMLElement;
   let transcriptInner!: HTMLDivElement;
   const [awayFromBottom, setAwayFromBottom] = createSignal(false);
+  const [cacheReady, setCacheReady] = createSignal(false);
+  const [initializing, setInitializing] = createSignal(false);
   let needsInitialScroll = true;
   let scrollFrame: number | undefined;
   let liveScrollFrame: number | undefined;
   let scrollIntent = 0;
+  let readingHistory = false;
   const userScroll = () => {
+    if (needsInitialScroll) return;
+    readingHistory = true;
     scrollIntent++;
     if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
     scrollFrame = undefined;
@@ -305,14 +321,20 @@ export default function Chat(props: {
   });
   const scrollToLatest = () => {
     scroller?.scrollTo({ top: scroller.scrollHeight, behavior: "instant" });
+    readingHistory = false;
     setAwayFromBottom(false);
   };
-  const maybeLoadEarlier = () => {
+  const maybeLoadEarlier = (preload = false) => {
     if (
       !scroller ||
-      scroller.scrollTop > Math.max(160, scroller.clientHeight / 2) ||
-      !historyPages().at(-1)?.hasMore || historyLoading() || !connected()
-    ) return;
+      (!preload &&
+        scroller.scrollTop > Math.max(800, scroller.clientHeight * 4)) ||
+      !historyPages().at(-1)?.hasMore ||
+      historyLoading() ||
+      !connected()
+    ) {
+      return;
+    }
     setHistoryLoading(true);
     setPages((count) => count + 1);
   };
@@ -340,20 +362,22 @@ export default function Chat(props: {
     if (!pending || pending.key !== props.conversation) return;
     const command = activity().commands.find((item) => item.id === pending.id);
     if (
-      command && ["complete", "error", "unknown", "cancelled"].includes(
-        command.status,
-      )
+      command &&
+      ["complete", "error", "unknown", "cancelled"].includes(command.status)
     ) {
       return;
     }
     const sentText = userMessageText(pending.text).trim();
     if (
-      messages().some((message) =>
-        message.role === "user" &&
-        !pending.previousIds.has(message.id) &&
-        userMessageText(message.text).trim() === sentText
+      messages().some(
+        (message) =>
+          message.role === "user" &&
+          !pending.previousIds.has(message.id) &&
+          userMessageText(message.text).trim() === sentText,
       )
-    ) return;
+    ) {
+      return;
+    }
     return pending;
   });
   createEffect(() => {
@@ -405,6 +429,7 @@ export default function Chat(props: {
       });
     });
     resize.observe(scroller);
+    resize.observe(transcriptInner);
     onCleanup(() => {
       clearInterval(t);
       resize.disconnect();
@@ -421,7 +446,15 @@ export default function Chat(props: {
     lastReset = reset;
     const revision = ++transcriptRevision;
     const draftRevision = ++conversationRevision;
+    if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
+    scrollFrame = undefined;
     needsInitialScroll = true;
+    readingHistory = false;
+    setInitializing(Boolean(key));
+    setCacheReady(false);
+    setHistoryIndex(undefined);
+    setIndexFailed(false);
+    setPendingJump(undefined);
     draftConfig.clear();
     setAwayFromBottom(false);
     setHistoryPages([]);
@@ -437,17 +470,23 @@ export default function Chat(props: {
     setPendingUploads([]);
     void draftAttachments(key).then((value) => {
       if (
-        !clearBlank && conversationRevision === draftRevision &&
-        props.conversation === key && uploads().length === 0
+        !clearBlank &&
+        conversationRevision === draftRevision &&
+        props.conversation === key &&
+        uploads().length === 0
       ) {
         setUploads(value);
       }
     });
     void draft(key).then((value) => {
       if (
-        clearBlank || conversationRevision !== draftRevision ||
-        props.conversation !== key || text() !== ""
-      ) return;
+        clearBlank ||
+        conversationRevision !== draftRevision ||
+        props.conversation !== key ||
+        text() !== ""
+      ) {
+        return;
+      }
       const remote = untrack(
         () =>
           workspace()?.drafts?.find(
@@ -456,21 +495,28 @@ export default function Chat(props: {
       );
       setText(value ?? remote ?? "");
     });
-    void loadCache<Transcript>(`chat:${key}`).then((value) => {
-      if (
-        value &&
-        props.conversation === key &&
-        transcriptRevision === revision
-      ) {
-        setHistoryPages(value.pages);
-        requestAnimationFrame(() => {
-          if (props.conversation === key && needsInitialScroll) {
+    void loadCache<Transcript>(`chat:${key}`)
+      .then((value) => {
+        if (props.conversation !== key || transcriptRevision !== revision) {
+          return;
+        }
+        if (value?.pages.length) {
+          setHistoryPages(value.pages);
+          setPages(value.pages.length);
+          requestAnimationFrame(() => {
+            if (props.conversation !== key || !needsInitialScroll) return;
             scrollToLatest();
             needsInitialScroll = false;
-          }
-        });
-      }
-    });
+            setInitializing(false);
+          });
+        }
+        setCacheReady(true);
+      })
+      .catch(() => {
+        if (props.conversation === key && transcriptRevision === revision) {
+          setCacheReady(true);
+        }
+      });
   });
   createEffect(() => {
     const key = props.conversation;
@@ -489,7 +535,8 @@ export default function Chat(props: {
         liveScrollFrame = requestAnimationFrame(() => {
           liveScrollFrame = undefined;
           if (
-            props.conversation === key && intent === scrollIntent &&
+            props.conversation === key &&
+            intent === scrollIntent &&
             !awayFromBottom()
           ) {
             scrollToLatest();
@@ -502,6 +549,7 @@ export default function Chat(props: {
   createEffect(() => {
     const key = props.conversation;
     if (!key) return;
+    if (!cacheReady()) return;
     const count = pages();
     historyRetry();
     connected();
@@ -515,7 +563,8 @@ export default function Chat(props: {
         const previousOffset = historyPages().at(-1)?.offset ?? 0;
         const prepended = (value.at(-1)?.offset ?? 0) > previousOffset;
         const viewportTop = scroller?.getBoundingClientRect().top ?? 0;
-        const preservePosition = prepended || awayFromBottom();
+        const preservePosition = !needsInitialScroll &&
+          (prepended || awayFromBottom());
         const intent = scrollIntent;
         const oldScrollTop = scroller?.scrollTop ?? 0;
         const anchor = preservePosition
@@ -530,20 +579,12 @@ export default function Chat(props: {
         const anchorTop = anchor?.getBoundingClientRect().top ?? viewportTop;
         const nearBottom = needsInitialScroll || !awayFromBottom();
         setHistoryPages(value);
-        if (
-          value.length >= count ||
-          value.at(-1)?.hasMore === false
-        ) {
+        if (value.length >= count || value.at(-1)?.hasMore === false) {
           setHistoryLoading(false);
-        }
-        if (value.some((page) => page.messages.length)) {
-          needsInitialScroll = false;
         }
         const head = value.find((page) => page.offset === 0);
         for (let offset = 100; head && offset < count * 100; offset += 100) {
-          const preceding = value.find(
-            (page) => page.offset === offset - 100,
-          );
+          const preceding = value.find((page) => page.offset === offset - 100);
           const requestId = `${head.revision}:${offset}`;
           if (
             preceding?.hasMore &&
@@ -575,7 +616,11 @@ export default function Chat(props: {
           ) {
             return;
           }
-          if (preservePosition) {
+          if (needsInitialScroll && value.length) {
+            scrollToLatest();
+            needsInitialScroll = false;
+            setInitializing(false);
+          } else if (preservePosition) {
             const target = Array.from(
               scroller.querySelectorAll<HTMLElement>("[data-message-id]"),
             ).find((element) => element.dataset.messageId === anchorId);
@@ -586,7 +631,7 @@ export default function Chat(props: {
               ? oldScrollTop
               : scroller.scrollTop + shift;
           } else if (nearBottom) scrollToLatest();
-          maybeLoadEarlier();
+          if (value.length >= count) maybeLoadEarlier(count < 3);
         });
       },
     );
@@ -609,7 +654,9 @@ export default function Chat(props: {
           "The message that failed will replace the text in the composer.",
         confirmLabel: "Restore message",
       }))
-    ) return;
+    ) {
+      return;
+    }
     changeText(item.payload.text);
     setEdit(item.payload.edit);
     const attachments = item.payload.attachments ?? [];
@@ -626,7 +673,9 @@ export default function Chat(props: {
           "Hermes needs confirmation for this model change.",
         confirmLabel: "Switch and send",
       }))
-    ) return;
+    ) {
+      return;
+    }
     await enqueueCommand("send", item.conversation, {
       ...item.payload,
       model: { ...item.payload.model, confirmed: true },
@@ -706,7 +755,9 @@ export default function Chat(props: {
         submission = { signature, id: crypto.randomUUID() };
       }
       if (
-        originalKey && !payload.edit && !value.trimStart().startsWith("/") &&
+        originalKey &&
+        !payload.edit &&
+        !value.trimStart().startsWith("/") &&
         turn()?.state !== "running"
       ) {
         setPendingPrompt({
@@ -754,7 +805,9 @@ export default function Chat(props: {
         composerHadFocus &&
         props.conversation === key &&
         globalThis.document.activeElement === focusOwner
-      ) input?.focus();
+      ) {
+        input?.focus();
+      }
     }
   }
   async function upload(files: FileList | null) {
@@ -876,8 +929,10 @@ export default function Chat(props: {
     }
     const nextGroups = new Map<string, MessageGroup>();
     const result = groupMessages(messages()).map((group, index) => {
-      const key = group.prompt?.id ?? group.event?.id ??
-        group.work[0]?.id ?? String(index);
+      const key = group.prompt?.id ??
+        group.event?.id ??
+        group.work[0]?.id ??
+        String(index);
       const previous = previousGroups.get(key);
       const stable = previous &&
           previous.prompt === group.prompt &&
@@ -894,26 +949,102 @@ export default function Chat(props: {
     return result;
   });
   let groupContainer!: HTMLDivElement;
-  const minimapItems = createMemo<TurnMinimapItem[]>(() =>
+  const loadedMinimapItems = createMemo<TurnMinimapItem[]>(() =>
     groups().flatMap((group) =>
       group.prompt
-        ? [{
-          id: group.prompt.id,
-          prompt: userMessageText(group.prompt.text).replace(/\s+/g, " ").trim()
-            .slice(0, 300),
-          answer: (group.answer?.text ?? "").replace(/\s+/g, " ").trim()
-            .slice(0, 300),
-        }]
+        ? [
+          {
+            id: group.prompt.id,
+            prompt: userMessageText(group.prompt.text)
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 300),
+            answer: (group.answer?.text ?? "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 300),
+          },
+        ]
         : []
     )
   );
+  const [historyIndex, setHistoryIndex] = createSignal<{
+    key: string;
+    revision: string;
+    items: HistoryIndexItem[];
+  }>();
+  const [indexFailed, setIndexFailed] = createSignal(false);
+  const [pendingJump, setPendingJump] = createSignal<string>();
+  const headRevision = createMemo(() => {
+    const head = historyPages().find((page) => page.offset === 0);
+    return head ? `${head.revision}:${head.hasMore}` : "";
+  });
+  const headHasMore = createMemo(
+    () => historyPages().find((page) => page.offset === 0)?.hasMore ?? false,
+  );
+  createEffect(() => {
+    const key = props.conversation;
+    const revision = headRevision();
+    if (!key || !headHasMore()) return;
+    const cached = historyIndexCache.get(key);
+    if (cached?.revision === revision) {
+      setHistoryIndex({ key, ...cached });
+      return;
+    }
+    setIndexFailed(false);
+    const controller = new globalThis.AbortController();
+    void globalThis
+      .fetch(`/api/history-index?conversation=${encodeURIComponent(key)}`, {
+        signal: controller.signal,
+      })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("History index unavailable");
+        return (await response.json()) as { items: HistoryIndexItem[] };
+      })
+      .then(({ items }) => {
+        if (props.conversation === key && headRevision() === revision) {
+          historyIndexCache.delete(key);
+          historyIndexCache.set(key, { revision, items });
+          if (historyIndexCache.size > 20) {
+            const oldest = historyIndexCache.keys().next().value;
+            if (oldest) historyIndexCache.delete(oldest);
+          }
+          setHistoryIndex({ key, revision, items });
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted && props.conversation === key) {
+          setIndexFailed(true);
+        }
+      });
+    onCleanup(() => controller.abort());
+  });
+  const minimapItems = createMemo<TurnMinimapItem[]>(() => {
+    const loaded = loadedMinimapItems();
+    const head = historyPages().find((page) => page.offset === 0);
+    if (!head?.hasMore) return loaded;
+    const index = historyIndex();
+    if (
+      index?.key !== props.conversation ||
+      index.revision !== headRevision()
+    ) {
+      return indexFailed() ? loaded : [];
+    }
+    const visible = new Map(loaded.map((item) => [item.id, item]));
+    const known = new Set(index.items.map((item) => item.id));
+    return [
+      ...index.items.map((item) => ({ ...item, ...visible.get(item.id) })),
+      ...loaded.filter((item) => !known.has(item.id)),
+    ];
+  });
   const [currentTurnIndex, setCurrentTurnIndex] = createSignal(0);
   let minimapFrame: number | undefined;
   const updateMinimap = () => {
     const items = minimapItems();
     if (!items.length || !scroller || !transcriptInner) return;
     if (
-      scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <= 40
+      scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight <=
+        40
     ) {
       setCurrentTurnIndex(items.length - 1);
       return;
@@ -933,10 +1064,11 @@ export default function Chat(props: {
       } else high = middle;
     }
     const groupIndex = Math.max(0, low - 1);
-    const index =
-      groups().slice(0, groupIndex + 1).filter((group) => group.prompt).length -
-      1;
-    setCurrentTurnIndex(Math.max(0, index));
+    const prompt = groups()
+      .slice(0, groupIndex + 1)
+      .findLast((group) => group.prompt)?.prompt;
+    const index = items.findIndex((item) => item.id === prompt?.id);
+    if (index >= 0) setCurrentTurnIndex(index);
   };
   const scheduleMinimapUpdate = () => {
     if (minimapFrame !== undefined) return;
@@ -946,10 +1078,18 @@ export default function Chat(props: {
     });
   };
   const jumpToTurn = (item: TurnMinimapItem, index: number) => {
-    const groupIndex = groups().findIndex((group) =>
-      group.prompt?.id === item.id
+    const groupIndex = groups().findIndex(
+      (group) => group.prompt?.id === item.id,
     );
-    if (groupIndex < 0) return;
+    if (groupIndex < 0) {
+      const offset = item.offset;
+      if (offset !== undefined) {
+        setPendingJump(item.id);
+        setHistoryLoading(true);
+        setPages((count) => Math.max(count, Math.floor(offset / 100) + 1));
+      }
+      return;
+    }
     userScroll();
     setCurrentTurnIndex(index);
     setAwayFromBottom(true);
@@ -959,7 +1099,8 @@ export default function Chat(props: {
     if (!target) return;
     const align = () => {
       scroller.scrollTop += target.getBoundingClientRect().top -
-        scroller.getBoundingClientRect().top - 8;
+        scroller.getBoundingClientRect().top -
+        8;
     };
     align();
     const intent = scrollIntent;
@@ -967,6 +1108,15 @@ export default function Chat(props: {
       if (intent === scrollIntent) align();
     });
   };
+  createEffect(() => {
+    const id = pendingJump();
+    if (!id || !groups().some((group) => group.prompt?.id === id)) return;
+    const index = minimapItems().findIndex((item) => item.id === id);
+    if (index < 0) return;
+    const item = minimapItems()[index];
+    setPendingJump(undefined);
+    requestAnimationFrame(() => jumpToTurn(item, index));
+  });
   createEffect(() => {
     minimapItems();
     scheduleMinimapUpdate();
@@ -1202,18 +1352,26 @@ export default function Chat(props: {
           ref={scroller}
           onWheel={userScroll}
           onTouchStart={userScroll}
-          onPointerDown={userScroll}
+          onPointerDown={(event) => {
+            // A click in the transcript is not a request to stop following.
+            // Thumb dragging is, even on browsers that do not emit wheel events.
+            if (event.clientX >= scroller.getBoundingClientRect().right - 18) {
+              userScroll();
+            }
+          }}
           onKeyDown={userScroll}
           onScroll={() => {
             scheduleMinimapUpdate();
             if (scrollFrame === undefined) {
-              setAwayFromBottom(
-                scroller.scrollHeight -
-                    scroller.scrollTop -
-                    scroller.clientHeight >
-                  40,
-              );
-              maybeLoadEarlier();
+              const farFromBottom = scroller.scrollHeight -
+                  scroller.scrollTop -
+                  scroller.clientHeight >
+                40;
+              if (!farFromBottom) {
+                readingHistory = false;
+                setAwayFromBottom(false);
+              } else if (readingHistory) setAwayFromBottom(true);
+              if (!needsInitialScroll) maybeLoadEarlier();
             }
           }}
         >
@@ -1223,7 +1381,11 @@ export default function Chat(props: {
               <p>Your personal AI assistant.</p>
             </div>
           </Show>
-          <div class="transcript-inner" ref={transcriptInner}>
+          <div
+            class="transcript-inner"
+            ref={transcriptInner}
+            style={{ visibility: initializing() ? "hidden" : "visible" }}
+          >
             <div class="transcript-groups" ref={groupContainer}>
               <For each={groups()}>
                 {(group, groupIndex) => (
@@ -1237,8 +1399,7 @@ export default function Chat(props: {
                       {(message) => renderMessage(message())}
                     </Show>
                     <Show
-                      when={group === liveWorkGroup() &&
-                        hasTurnOutput() &&
+                      when={group === liveWorkGroup() && hasTurnOutput() &&
                         turn()}
                     >
                       {(t) => renderLiveWork(t())}
@@ -1298,8 +1459,7 @@ export default function Chat(props: {
                                 (activity) =>
                                   !group.work.some(
                                     (message) =>
-                                      message.toolCallId ===
-                                        activity.id ||
+                                      message.toolCallId === activity.id ||
                                       message.tool === activity.label,
                                   ),
                               )}
@@ -1548,7 +1708,8 @@ export default function Chat(props: {
               </Show>
               <Show
                 when={c().kind === "send" &&
-                  c().status === "error" && !c().result?.confirmRequired}
+                  c().status === "error" &&
+                  !c().result?.confirmRequired}
               >
                 <button
                   type="button"
@@ -1978,11 +2139,6 @@ export default function Chat(props: {
             </div>
           </div>
         </form>
-        <Show when={!connected()}>
-          <p class="compose-hint">
-            Draft saved on this device. Connect to send.
-          </p>
-        </Show>
         <input
           ref={fileInput}
           type="file"

@@ -229,7 +229,7 @@ small {
   flex: 1 0 48px;
   min-width: 44px;
   height: auto;
-  border: 1px solid transparent;
+  border: 2px solid transparent;
   background: color-mix(in srgb, var(--panel) 90%, black);
   border-radius: 8px;
   display: flex;
@@ -265,7 +265,7 @@ small {
   color: var(--accent);
 }
 .essentials > .selected {
-  border-color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
   --essential-icon-color: var(--ink);
   --essential-icon-opacity: 1;
 }
@@ -745,12 +745,6 @@ small {
   height: 28px;
   border-radius: 50%;
   padding: 6px;
-}
-.compose-hint {
-  font-size: 11px;
-  color: var(--muted);
-  text-align: center;
-  margin: 8px 0 0;
 }
 .editing,
 .queue {
@@ -1338,9 +1332,6 @@ dialog::backdrop {
   .send {
     width: 40px;
     height: 40px;
-  }
-  .compose-hint {
-    font-size: 9px;
   }
   .empty {
     padding: 30px 22px;

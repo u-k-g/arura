@@ -2,8 +2,7 @@ import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 Deno.test({
-  name:
-    "bot history loads earlier turns on scroll without overlapping long rows",
+  name: "bot history preloads nearby turns and opens at the latest message",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -26,7 +25,7 @@ Deno.test({
     try {
       await patch({
         title: "Bot Chat",
-        messages: Array.from({ length: 250 }, (_, index) => ({
+        messages: Array.from({ length: 450 }, (_, index) => ({
           id: 10000 + index,
           role: index % 2 ? "assistant" : "user",
           content: `History row ${String(index + 1).padStart(3, "0")}${
@@ -48,42 +47,81 @@ Deno.test({
         .click();
       const transcript = page.locator(".transcript");
       await expect(
-        transcript.getByText("History row 250", { exact: true }),
+        transcript.getByText("History row 450", { exact: true }),
       ).toBeVisible();
-      await expect(page.getByRole("button", {
-        name: "Load earlier messages",
-      })).toHaveCount(0);
+      await expect(
+        page.getByRole("button", {
+          name: "Load earlier messages",
+        }),
+      ).toHaveCount(0);
       const minimapMarks = page.locator(".turn-minimap-mark");
-      await expect(minimapMarks).toHaveCount(50);
-      for (const count of [100, 125]) {
-        await transcript.evaluate((node) => node.scrollTo(0, 0));
-        await expect(minimapMarks).toHaveCount(count);
-      }
-      await transcript.evaluate((node) => node.scrollTo(0, 0));
+      const distanceFromBottom = () =>
+        transcript.evaluate(
+          (node) => node.scrollHeight - node.scrollTop - node.clientHeight,
+        );
+      await expect.poll(distanceFromBottom).toBeLessThan(4);
+      // The rail represents every turn, including pages not yet in the DOM.
+      await expect(minimapMarks).toHaveCount(225);
+      await expect.poll(distanceFromBottom).toBeLessThan(4);
+      await expect(transcript.locator(".transcript-group")).toHaveCount(150);
+      await transcript.evaluate((node) => {
+        node.dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+        node.scrollTo(0, 0);
+      });
+      await expect(transcript.locator(".transcript-group")).toHaveCount(200);
+      await expect(minimapMarks).toHaveCount(225);
+      const rail = page.getByRole("button", { name: /Jump to a turn/ });
+      await rail.press("Home");
+      await rail.press("Enter");
+      await expect(transcript.locator(".transcript-group")).toHaveCount(225);
+      await expect(minimapMarks).toHaveCount(225);
       await expect(
         transcript.getByText("History row 001", { exact: true }),
       ).toBeVisible();
-      const rowBounds = await transcript.locator(".transcript-group")
+      const rowBounds = await transcript
+        .locator(".transcript-group")
         .evaluateAll((rows) =>
-          rows.map((row) => {
-            const { top, bottom } = row.getBoundingClientRect();
-            return { top, bottom };
-          }).sort((left, right) => left.top - right.top)
+          rows
+            .map((row) => {
+              const { top, bottom } = row.getBoundingClientRect();
+              return { top, bottom };
+            })
+            .sort((left, right) => left.top - right.top)
         );
       expect(
-        rowBounds.slice(1).every((row, index) =>
-          row.top >= rowBounds[index].bottom - 1
-        ),
+        rowBounds
+          .slice(1)
+          .every((row, index) => row.top >= rowBounds[index].bottom - 1),
       ).toBe(true);
-      await expect(transcript.locator(".transcript-group")).toHaveCount(125);
-      await expect(transcript.locator(".transcript-group").first())
-        .toHaveCSS("content-visibility", "auto");
+      await expect(transcript.locator(".transcript-group")).toHaveCount(225);
+      await expect(transcript.locator(".transcript-group").first()).toHaveCSS(
+        "content-visibility",
+        "auto",
+      );
+      await page
+        .getByRole("button", {
+          name: "New conversation",
+          exact: true,
+        })
+        .click();
+      await page
+        .locator(".thread-select")
+        .filter({ hasText: "default" })
+        .click();
+      await expect.poll(distanceFromBottom).toBeLessThan(4);
+      await expect(
+        transcript.getByText("History row 450", { exact: true }),
+      ).toBeVisible();
+      await transcript.evaluate((node) => {
+        node.dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+        node.scrollTo(0, 0);
+      });
       const latest = page.getByRole("button", {
         name: "Jump to latest messages",
       });
       await latest.click();
       await expect(
-        transcript.getByText("History row 250", { exact: true }),
+        transcript.getByText("History row 450", { exact: true }),
       ).toBeVisible();
     } finally {
       await patch({

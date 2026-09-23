@@ -6,6 +6,7 @@ export type TurnMinimapItem = {
   id: string;
   prompt: string;
   answer: string;
+  offset?: number;
 };
 
 const TICK_SPACING = 9;
@@ -34,8 +35,9 @@ export default function TurnMinimap(props: {
     return active !== undefined && Math.abs(index - active) === 1;
   };
   const pointerIndex = (event: MouseEvent) => {
-    const rect = (event.currentTarget as HTMLButtonElement)
-      .getBoundingClientRect();
+    const rect = (
+      event.currentTarget as HTMLButtonElement
+    ).getBoundingClientRect();
     return Math.max(
       0,
       Math.min(
@@ -51,9 +53,7 @@ export default function TurnMinimap(props: {
     const y = position(next);
     if (y < viewport.scrollTop + TICK_INSET) {
       viewport.scrollTop = y - TICK_INSET;
-    } else if (
-      y > viewport.scrollTop + viewport.clientHeight - TICK_INSET
-    ) {
+    } else if (y > viewport.scrollTop + viewport.clientHeight - TICK_INSET) {
       viewport.scrollTop = y - viewport.clientHeight + TICK_INSET;
     }
     setRailScroll(viewport.scrollTop);

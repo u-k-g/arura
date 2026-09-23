@@ -883,6 +883,24 @@ async function handle(request: Request, ip: string): Promise<Response> {
     if (!query || query.length > 200) return json({ results: [] });
     return json({ results: await hermes.search(query) });
   }
+  if (path === "/api/history-index" && request.method === "GET") {
+    await authenticated(request);
+    const key = url.searchParams.get("conversation") ?? "";
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(key);
+    } catch {
+      return json({ error: "Invalid conversation" }, 400);
+    }
+    if (
+      !Array.isArray(parsed) ||
+      parsed.length !== 2 ||
+      parsed.some((part) => typeof part !== "string" || !part)
+    ) {
+      return json({ error: "Invalid conversation" }, 400);
+    }
+    return json({ items: await hermes.historyIndex(key) });
+  }
   if (path === "/api/respond" && request.method === "POST") {
     await authenticated(request);
     const { conversation, requestId, value } = await request.json();

@@ -1,5 +1,10 @@
 import { toolPresentation } from "../shared/tool-presentation.ts";
-import { record, type RpcFrame, type RpcResult } from "../shared/contracts.ts";
+import {
+  type HistoryIndexItem,
+  record,
+  type RpcFrame,
+  type RpcResult,
+} from "../shared/contracts.ts";
 import { createHash } from "node:crypto";
 import { EventEmitter } from "node:events";
 import WebSocket from "ws";
@@ -1028,6 +1033,64 @@ export class Hermes extends EventEmitter {
         (Number(data.pagination?.limit) > 0 &&
           (data.messages?.length ?? 0) >= Number(data.pagination?.limit)),
     };
+  }
+  async historyIndex(key: string): Promise<HistoryIndexItem[]> {
+    const [profile, id] = JSON.parse(key) as [string, string];
+    const pages: {
+      id: string;
+      role: "user" | "assistant";
+      text: string;
+      offset: number;
+    }[][] = [];
+    for (let offset = 0;; offset += 500) {
+      const query = new URLSearchParams({
+        profile,
+        limit: "500",
+        offset: String(offset),
+        order: "latest",
+        include_compacted: "true",
+      });
+      const response = await this.rest(
+        `/api/sessions/${encodeURIComponent(id)}/messages?${query}`,
+      );
+      const rows = (response.messages ?? []) as Record<string, unknown>[];
+      const positions = new Map(
+        rows.map((row, index) => [
+          String(row.id ?? row.row_id ?? row.message_id ?? `row-${index}`),
+          index,
+        ]),
+      );
+      pages.push(
+        normalizeMessages(rows)
+          .filter(
+            (message) =>
+              message.role === "user" || message.role === "assistant",
+          )
+          .map((message) => ({
+            id: message.id,
+            role: message.role as "user" | "assistant",
+            text: message.text.replace(/\s+/g, " ").trim().slice(0, 300),
+            offset: offset + rows.length - 1 - (positions.get(message.id) ?? 0),
+          })),
+      );
+      if (rows.length < 500) break;
+    }
+    const index: HistoryIndexItem[] = [];
+    for (const page of pages.reverse()) {
+      for (const message of page) {
+        if (message.role === "user") {
+          index.push({
+            id: message.id,
+            prompt: message.text,
+            answer: "",
+            offset: message.offset,
+          });
+        } else if (index.length) {
+          index[index.length - 1].answer = message.text;
+        }
+      }
+    }
+    return index;
   }
   async branch(key: string, messageId: string) {
     const [profile, id] = JSON.parse(key);

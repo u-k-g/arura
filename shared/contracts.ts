@@ -36,6 +36,13 @@ export type Transcript = {
   turn: Turn | null;
   commands: Doc<"commands">[];
 };
+export type HistoryIndexItem = {
+  id: string;
+  prompt: string;
+  answer: string;
+  // Message offset from the newest row, for loading an unloaded turn.
+  offset: number;
+};
 export type ArtifactList = {
   items: (Doc<"artifacts"> & { title: string })[];
   pending: number;
