@@ -153,12 +153,12 @@ Deno.test({
       );
       const newThread = requireValue(
         await page
-          .locator(".pinned-divider")
+          .locator(".desktop-navigation .nav-footer")
           .getByRole("button", { name: "New conversation", exact: true })
           .boundingBox(),
         "new thread",
       );
-      expect(newThread.y).toBeGreaterThan(sidebar.y);
+      expect(newThread.y).toBeGreaterThan(sidebar.y + sidebar.height * 0.75);
       expect(newThread.y).toBeLessThan(sidebar.y + sidebar.height);
       await tile.click({ button: "right" });
       await page

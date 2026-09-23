@@ -83,6 +83,9 @@ Deno.test({
       // These synthetic snapshots must not race the fixture adapter's real turn.
       if (adapterPid) Deno.kill(adapterPid, "SIGSTOP");
       await publish(false);
+      await page.getByRole("button", { name: /Jump to a turn/ }).click({
+        position: { x: 24, y: 4 + 20 * 9 },
+      });
       await expect(page.locator('[data-message-id="a-20"]')).toBeAttached();
       await page.locator(".transcript").evaluate(async () => {
         await new Promise<void>((resolve) =>
@@ -129,6 +132,9 @@ Deno.test({
       await expect
         .poll(async () => Math.abs((await offset()) - before))
         .toBeLessThan(3);
+      await page.getByRole("button", { name: /Jump to a turn/ }).click({
+        position: { x: 24, y: 4 + 29 * 9 },
+      });
       const summary = page.locator(".work-summary").last();
       const answer = page.locator('[data-message-id="a-29"]');
       expect(
