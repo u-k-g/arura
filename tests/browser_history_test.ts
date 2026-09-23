@@ -3,7 +3,7 @@ import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 Deno.test({
   name:
-    "bot history loads earlier turns on scroll with a bounded transcript DOM",
+    "bot history loads earlier turns on scroll without overlapping long rows",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -29,7 +29,9 @@ Deno.test({
         messages: Array.from({ length: 250 }, (_, index) => ({
           id: 10000 + index,
           role: index % 2 ? "assistant" : "user",
-          content: `History row ${String(index + 1).padStart(3, "0")}`,
+          content: `History row ${String(index + 1).padStart(3, "0")}${
+            index % 2 ? `\n\n${"Reading content. ".repeat(100)}` : ""
+          }`,
           compacted: index < 150,
         })),
       });
@@ -61,8 +63,21 @@ Deno.test({
       await expect(
         transcript.getByText("History row 001", { exact: true }),
       ).toBeVisible();
-      expect(await transcript.locator(".virtualized-group").count())
-        .toBeLessThan(25);
+      const rowBounds = await transcript.locator(".transcript-group")
+        .evaluateAll((rows) =>
+          rows.map((row) => {
+            const { top, bottom } = row.getBoundingClientRect();
+            return { top, bottom };
+          }).sort((left, right) => left.top - right.top)
+        );
+      expect(
+        rowBounds.slice(1).every((row, index) =>
+          row.top >= rowBounds[index].bottom - 1
+        ),
+      ).toBe(true);
+      await expect(transcript.locator(".transcript-group")).toHaveCount(125);
+      await expect(transcript.locator(".transcript-group").first())
+        .toHaveCSS("content-visibility", "auto");
       const latest = page.getByRole("button", {
         name: "Jump to latest messages",
       });

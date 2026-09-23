@@ -524,16 +524,13 @@ small {
   display: block;
   height: 48px;
 }
-.virtualized-groups {
-  position: relative;
+.transcript-groups {
   width: 100%;
 }
-.virtualized-group {
-  position: absolute;
-  top: 0;
-  left: 0;
+.transcript-group {
   width: 100%;
-  display: flow-root;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 180px;
 }
 .message {
   margin: 0 0 16px;

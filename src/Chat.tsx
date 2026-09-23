@@ -16,7 +16,6 @@ import {
 } from "../shared/references.ts";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
-import { createVirtualizer } from "@tanstack/solid-virtual";
 import {
   createEffect,
   createMemo,
@@ -867,28 +866,34 @@ export default function Chat(props: {
     input.replaceRange(position - match[0].length, position, `${item.text} `);
     setCompletions([]);
   }
-  const groups = createMemo(() => groupMessages(messages()));
-  const historyVirtualizer = createVirtualizer<HTMLElement, HTMLDivElement>({
-    get count() {
-      return groups().length;
-    },
-    getScrollElement: () => scroller ?? null,
-    estimateSize: () => 180,
-    getItemKey: (index) => {
-      const group = groups()[index];
-      return `${props.conversation}:${
-        group?.prompt?.id ?? group?.event?.id ?? group?.work[0]?.id ?? index
-      }`;
-    },
-    overscan: 5,
+  type MessageGroup = ReturnType<typeof groupMessages>[number];
+  let previousConversation = props.conversation;
+  let previousGroups = new Map<string, MessageGroup>();
+  const groups = createMemo(() => {
+    if (previousConversation !== props.conversation) {
+      previousConversation = props.conversation;
+      previousGroups = new Map();
+    }
+    const nextGroups = new Map<string, MessageGroup>();
+    const result = groupMessages(messages()).map((group, index) => {
+      const key = group.prompt?.id ?? group.event?.id ??
+        group.work[0]?.id ?? String(index);
+      const previous = previousGroups.get(key);
+      const stable = previous &&
+          previous.prompt === group.prompt &&
+          previous.answer === group.answer &&
+          previous.event === group.event &&
+          previous.work.length === group.work.length &&
+          previous.work.every((message, index) => message === group.work[index])
+        ? previous
+        : group;
+      nextGroups.set(key, stable);
+      return stable;
+    });
+    previousGroups = nextGroups;
+    return result;
   });
-  let measuredConversation = props.conversation;
-  createEffect(() => {
-    const key = props.conversation;
-    if (key === measuredConversation) return;
-    measuredConversation = key;
-    historyVirtualizer.measure();
-  });
+  let groupContainer!: HTMLDivElement;
   const minimapItems = createMemo<TurnMinimapItem[]>(() =>
     groups().flatMap((group) =>
       group.prompt
@@ -913,12 +918,21 @@ export default function Chat(props: {
       setCurrentTurnIndex(items.length - 1);
       return;
     }
-    const boundary = scroller.scrollTop +
+    const rows = groupContainer?.children;
+    if (!rows?.length) return;
+    const boundary = scroller.getBoundingClientRect().top +
       Math.min(90, scroller.clientHeight * 0.28);
-    const visible = historyVirtualizer.getVirtualItems();
-    const groupIndex =
-      visible.findLast((row) => row.start <= boundary)?.index ??
-        visible[0]?.index ?? 0;
+    let low = 0;
+    let high = rows.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (
+        (rows[middle] as HTMLElement).getBoundingClientRect().top <= boundary
+      ) {
+        low = middle + 1;
+      } else high = middle;
+    }
+    const groupIndex = Math.max(0, low - 1);
     const index =
       groups().slice(0, groupIndex + 1).filter((group) => group.prompt).length -
       1;
@@ -939,7 +953,19 @@ export default function Chat(props: {
     userScroll();
     setCurrentTurnIndex(index);
     setAwayFromBottom(true);
-    historyVirtualizer.scrollToIndex(groupIndex, { align: "start" });
+    const target = groupContainer?.children[groupIndex] as
+      | HTMLElement
+      | undefined;
+    if (!target) return;
+    const align = () => {
+      scroller.scrollTop += target.getBoundingClientRect().top -
+        scroller.getBoundingClientRect().top - 8;
+    };
+    align();
+    const intent = scrollIntent;
+    requestAnimationFrame(() => {
+      if (intent === scrollIntent) align();
+    });
   };
   createEffect(() => {
     minimapItems();
@@ -1198,116 +1224,95 @@ export default function Chat(props: {
             </div>
           </Show>
           <div class="transcript-inner" ref={transcriptInner}>
-            <div
-              class="virtualized-groups"
-              style={{ height: `${historyVirtualizer.getTotalSize()}px` }}
-            >
-              <For each={historyVirtualizer.getVirtualItems()}>
-                {(virtualRow) => (
-                  <div
-                    class="virtualized-group"
-                    data-index={virtualRow.index}
-                    ref={(node) => historyVirtualizer.measureElement(node)}
-                    style={{
-                      transform: `translateY(${virtualRow.start}px)`,
-                    }}
-                  >
-                    <For
-                      each={groups().slice(
-                        virtualRow.index,
-                        virtualRow.index + 1,
-                      )}
+            <div class="transcript-groups" ref={groupContainer}>
+              <For each={groups()}>
+                {(group, groupIndex) => (
+                  <div class="transcript-group">
+                    <Show when={group.event}>
+                      <p class="timeline-event" role="status">
+                        {group.event?.text}
+                      </p>
+                    </Show>
+                    <Show when={group.prompt}>
+                      {(message) => renderMessage(message())}
+                    </Show>
+                    <Show
+                      when={group === liveWorkGroup() &&
+                        hasTurnOutput() &&
+                        turn()}
                     >
-                      {(group) => (
-                        <>
-                          <Show when={group.event}>
-                            <p class="timeline-event" role="status">
-                              {group.event?.text}
-                            </p>
-                          </Show>
-                          <Show when={group.prompt}>
-                            {(message) => renderMessage(message())}
-                          </Show>
+                      {(t) => renderLiveWork(t())}
+                    </Show>
+                    <Show
+                      when={turn()?.state === "running" &&
+                        groupIndex() === groups().length - 1}
+                    >
+                      <For
+                        each={group.work.filter(
+                          (message) => message.role === "assistant",
+                        )}
+                      >
+                        {renderMessage}
+                      </For>
+                    </Show>
+                    <Show
+                      when={group.work.length &&
+                        !(
+                          turn()?.state === "running" &&
+                          groupIndex() === groups().length - 1
+                        )}
+                    >
+                      <details
+                        class="work-summary history-work"
+                        open={workExpanded(workKey(group))}
+                        onToggle={(event) =>
+                          setWorkExpanded(
+                            workKey(group),
+                            event.currentTarget.open,
+                          )}
+                      >
+                        <summary>
+                          Worked
                           <Show
-                            when={group === liveWorkGroup() &&
-                              hasTurnOutput() &&
-                              turn()}
+                            when={group === settledHistoryGroup() ||
+                              (group.prompt?.createdAt &&
+                                group.answer?.createdAt)}
                           >
-                            {(t) => renderLiveWork(t())}
+                            {" "}
+                            for {elapsed(
+                              group === settledHistoryGroup()
+                                ? (turn()?.startedAt ?? 0)
+                                : (group.prompt?.createdAt ?? 0),
+                              group === settledHistoryGroup()
+                                ? (turn()?.finishedAt ?? clock())
+                                : (group.answer?.createdAt ?? 0),
+                            )}
                           </Show>
-                          <Show
-                            when={turn()?.state === "running" &&
-                              virtualRow.index === groups().length - 1}
-                          >
+                          <Icon name="nav-arrow-down" />
+                        </summary>
+                        <Show when={workExpanded(workKey(group))}>
+                          <For each={group.work}>{renderMessage}</For>
+                          <Show when={group === settledHistoryGroup()}>
                             <For
-                              each={group.work.filter(
-                                (message) => message.role === "assistant",
+                              each={turn()?.activity.filter(
+                                (activity) =>
+                                  !group.work.some(
+                                    (message) =>
+                                      message.toolCallId ===
+                                        activity.id ||
+                                      message.tool === activity.label,
+                                  ),
                               )}
                             >
-                              {renderMessage}
+                              {renderActivity}
                             </For>
                           </Show>
-                          <Show
-                            when={group.work.length &&
-                              !(
-                                turn()?.state === "running" &&
-                                virtualRow.index === groups().length - 1
-                              )}
-                          >
-                            <details
-                              class="work-summary history-work"
-                              open={workExpanded(workKey(group))}
-                              onToggle={(event) =>
-                                setWorkExpanded(
-                                  workKey(group),
-                                  event.currentTarget.open,
-                                )}
-                            >
-                              <summary>
-                                Worked
-                                <Show
-                                  when={group === settledHistoryGroup() ||
-                                    (group.prompt?.createdAt &&
-                                      group.answer?.createdAt)}
-                                >
-                                  {" "}
-                                  for {elapsed(
-                                    group === settledHistoryGroup()
-                                      ? (turn()?.startedAt ?? 0)
-                                      : (group.prompt?.createdAt ?? 0),
-                                    group === settledHistoryGroup()
-                                      ? (turn()?.finishedAt ?? clock())
-                                      : (group.answer?.createdAt ?? 0),
-                                  )}
-                                </Show>
-                                <Icon name="nav-arrow-down" />
-                              </summary>
-                              <Show when={workExpanded(workKey(group))}>
-                                <For each={group.work}>{renderMessage}</For>
-                                <Show when={group === settledHistoryGroup()}>
-                                  <For
-                                    each={turn()?.activity.filter(
-                                      (activity) =>
-                                        !group.work.some(
-                                          (message) =>
-                                            message.toolCallId ===
-                                              activity.id ||
-                                            message.tool === activity.label,
-                                        ),
-                                    )}
-                                  >
-                                    {renderActivity}
-                                  </For>
-                                </Show>
-                              </Show>
-                            </details>
-                          </Show>
-                          <Show when={group.answer}>
-                            {(message) => renderMessage(message())}
-                          </Show>
-                        </>
-                      )}
-                    </For>
+                        </Show>
+                      </details>
+                    </Show>
+                    <Show when={group.answer}>
+                      {(message) => renderMessage(message())}
+                    </Show>
                   </div>
                 )}
               </For>

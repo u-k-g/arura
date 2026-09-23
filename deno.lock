@@ -11,7 +11,6 @@
     "npm:@lexical/plain-text@0.50.0": "0.50.0_typescript@7.0.2",
     "npm:@playwright/test@1.63.0": "1.63.0",
     "npm:@solidjs/router@1.0.0": "1.0.0_solid-js@1.9.15",
-    "npm:@tanstack/solid-virtual@3.13.40": "3.13.40_solid-js@1.9.15",
     "npm:@types/deno@2.7.0": "2.7.0",
     "npm:@types/node@26.5.1": "26.5.1",
     "npm:@types/ws@8.18.1": "8.18.1",
@@ -1650,16 +1649,6 @@
       "dependencies": [
         "solid-js"
       ]
-    },
-    "@tanstack/solid-virtual@3.13.40_solid-js@1.9.15": {
-      "integrity": "sha512-+YNHjRP8Te4d4Iy3ux+eixsPkADFjUiFTPNFFXlZzzSRXSo2kMudczrVYTwFqWyY5/g1to3HSLjY6PNuuV3dVw==",
-      "dependencies": [
-        "@tanstack/virtual-core",
-        "solid-js"
-      ]
-    },
-    "@tanstack/virtual-core@3.17.11": {
-      "integrity": "sha512-+ILjvtHup6Y2hzQ6YzwMgX1Q+oQpxEGOXCEsCNaPoIP0VxMbizIBTmYTDtkerkIQS8/CbP1BRuyt8V/8BCsy1g=="
     },
     "@trickfilm400/rollup-plugin-off-main-thread@3.0.0-pre1": {
       "integrity": "sha512-/67zpWDBLV+oYAEL682s1ktXL0HgqX76f6gaVGkGnVZlBbm1zd0v4Bz8MFF2GGhoX9rvfq3KSQHubFHwa6w6/Q==",
@@ -3657,7 +3646,6 @@
         "npm:@lexical/plain-text@0.50.0",
         "npm:@playwright/test@1.63.0",
         "npm:@solidjs/router@1.0.0",
-        "npm:@tanstack/solid-virtual@3.13.40",
         "npm:@types/deno@2.7.0",
         "npm:@types/node@26.5.1",
         "npm:@types/ws@8.18.1",
