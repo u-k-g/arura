@@ -93,9 +93,8 @@ Hermes desktop is the visual/interaction reference for retained features,
 including placement and sizing, with Iconoir equivalents. Macro remains the
 default theme; Grove, Jade, Black Rose, Gruvbox Dark Hard, and Rosé Pine are
 bundled alternatives, selected per browser independently of nc. Hermes owns
-supported state; Convex caches it for the UI. Pin/archive changes work in both
-directions with the old client. Essentials, folders and Arura ordering are
-web-only data.
+supported state; Convex caches it for the UI. Pin/archive changes work across
+Hermes surfaces. Essentials, folders and Arura ordering are web-only data.
 
 New conversation opens an unsaved blank composer. Opening it, choosing a model,
 or leaving it must not create a saved thread; create one on the first send. The

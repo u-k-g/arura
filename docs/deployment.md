@@ -124,17 +124,17 @@ before attempting upgrades. Do not copy an actively changing Convex database as
 a standalone file. Device authentication depends on retaining both the database
 and Arura signing identity.
 
-Deploy beside the existing web client first, using separate origins, listeners,
-and state. Validate real sending, reconnects, and device revocation from both a
-phone and desktop before changing the main route. The package has passed
-isolated browser integration tests. A disposable installation of the pinned
+Deploy Arura on its own origin with separate listeners and state. Validate real
+sending, reconnects, and device revocation from both a phone and desktop before
+changing the main route. The package has passed isolated browser integration
+tests. A disposable installation of the pinned
 Hermes runtime also passes local configuration and lifecycle writes, real backup
 creation/download, gateway streaming, automation controls, and transcript
 filtering against a local inference stub. These checks do not change the
 production Hermes installation. Manara's NixOS rollout also passes public HTTPS
 device authorization, authenticated Convex queries, existing-history ingestion,
-and device revocation. The old web client remains available. Real inference and
-phone suspension/reconnection still need a device-level acceptance check.
+and device revocation. Real inference and phone suspension/reconnection still
+need a device-level acceptance check.
 
 ## Upstream limitations
 
@@ -153,13 +153,13 @@ phone suspension/reconnection still need a device-level acceptance check.
 ## Manara deployment in nc
 
 [nc's Arura module](https://github.com/u-k-g/nc/blob/main/modules/arura.mod.nix)
-imports this flake's services and connects them to the same Hermes dashboard as
-the existing web client. Both read and update Hermes's existing history; Arura's
-separate Convex database stores its projection, organization, and device access.
+imports this flake's services and connects them to the same Hermes dashboard.
+Hermes remains authoritative for history; Arura's separate Convex database
+stores its projection, organization, and device access.
 It does not create another Hermes installation or copy its database.
 
 Arura uses tailnet HTTPS port **8444**, with browser Convex subscriptions on
-**8445**. The existing Hermes web client stays on **8443**. Each route has its
+**8445**. The Hermes web route stays on **8443**. Each route has its
 own foreground Tailscale Serve service, so stopping Arura does not remove the
 other routes.
 

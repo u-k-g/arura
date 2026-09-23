@@ -2,9 +2,8 @@
 
 **Status**: accepted; implementation in progress
 
-**Read when** designing the replacement web client, changing its feature scope,
-choosing its storage/sync architecture, or integrating it into the host
-deployment.
+**Read when** designing Arura, changing its feature scope, choosing its
+storage/sync architecture, or integrating it into the host deployment.
 
 ## Decision and boundaries
 
@@ -14,14 +13,6 @@ SolidJS + TypeScript web client for Hermes. The upstream
 behavioral reference, filtered by the product decisions below. “Parity” means
 the retained capabilities, not every desktop feature. Excluding a feature means
 omitting it from this web UI, not removing or disabling it in Hermes itself.
-
-The
-[existing Hermes web client](https://github.com/u-k-g/hermes-agent-desktop-web),
-including its React renderer port and Deno proxy, is reference material for
-gateway integration and previously solved browser problems, not the architecture
-to extend with more desktop overrides. ADRs in that reference repository still
-describe its running app; this decision governs the new client and does not
-claim the old app has migrated.
 
 Use Hermes desktop as the visual and interaction reference, matching placement
 and sizing for the retained scope with Iconoir equivalents. Preserve the agreed

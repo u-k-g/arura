@@ -1,4 +1,6 @@
-Arura is a minimal web ui for the hermes agent.
+Arura is a minimal web UI for the Hermes agent. Use the upstream Hermes desktop
+app directly when checking feature behavior and interaction details; Arura
+implements the retained scope as an independent web client.
 
 Read [ADR-0001](docs/adr/0001-independent-solid-convex-client.md) when designing
 or implementing the client, changing feature scope, or working on sync, storage,
