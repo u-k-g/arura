@@ -154,6 +154,19 @@ export default function Chat(props: {
     mutate("commands.edit", { id, sendNow: true });
   const [historyLoading, setHistoryLoading] = createSignal(false);
   const [historyRetry, setHistoryRetry] = createSignal(0);
+  const historyFailure = createMemo(() => {
+    const latest = data()
+      .commands.filter(
+        (c) =>
+          c.kind === "load" && !["queued", "dispatching"].includes(c.status),
+      )
+      .sort((a, b) => b.createdAt - a.createdAt)[0];
+    return latest &&
+        ["error", "unknown"].includes(latest.status) &&
+        !errorDismissed(latest._id)
+      ? latest
+      : undefined;
+  });
   const [edit, setEdit] = createSignal<string>(),
     [controls, setControls] = createSignal<ControlView>();
   const [uploads, setUploads] = createSignal<
@@ -217,9 +230,10 @@ export default function Chat(props: {
     { id: string; file: File; error?: string }[]
   >([]);
   const excludedCommand = (value: string) =>
-    /^\/(?:image|imagine|flux|voice|wake|terminal|shell|hud|radio|pet|browser)(?:[-\s]|$)/i.test(
-      value,
-    );
+    /^\/(?:image|imagine|flux|voice|wake|terminal|shell|hud|radio|pet|browser)(?:[-\s]|$)/i
+      .test(
+        value,
+      );
   let scroller!: HTMLElement;
   const [awayFromBottom, setAwayFromBottom] = createSignal(false);
   let needsInitialScroll = true;
@@ -242,7 +256,7 @@ export default function Chat(props: {
   const historyRevision = createMemo(() =>
     data()
       .pages.map((page) => `${page.offset}:${page.revision}`)
-      .join("|"),
+      .join("|")
   );
   const messages = createMemo(() => {
     historyRevision();
@@ -253,15 +267,14 @@ export default function Chat(props: {
           .pages.slice()
           .sort((a, b) => b.offset - a.offset)
           .flatMap((page) => page.messages) as Message[],
-      ),
+      )
     );
   });
   const turn = () => data().turn as Turn | null;
   const turnIsInHistory = () => {
-    const last =
-        turn()?.state === "running"
-          ? messages().at(-1)
-          : messages().findLast((message) => message.role === "assistant"),
+    const last = turn()?.state === "running"
+        ? messages().at(-1)
+        : messages().findLast((message) => message.role === "assistant"),
       live = turn()?.text.replace(/\s+/g, "");
     return Boolean(
       live &&
@@ -357,11 +370,11 @@ export default function Chat(props: {
         const oldScrollTop = scroller?.scrollTop ?? 0;
         const anchor = preservePosition
           ? Array.from(
-              scroller?.querySelectorAll<HTMLElement>("[data-message-id]") ??
-                [],
-            ).find(
-              (element) => element.getBoundingClientRect().bottom > viewportTop,
-            )
+            scroller?.querySelectorAll<HTMLElement>("[data-message-id]") ??
+              [],
+          ).find(
+            (element) => element.getBoundingClientRect().bottom > viewportTop,
+          )
           : undefined;
         const anchorId = anchor?.dataset.messageId;
         const anchorTop = anchor?.getBoundingClientRect().top ?? viewportTop;
@@ -413,8 +426,9 @@ export default function Chat(props: {
             const shift = target
               ? target.getBoundingClientRect().top - anchorTop
               : undefined;
-            scroller.scrollTop =
-              shift === undefined ? oldScrollTop : scroller.scrollTop + shift;
+            scroller.scrollTop = shift === undefined
+              ? oldScrollTop
+              : scroller.scrollTop + shift;
           } else if (nearBottom) scrollToLatest();
         });
       },
@@ -422,7 +436,7 @@ export default function Chat(props: {
     onCleanup(stop);
     if (connected()) {
       void command("load", key, { offset: 0 }).catch((error) =>
-        inform(error.message),
+        inform(error.message)
       );
     }
   });
@@ -449,7 +463,7 @@ export default function Chat(props: {
         text: value,
         ...(modelSelection ? { model: { ...modelSelection } } : {}),
         attachments: uploads().filter((file) =>
-          value.includes(`[Attached file: ${file.path}]`),
+          value.includes(`[Attached file: ${file.path}]`)
         ),
         ...(edit() ? { edit: edit() } : {}),
       };
@@ -547,8 +561,8 @@ export default function Chat(props: {
         );
         const result = await r.json();
         if (!r.ok) throw new Error(result.error ?? "Upload failed");
-        const path =
-          result.path ?? result.file?.path ?? result.files?.[0]?.path;
+        const path = result.path ?? result.file?.path ??
+          result.files?.[0]?.path;
         if (!path) {
           throw new Error("Hermes did not return an uploaded file reference");
         }
@@ -565,19 +579,18 @@ export default function Chat(props: {
           changeText(value);
         } else writeDraft(key, value);
         setPendingUploads((items) =>
-          items.filter((item) => item.id !== uploadId),
+          items.filter((item) => item.id !== uploadId)
         );
       } catch (error) {
         setPendingUploads((items) =>
           items.map((item) =>
             item.id === uploadId
               ? {
-                  ...item,
-                  error:
-                    error instanceof Error ? error.message : "Upload failed",
-                }
-              : item,
-          ),
+                ...item,
+                error: error instanceof Error ? error.message : "Upload failed",
+              }
+              : item
+          )
         );
       }
     }
@@ -593,10 +606,10 @@ export default function Chat(props: {
   const rpc = (method: string, params: Record<string, unknown> = {}) =>
     rpcQueries.has(method)
       ? request("/api/query", {
-          method,
-          params,
-          conversation: props.conversation,
-        })
+        method,
+        params,
+        conversation: props.conversation,
+      })
       : command("rpc", props.conversation, { method, params });
   createEffect(() => {
     const value = text(),
@@ -645,7 +658,7 @@ export default function Chat(props: {
   const settledHistoryGroup = createMemo(() =>
     turn()?.state !== "running" && turnIsInHistory()
       ? groups().findLast((group) => group.answer)
-      : undefined,
+      : undefined
   );
   const historyOwnsWork = () => Boolean(settledHistoryGroup()?.work.length);
   const liveWorkGroup = createMemo(() => {
@@ -655,13 +668,11 @@ export default function Chat(props: {
   const renderActivity = (activity: Turn["activity"][number]) => (
     <div class="activity">
       <Icon
-        name={
-          activity.state === "complete"
-            ? "check"
-            : activity.state === "error"
-              ? "xmark"
-              : "clock"
-        }
+        name={activity.state === "complete"
+          ? "check"
+          : activity.state === "error"
+          ? "xmark"
+          : "clock"}
       />
       {toolPresentation(activity.label).label}
     </div>
@@ -704,12 +715,10 @@ export default function Chat(props: {
         fallback={
           <details class="past-tool">
             <summary>
-              {
-                toolPresentation(
-                  message.tool ?? "Tool result",
-                  record(message.details).input,
-                ).label
-              }
+              {toolPresentation(
+                message.tool ?? "Tool result",
+                record(message.details).input,
+              ).label}
               <Icon name="nav-arrow-down" />
             </summary>
             <div class="desktop-only tool-payload">
@@ -740,60 +749,53 @@ export default function Chat(props: {
             )}
           </For>
           <For
-            each={
-              message.role === "user"
-                ? Array.from(message.text.matchAll(referencePattern))
-                : []
-            }
+            each={message.role === "user"
+              ? Array.from(message.text.matchAll(referencePattern))
+              : []}
           >
             {(match) =>
-              match[1] === "folder" ? (
-                <span class="context-reference">
-                  <Icon name="folder" />
-                  {referenceValue(match[0])}
-                </span>
-              ) : (
-                <a
-                  class="context-reference"
-                  href={
-                    ["session", "folder"].includes(match[1])
+              match[1] === "folder"
+                ? (
+                  <span class="context-reference">
+                    <Icon name="folder" />
+                    {referenceValue(match[0])}
+                  </span>
+                )
+                : (
+                  <a
+                    class="context-reference"
+                    href={["session", "folder"].includes(match[1])
                       ? "#"
-                      : attachmentHref(referenceValue(match[0]))
-                  }
-                  target={match[1] === "session" ? undefined : "_blank"}
-                  rel="noopener noreferrer"
-                  onClick={(event) => {
-                    if (match[1] !== "session") return;
-                    event.preventDefault();
-                    const [profile, ...id] = referenceValue(match[0]).split(
-                      "/",
-                    );
-                    props.navigate(JSON.stringify([profile, id.join("/")]));
-                  }}
-                >
-                  <Icon
-                    name={
-                      match[1] === "session"
+                      : attachmentHref(referenceValue(match[0]))}
+                    target={match[1] === "session" ? undefined : "_blank"}
+                    rel="noopener noreferrer"
+                    onClick={(event) => {
+                      if (match[1] !== "session") return;
+                      event.preventDefault();
+                      const [profile, ...id] = referenceValue(match[0]).split(
+                        "/",
+                      );
+                      props.navigate(JSON.stringify([profile, id.join("/")]));
+                    }}
+                  >
+                    <Icon
+                      name={match[1] === "session"
                         ? "chat-bubble"
                         : match[1] === "folder"
-                          ? "folder"
-                          : "attachment"
-                    }
-                  />
-                  {referenceValue(match[0])}
-                </a>
-              )
-            }
+                        ? "folder"
+                        : "attachment"}
+                    />
+                    {referenceValue(match[0])}
+                  </a>
+                )}
           </For>
         </div>
         <Markdown
-          text={
-            message.role === "user"
-              ? userMessageText(message.text)
-                  .replace(referencePattern, "")
-                  .trim()
-              : message.text
-          }
+          text={message.role === "user"
+            ? userMessageText(message.text)
+              .replace(referencePattern, "")
+              .trim()
+            : message.text}
         />
         <div class="message-actions">
           <IconButton
@@ -805,9 +807,8 @@ export default function Chat(props: {
                   message.role === "user"
                     ? userMessageText(message.text)
                     : message.text,
-                ),
-              )
-            }
+                )
+              )}
           />
           <Show when={message.role === "user" && !message.compacted}>
             <IconButton
@@ -819,7 +820,7 @@ export default function Chat(props: {
                   [
                     userMessageText(message.text),
                     ...(message.attachments ?? []).map((attachment) =>
-                      contextReference("image", attachment.url),
+                      contextReference("image", attachment.url)
                     ),
                   ]
                     .filter(Boolean)
@@ -838,8 +839,7 @@ export default function Chat(props: {
                   });
                   inform("Conversation branched");
                   props.navigate(String(result.key));
-                })
-              }
+                })}
             />
           </Show>
         </div>
@@ -868,8 +868,8 @@ export default function Chat(props: {
           if (scrollFrame === undefined) {
             setAwayFromBottom(
               scroller.scrollHeight -
-                scroller.scrollTop -
-                scroller.clientHeight >
+                  scroller.scrollTop -
+                  scroller.clientHeight >
                 180,
             );
           }
@@ -882,6 +882,19 @@ export default function Chat(props: {
           </div>
         </Show>
         <div class="transcript-inner">
+          <Show when={historyFailure()}>
+            <div class="history-error" role="alert">
+              Conversation history could not be refreshed. Some messages may be
+              out of date.
+              <button
+                type="button"
+                disabled={!connected()}
+                onClick={() => setHistoryRetry((value) => value + 1)}
+              >
+                Retry history
+              </button>
+            </div>
+          </Show>
           <Show when={data().pages.at(-1)?.hasMore}>
             <button
               type="button"
@@ -916,10 +929,8 @@ export default function Chat(props: {
                   {(t) => renderLiveWork(t())}
                 </Show>
                 <Show
-                  when={
-                    turn()?.state === "running" &&
-                    index() === groups().length - 1
-                  }
+                  when={turn()?.state === "running" &&
+                    index() === groups().length - 1}
                 >
                   <For
                     each={group.work.filter(
@@ -930,26 +941,21 @@ export default function Chat(props: {
                   </For>
                 </Show>
                 <Show
-                  when={
-                    group.work.length &&
+                  when={group.work.length &&
                     !(
                       turn()?.state === "running" &&
                       index() === groups().length - 1
-                    )
-                  }
+                    )}
                 >
                   <details class="work-summary history-work">
                     <summary>
                       Worked
                       <Show
-                        when={
-                          group === settledHistoryGroup() ||
-                          (group.prompt?.createdAt && group.answer?.createdAt)
-                        }
+                        when={group === settledHistoryGroup() ||
+                          (group.prompt?.createdAt && group.answer?.createdAt)}
                       >
                         {" "}
-                        for{" "}
-                        {elapsed(
+                        for {elapsed(
                           group === settledHistoryGroup()
                             ? (turn()?.startedAt ?? 0)
                             : (group.prompt?.createdAt ?? 0),
@@ -994,15 +1000,13 @@ export default function Chat(props: {
             {(t) => (
               <article
                 class="message assistant live-message"
-                hidden={
-                  (historyOwnsWork() ||
-                    (t().state !== "running" &&
-                      turnIsInHistory() &&
-                      !t().activity.length)) &&
+                hidden={(historyOwnsWork() ||
+                  (t().state !== "running" &&
+                    turnIsInHistory() &&
+                    !t().activity.length)) &&
                   !t().error &&
                   !t().recovering &&
-                  !t().interactions.length
-                }
+                  !t().interactions.length}
                 classList={{
                   "settled-work": t().state !== "running" && turnIsInHistory(),
                 }}
@@ -1012,17 +1016,15 @@ export default function Chat(props: {
                     Recovering live progress from Hermes…
                   </p>
                 </Show>
-                <Show when={!groups().length || !hasTurnOutput()}>
+                <Show when={!liveWorkGroup() || !hasTurnOutput()}>
                   {renderLiveWork(t())}
                 </Show>
                 <Show when={t().text && !turnIsInHistory()}>
                   <Markdown text={t().text} />
                 </Show>
                 <Show
-                  when={
-                    t().state === "running" &&
-                    t().activity.findLast((a) => a.state === "running")
-                  }
+                  when={t().state === "running" &&
+                    t().activity.findLast((a) => a.state === "running")}
                 >
                   {(activity) => (
                     <div class="current-activity" role="status">
@@ -1053,8 +1055,8 @@ export default function Chat(props: {
                               {i().kind === "approval"
                                 ? "Approval needed"
                                 : i().kind === "secret"
-                                  ? "Input needed"
-                                  : "A question from Hermes"}
+                                ? "Input needed"
+                                : "A question from Hermes"}
                             </h3>
                             <p>{i().text}</p>
                             <Show
@@ -1075,7 +1077,7 @@ export default function Chat(props: {
                                             conversation: props.conversation,
                                             requestId: i().id,
                                             value,
-                                          }),
+                                          })
                                         );
                                       }}
                                     >
@@ -1095,8 +1097,7 @@ export default function Chat(props: {
                                   <Clarification
                                     interaction={i()}
                                     respond={(params) =>
-                                      rpc("clarify.respond", params)
-                                    }
+                                      rpc("clarify.respond", params)}
                                   />
                                 </Show>
                               }
@@ -1109,9 +1110,8 @@ export default function Chat(props: {
                                     rpc("approval.respond", {
                                       request_id: i().id,
                                       choice: "once",
-                                    }),
-                                  )
-                                }
+                                    })
+                                  )}
                               >
                                 Allow once
                               </button>
@@ -1122,9 +1122,8 @@ export default function Chat(props: {
                                     rpc("approval.respond", {
                                       request_id: i().id,
                                       choice: "deny",
-                                    }),
-                                  )
-                                }
+                                    })
+                                  )}
                               >
                                 Deny
                               </button>
@@ -1157,6 +1156,7 @@ export default function Chat(props: {
             each={data().commands.filter(
               (c) =>
                 ["unknown", "error"].includes(c.status) &&
+                c.kind !== "load" &&
                 !errorDismissed(c._id),
             )}
           >
@@ -1184,8 +1184,7 @@ export default function Chat(props: {
                         changeText(c.payload.text);
                         setEdit(c.payload.edit);
                         setUploads(c.payload.attachments ?? []);
-                      })
-                    }
+                      })}
                   >
                     Edit failed message
                   </button>
@@ -1209,7 +1208,7 @@ export default function Chat(props: {
                     type="button"
                     onClick={() => {
                       setPendingUploads((items) =>
-                        items.filter((entry) => entry.id !== item.id),
+                        items.filter((entry) => entry.id !== item.id)
                       );
                       const transfer = new DataTransfer();
                       transfer.items.add(item.file);
@@ -1223,9 +1222,8 @@ export default function Chat(props: {
                     label={`Dismiss ${item.file.name}`}
                     onClick={() =>
                       setPendingUploads((items) =>
-                        items.filter((entry) => entry.id !== item.id),
-                      )
-                    }
+                        items.filter((entry) => entry.id !== item.id)
+                      )}
                   />
                 </Show>
               </div>
@@ -1233,7 +1231,7 @@ export default function Chat(props: {
           </For>
           <For
             each={uploads().filter((file) =>
-              text().includes(`[Attached file: ${file.path}]`),
+              text().includes(`[Attached file: ${file.path}]`)
             )}
           >
             {(file) => (
@@ -1313,9 +1311,8 @@ export default function Chat(props: {
                   void run(() =>
                     mutate("commands.clearQueue", {
                       conversation: props.conversation,
-                    }),
-                  )
-                }
+                    })
+                  )}
               >
                 Clear All
               </button>
@@ -1342,9 +1339,8 @@ export default function Chat(props: {
                           mutate("commands.edit", {
                             id: item._id,
                             cancel: true,
-                          }),
-                        )
-                      }
+                          })
+                        )}
                     />
                     <IconButton
                       icon="edit-pencil"
@@ -1362,8 +1358,7 @@ export default function Chat(props: {
                               text: value,
                             });
                           }
-                        })
-                      }
+                        })}
                     />
                     <button
                       type="button"
@@ -1397,11 +1392,9 @@ export default function Chat(props: {
         <Suspense>
           <ContextSuggestions
             text={text()}
-            profile={
-              props.conversation
-                ? JSON.parse(props.conversation)[0]
-                : (props.profile ?? "default")
-            }
+            profile={props.conversation
+              ? JSON.parse(props.conversation)[0]
+              : (props.profile ?? "default")}
             error={turn()?.error}
             useSkill={(name) => {
               changeText(`/${name} ${text()}`);
@@ -1437,16 +1430,12 @@ export default function Chat(props: {
             }}
             context={`${props.conversation}:${edit() ?? ""}`}
             controls={completions().length ? "composer-completions" : undefined}
-            activeDescendant={
-              completions().length
-                ? `completion-${completionIndex()}`
-                : undefined
-            }
-            placeholder={
-              connected()
-                ? "Describe what you need"
-                : "Write a draft while offline…"
-            }
+            activeDescendant={completions().length
+              ? `completion-${completionIndex()}`
+              : undefined}
+            placeholder={connected()
+              ? "Describe what you need"
+              : "Write a draft while offline…"}
             value={text()}
             onChange={changeText}
             onCursor={setCursor}
@@ -1574,13 +1563,13 @@ export default function Chat(props: {
                           }))
                           .filter(
                             (item: { command: string }) =>
-                              !/^\/(?:image|voice|wake|terminal|shell|hud|radio|pet|browser)(?:\s|$)/i.test(
-                                item.command,
-                              ),
+                              !/^\/(?:image|voice|wake|terminal|shell|hud|radio|pet|browser)(?:\s|$)/i
+                                .test(
+                                  item.command,
+                                ),
                           ),
                       );
-                    })
-                  }
+                    })}
                 >
                   / Commands
                 </button>
@@ -1612,15 +1601,13 @@ export default function Chat(props: {
               <button
                 class="send"
                 type="submit"
-                aria-label={
-                  turn()?.state === "running" ? "Queue message" : "Send message"
-                }
-                disabled={
-                  !text().trim() ||
+                aria-label={turn()?.state === "running"
+                  ? "Queue message"
+                  : "Send message"}
+                disabled={!text().trim() ||
                   !connected() ||
                   sending() ||
-                  pendingUploads().some((item) => !item.error)
-                }
+                  pendingUploads().some((item) => !item.error)}
               >
                 <Icon name="send" />
               </button>
@@ -1657,8 +1644,7 @@ export default function Chat(props: {
               aria-label="Reference type"
               value={referenceKind()}
               onChange={(event) =>
-                setReferenceKind(event.currentTarget.value as ReferenceKind)
-              }
+                setReferenceKind(event.currentTarget.value as ReferenceKind)}
             >
               <option value="url">URL</option>
               <option value="file">File</option>

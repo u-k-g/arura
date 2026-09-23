@@ -10,9 +10,8 @@ export function Icon(props: { name: string }) {
     <span
       class="icon"
       aria-hidden="true"
-      innerHTML={
-        icons[`./icons/${props.name}.svg`] ?? icons["./icons/chat-bubble.svg"]
-      }
+      innerHTML={icons[`./icons/${props.name}.svg`] ??
+        icons["./icons/chat-bubble.svg"]}
     />
   );
 }
@@ -84,8 +83,7 @@ export function Dialog(props: {
     if (header.hasPointerCapture(event.pointerId)) {
       header.releasePointerCapture(event.pointerId);
     }
-    const dismiss =
-      !cancelled &&
+    const dismiss = !cancelled &&
       (distance >= Math.min(120, el.offsetHeight * 0.2) ||
         (distance > 35 &&
           distance / Math.max(1, event.timeStamp - started) > 0.6));
@@ -118,17 +116,21 @@ export function Dialog(props: {
       const rect = el.getBoundingClientRect();
       el.style.setProperty(
         "--menu-x",
-        `${Math.max(
-          8,
-          Math.min(props.anchor.x, innerWidth - rect.width - 8),
-        )}px`,
+        `${
+          Math.max(
+            8,
+            Math.min(props.anchor.x, innerWidth - rect.width - 8),
+          )
+        }px`,
       );
       el.style.setProperty(
         "--menu-y",
-        `${Math.max(
-          8,
-          Math.min(props.anchor.y, innerHeight - rect.height - 8),
-        )}px`,
+        `${
+          Math.max(
+            8,
+            Math.min(props.anchor.y, innerHeight - rect.height - 8),
+          )
+        }px`,
       );
     }
   };
@@ -162,15 +164,14 @@ export function Dialog(props: {
         if (!items.length) return;
         event.preventDefault();
         const current = items.indexOf(document.activeElement as HTMLElement);
-        const next =
-          event.key === "Home"
-            ? 0
-            : event.key === "End"
-              ? items.length - 1
-              : (current +
-                  (event.key === "ArrowDown" ? 1 : -1) +
-                  items.length) %
-                items.length;
+        const next = event.key === "Home"
+          ? 0
+          : event.key === "End"
+          ? items.length - 1
+          : (current +
+            (event.key === "ArrowDown" ? 1 : -1) +
+            items.length) %
+            items.length;
         items[next].focus();
       }}
       onCancel={(e) => {

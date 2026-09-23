@@ -2,7 +2,8 @@ import { requireValue } from "./require_value.ts";
 import { chromium, expect } from "@playwright/test";
 import { openSettings, signIn } from "./sign_in.ts";
 Deno.test({
-  name: "empty chat submits once, settings retain navigation, and tables have horizontal rules",
+  name:
+    "empty chat submits once, settings retain navigation, and tables have horizontal rules",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({

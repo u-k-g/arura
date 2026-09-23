@@ -2,7 +2,8 @@ import { chromium, expect } from "@playwright/test";
 import { signIn } from "./sign_in.ts";
 import { requireValue } from "./require_value.ts";
 Deno.test({
-  name: "work summary sits between its prompt and answer without duplicate tool rows",
+  name:
+    "work summary sits between its prompt and answer without duplicate tool rows",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({

@@ -33,11 +33,12 @@ const dbPort = port(),
   sitePort = port(),
   appPort = port(),
   hermesPort = port();
-const secret = Array.from(crypto.getRandomValues(new Uint8Array(32)), (n) =>
-  n.toString(16).padStart(2, "0"),
+const secret = Array.from(
+  crypto.getRandomValues(new Uint8Array(32)),
+  (n) => n.toString(16).padStart(2, "0"),
 ).join("");
-const backend =
-  Deno.env.get("ARURA_CONVEX_EXECUTABLE") ?? "convex-local-backend";
+const backend = Deno.env.get("ARURA_CONVEX_EXECUTABLE") ??
+  "convex-local-backend";
 const keygen = await new Deno.Command(backend, {
   args: [
     "keygen",
@@ -95,10 +96,12 @@ async function start(
     stderr: "piped",
   }).spawn();
   children.push(child);
-  for (const [suffix, stream] of [
-    ["out", child.stdout],
-    ["err", child.stderr],
-  ] as const) {
+  for (
+    const [suffix, stream] of [
+      ["out", child.stdout],
+      ["err", child.stderr],
+    ] as const
+  ) {
     const file = await Deno.open(join(scratch, `${name}.${suffix}.log`), {
       write: true,
       create: true,
@@ -158,9 +161,11 @@ try {
   const keys = await identity();
   await Deno.writeTextFile(
     join(scratch, "auth.env"),
-    `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${btoa(
-      JSON.stringify(keys.jwks),
-    )}\n`,
+    `ARURA_AUTH_ISSUER=${issuer}\nARURA_JWKS=data:application/json;base64,${
+      btoa(
+        JSON.stringify(keys.jwks),
+      )
+    }\n`,
     { mode: 0o600 },
   );
   const packagedDeploy = Deno.env.get("ARURA_DEPLOY_EXECUTABLE");
@@ -207,8 +212,8 @@ try {
   const packaged = Deno.env.get("ARURA_SERVER_EXECUTABLE");
   const adapterProcess = packaged
     ? await start("arura", packaged, [], scratch, {
-        DENO_DIR: join(scratch, "runtime-deno"),
-      })
+      DENO_DIR: join(scratch, "runtime-deno"),
+    })
     : await start("arura", Deno.execPath(), ["run", "-A", "server/index.ts"]);
   env.ARURA_TEST_ADAPTER_PID = String(adapterProcess.pid);
   await ready(`${appUrl}/api/bootstrap`);

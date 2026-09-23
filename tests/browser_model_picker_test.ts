@@ -3,7 +3,8 @@ import { signIn } from "./sign_in.ts";
 import { requireValue } from "./require_value.ts";
 
 Deno.test({
-  name: "anchored model picker filters providers, syncs stars and changes session reasoning",
+  name:
+    "anchored model picker filters providers, syncs stars and changes session reasoning",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -14,10 +15,12 @@ Deno.test({
     const a = await browser.newPage({ viewport: { width: 1440, height: 900 } });
     const b = await browser.newPage({ viewport: { width: 390, height: 844 } });
     try {
-      for (const [page, name] of [
-        [a, "Picker desktop"],
-        [b, "Picker mobile"],
-      ] as const) {
+      for (
+        const [page, name] of [
+          [a, "Picker desktop"],
+          [b, "Picker mobile"],
+        ] as const
+      ) {
         await page.goto(url);
         await signIn(page, name);
         if (page === a) {
@@ -139,7 +142,7 @@ Deno.test({
         a.getByText("Received: Use my selected model", { exact: true }),
       ).toBeVisible();
       const conversation = await a.evaluate(() =>
-        localStorage.getItem("arura.view"),
+        localStorage.getItem("arura.view")
       );
       const runtime = await a.request.post(`${url}/api/query`, {
         headers: { Origin: url },

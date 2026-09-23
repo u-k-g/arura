@@ -119,10 +119,16 @@ export default defineSchema({
     conversation: v.string(),
     offset: v.number(),
     messages: v.array(v.any()),
+    chunked: v.optional(v.boolean()),
     revision: v.optional(v.string()),
     hasMore: v.boolean(),
     updatedAt: v.number(),
   }).index("page", ["conversation", "offset"]),
+  pageChunks: defineTable({
+    page: v.id("pages"),
+    index: v.number(),
+    content: v.string(),
+  }).index("page", ["page", "index"]),
   turns: defineTable({ conversation: v.string(), data: v.any() }).index(
     "conversation",
     ["conversation"],

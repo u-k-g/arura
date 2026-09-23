@@ -49,21 +49,25 @@ export default function ModelPicker(props: {
     if (!anchor) return;
     const viewport = globalThis.visualViewport;
     const top = (viewport?.offsetTop ?? 0) + 8;
-    const bottom =
-      (viewport?.offsetTop ?? 0) + (viewport?.height ?? innerHeight) - 8;
+    const bottom = (viewport?.offsetTop ?? 0) +
+      (viewport?.height ?? innerHeight) - 8;
     const above = anchor.top - top - 6;
     const below = bottom - anchor.bottom - 6;
     const upward = above >= Math.min(400, below);
     panel.style.maxHeight = `${Math.max(120, upward ? above : below)}px`;
     const rect = panel.getBoundingClientRect();
-    panel.style.left = `${Math.max(
-      8,
-      Math.min(anchor.right - rect.width, innerWidth - rect.width - 8),
-    )}px`;
-    panel.style.top = `${Math.max(
-      top,
-      upward ? anchor.top - rect.height - 6 : anchor.bottom + 6,
-    )}px`;
+    panel.style.left = `${
+      Math.max(
+        8,
+        Math.min(anchor.right - rect.width, innerWidth - rect.width - 8),
+      )
+    }px`;
+    panel.style.top = `${
+      Math.max(
+        top,
+        upward ? anchor.top - rect.height - 6 : anchor.bottom + 6,
+      )
+    }px`;
   };
   onMount(() => {
     panel.showPopover();
@@ -107,25 +111,25 @@ export default function ModelPicker(props: {
         accessibleLabel(entry)
           .toLowerCase()
           .includes(search().trim().toLowerCase()),
-    ),
+    )
   );
   const selected = createMemo(() => {
     const matches = props.models.filter((entry) =>
-      [entry.id, entry.model, modelLabel(entry)].includes(props.current),
+      [entry.id, entry.model, modelLabel(entry)].includes(props.current)
     );
     return (
       matches.find((entry) => entry.provider === props.provider) ??
-      (matches.length === 1 ? matches[0] : undefined)
+        (matches.length === 1 ? matches[0] : undefined)
     );
   });
   const efforts = createMemo(() => {
     const entry = selected();
     return entry
       ? reasoningLevels(
-          entry.provider ?? "",
-          entry.id ?? entry.model ?? "",
-          entry.capabilities,
-        )
+        entry.provider ?? "",
+        entry.id ?? entry.model ?? "",
+        entry.capabilities,
+      )
       : undefined;
   });
   const perform = (action: () => Promise<void>) => {
@@ -192,8 +196,7 @@ export default function ModelPicker(props: {
                 <div
                   class="model-picker-row"
                   classList={{
-                    selected:
-                      props.current === modelLabel(entry) ||
+                    selected: props.current === modelLabel(entry) ||
                       props.current === entry.id ||
                       props.current === entry.model,
                   }}
@@ -221,7 +224,7 @@ export default function ModelPicker(props: {
                         mutate("workspace.modelFavorite", {
                           model: modelKey(entry),
                           starred: !favorites().has(modelKey(entry)),
-                        }),
+                        })
                       );
                     }}
                   >
@@ -235,8 +238,8 @@ export default function ModelPicker(props: {
                 {search()
                   ? "No matching models."
                   : section() === "favorites"
-                    ? "Star models to keep them here."
-                    : "No visible models. Manage the model list in Settings → Models & providers."}
+                  ? "Star models to keep them here."
+                  : "No visible models. Manage the model list in Settings → Models & providers."}
               </p>
             </Show>
           </div>
@@ -258,8 +261,8 @@ export default function ModelPicker(props: {
                   {efforts() === undefined
                     ? "Not reported"
                     : !efforts()?.length
-                      ? "Not supported"
-                      : "Choose effort"}
+                    ? "Not supported"
+                    : "Choose effort"}
                 </option>
                 <For each={efforts() ?? []}>
                   {(effort) => (

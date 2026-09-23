@@ -230,15 +230,17 @@ Deno.test("archive protects pinned folders, active work, input, and recently res
     pendingInput: false,
   };
   equal(shouldArchive(c, 7, now), true);
-  for (const patch of [
-    { bot: true },
-    { section: "essential" },
-    { section: "pinned" },
-    { folderId: "folder" },
-    { running: true },
-    { pendingInput: true },
-    { unarchivedAt: now - 1000 },
-  ]) {
+  for (
+    const patch of [
+      { bot: true },
+      { section: "essential" },
+      { section: "pinned" },
+      { folderId: "folder" },
+      { running: true },
+      { pendingInput: true },
+      { unarchivedAt: now - 1000 },
+    ]
+  ) {
     equal(shouldArchive({ ...c, ...patch } as Conversation, 7, now), false);
   }
   equal(shouldArchive({ ...c, activityAt: now - 7 * 86400000 }, 7, now), true);
@@ -349,16 +351,18 @@ Deno.test("archive age warnings share archive eligibility and restored inactivit
   equal(archiveAgeStatus(c, 14, now - 1), undefined);
   equal(archiveAgeStatus(c, 14, now, false), undefined);
   equal(archiveAgeStatus({ ...c, bot: true }, 14, now + 86400000), undefined);
-  for (const patch of [
-    { bot: true },
-    { section: "pinned" },
-    { section: "essential" },
-    { section: "archived" },
-    { folderId: "folder" },
-    { running: true },
-    { pendingInput: true },
-    { unarchivedAt: now },
-  ]) {
+  for (
+    const patch of [
+      { bot: true },
+      { section: "pinned" },
+      { section: "essential" },
+      { section: "archived" },
+      { folderId: "folder" },
+      { running: true },
+      { pendingInput: true },
+      { unarchivedAt: now },
+    ]
+  ) {
     equal(
       archiveAgeStatus({ ...c, ...patch } as Conversation, 14, now),
       undefined,
@@ -382,4 +386,36 @@ Deno.test("work stays with its answer when later events or prompts arrive", () =
   equal(workGroup(groups, { text: "Answer", startedAt: 110 }), groups[0]);
   equal(workGroup(groups, { text: "", startedAt: 110 }), groups[0]);
   equal(workGroup(groups, { text: "", startedAt: 310 }), groups[2]);
+});
+
+Deno.test("a new reply never attaches its work to an older answered prompt in stale history", () => {
+  const groups = groupMessages([
+    { id: "old-prompt", role: "user", text: "Compare trips", createdAt: 100 },
+    { id: "old-answer", role: "assistant", text: "Comparison", createdAt: 200 },
+  ]);
+  equal(
+    workGroup(groups, { text: "October weather", startedAt: 300 }),
+    undefined,
+  );
+  equal(
+    workGroup(groups, {
+      text: "Comparison",
+      startedAt: 300,
+      state: "complete",
+    }),
+    undefined,
+  );
+  equal(
+    workGroup(
+      groupMessages([
+        { id: "stale", role: "user", text: "Old prompt", createdAt: 100 },
+      ]),
+      {
+        text: "October weather",
+        startedAt: 300,
+        state: "complete",
+      },
+    ),
+    undefined,
+  );
 });

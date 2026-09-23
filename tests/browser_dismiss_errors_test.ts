@@ -5,7 +5,8 @@ import { identity } from "../server/identity.ts";
 import { signIn } from "./sign_in.ts";
 import { requireValue } from "./require_value.ts";
 Deno.test({
-  name: "dismissed turn errors stay hidden after reload while new errors remain visible",
+  name:
+    "dismissed turn errors stay hidden after reload while new errors remain visible",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({

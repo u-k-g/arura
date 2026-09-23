@@ -13,8 +13,9 @@ export const schedule = mutation({
     for (const conversation of conversations) {
       const old = await ctx.db
         .query("artifactScans")
-        .withIndex("conversation", (q) =>
-          q.eq("conversation", conversation.key),
+        .withIndex(
+          "conversation",
+          (q) => q.eq("conversation", conversation.key),
         )
         .unique();
       if (old && old.activityAt === conversation.activityAt) continue;
@@ -67,8 +68,9 @@ export const record = mutation({
     for (const file of args.files) {
       const old = await ctx.db
         .query("artifacts")
-        .withIndex("file", (q) =>
-          q.eq("conversation", scan.conversation).eq("path", file.path),
+        .withIndex(
+          "file",
+          (q) => q.eq("conversation", scan.conversation).eq("path", file.path),
         )
         .unique();
       const value = {
@@ -81,12 +83,15 @@ export const record = mutation({
       else await ctx.db.insert("artifacts", value);
     }
     if (!args.hasMore) {
-      for (const old of await ctx.db
-        .query("artifacts")
-        .withIndex("conversation", (q) =>
-          q.eq("conversation", scan.conversation),
-        )
-        .collect()) {
+      for (
+        const old of await ctx.db
+          .query("artifacts")
+          .withIndex(
+            "conversation",
+            (q) => q.eq("conversation", scan.conversation),
+          )
+          .collect()
+      ) {
         if (old.scan !== scan.scan) await ctx.db.delete(old._id);
       }
     }
@@ -104,9 +109,10 @@ export const list = query({
     await device(ctx);
     const table = ctx.db.query("artifacts");
     const query = args.search.trim()
-      ? table.withSearchIndex("search", (q) =>
-          q.search("name", args.search.trim()),
-        )
+      ? table.withSearchIndex(
+        "search",
+        (q) => q.search("name", args.search.trim()),
+      )
       : table.withIndex("recent").order("desc");
     const rows = await query.take(Math.min(1000, Math.max(30, args.limit)));
     const items = [];

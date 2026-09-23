@@ -21,8 +21,9 @@ export default function ContextSuggestions(props: {
     const timer = setTimeout(async () => {
       const key = `suggested-skills:${profile}`;
       try {
-        const cached =
-          await loadCache<{ name: string; description?: string }[]>(key);
+        const cached = await loadCache<
+          { name: string; description?: string }[]
+        >(key);
         if (!cancelled && cached) setSkills(cached);
         if (!online) return;
         const result = await resource("skills", { profile });
@@ -44,8 +45,9 @@ export default function ContextSuggestions(props: {
               enabled?: boolean;
             }) => ({
               name: skill.name,
-              description:
-                typeof skill.description === "string" ? skill.description : "",
+              description: typeof skill.description === "string"
+                ? skill.description
+                : "",
             }),
           );
         if (cancelled) return;
@@ -71,21 +73,23 @@ export default function ContextSuggestions(props: {
           return (
             name.some((word) => words.has(word)) ||
             (skill.description?.toLowerCase().match(/[a-z]{5,}/g) ?? []).filter(
-              (word) => words.has(word),
-            ).length >= 2
+                (word) => words.has(word),
+              ).length >= 2
           );
         },
       )
       .slice(0, 2);
   };
   const schedule = () =>
-    /\b(remind me|schedule|every (?:day|week|month|morning|evening|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|daily|weekly)\b/i.test(
-      props.text,
-    );
+    /\b(remind me|schedule|every (?:day|week|month|morning|evening|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|daily|weekly)\b/i
+      .test(
+        props.text,
+      );
   const connection = () =>
-    /\b(unauthori[sz]ed|authentication|connection expired|reconnect|not connected)\b/i.test(
-      props.error ?? "",
-    );
+    /\b(unauthori[sz]ed|authentication|connection expired|reconnect|not connected)\b/i
+      .test(
+        props.error ?? "",
+      );
   return (
     <Show when={matching().length || schedule() || connection()}>
       <section class="context-suggestions" aria-label="Suggested actions">
@@ -95,7 +99,10 @@ export default function ContextSuggestions(props: {
             description?: string;
             enabled?: boolean;
           }) => (
-            <button type="button" onClick={() => props.useSkill(skill.name)}>
+            <button
+              type="button"
+              onClick={() => props.useSkill(skill.name)}
+            >
               Use {skill.name}
             </button>
           )}

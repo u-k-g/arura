@@ -56,8 +56,7 @@ function ModelSlot(props: {
           required
           value={props.value.provider}
           onInput={(e) =>
-            props.change({ ...props.value, provider: e.currentTarget.value })
-          }
+            props.change({ ...props.value, provider: e.currentTarget.value })}
         />
       </Field>
       <Field label="Model">
@@ -65,8 +64,7 @@ function ModelSlot(props: {
           required
           value={props.value.model}
           onInput={(e) =>
-            props.change({ ...props.value, model: e.currentTarget.value })
-          }
+            props.change({ ...props.value, model: e.currentTarget.value })}
         />
       </Field>
       <Field label="Reasoning effort">
@@ -76,8 +74,7 @@ function ModelSlot(props: {
             props.change({
               ...props.value,
               reasoning_effort: e.currentTarget.value || null,
-            })
-          }
+            })}
         >
           <For
             each={[
@@ -107,8 +104,7 @@ function ModelSlot(props: {
               props.change({
                 ...props.value,
                 enabled: e.currentTarget.checked,
-              })
-            }
+              })}
           />
         </Field>
       </Show>
@@ -182,12 +178,12 @@ export default function MixtureModels() {
       return {
         ...old,
         presets,
-        default_preset:
-          rename && old.default_preset === selected()
-            ? key
-            : old.default_preset,
-        active_preset:
-          rename && old.active_preset === selected() ? key : old.active_preset,
+        default_preset: rename && old.default_preset === selected()
+          ? key
+          : old.default_preset,
+        active_preset: rename && old.active_preset === selected()
+          ? key
+          : old.active_preset,
       };
     });
     setSelected(key);
@@ -202,12 +198,12 @@ export default function MixtureModels() {
       return {
         ...old,
         presets,
-        default_preset:
-          old.default_preset === selected()
-            ? Object.keys(presets)[0]
-            : old.default_preset,
-        active_preset:
-          old.active_preset === selected() ? "" : old.active_preset,
+        default_preset: old.default_preset === selected()
+          ? Object.keys(presets)[0]
+          : old.default_preset,
+        active_preset: old.active_preset === selected()
+          ? ""
+          : old.active_preset,
       };
     });
     setSelected(config()?.default_preset ?? "");
@@ -294,8 +290,7 @@ export default function MixtureModels() {
                   setConfig({
                     ...value(),
                     default_preset: e.currentTarget.value,
-                  })
-                }
+                  })}
               >
                 <For each={Object.keys(value().presets)}>
                   {(key) => <option>{key}</option>}
@@ -309,8 +304,7 @@ export default function MixtureModels() {
                   setConfig({
                     ...value(),
                     active_preset: e.currentTarget.value,
-                  })
-                }
+                  })}
               >
                 <option value="">No active mixture</option>
                 <For each={Object.keys(value().presets)}>
@@ -347,10 +341,8 @@ export default function MixtureModels() {
               </button>
               <button
                 type="button"
-                disabled={
-                  Boolean(value().privacy_filter) ||
-                  Object.keys(value().presets).length <= 1
-                }
+                disabled={Boolean(value().privacy_filter) ||
+                  Object.keys(value().presets).length <= 1}
                 onClick={remove}
               >
                 Delete selected preset
@@ -372,8 +364,7 @@ export default function MixtureModels() {
                       type="checkbox"
                       checked={preset().enabled}
                       onChange={(e) =>
-                        change({ enabled: e.currentTarget.checked })
-                      }
+                        change({ enabled: e.currentTarget.checked })}
                     />
                   </Field>
                   <For
@@ -390,20 +381,18 @@ export default function MixtureModels() {
                               reference_models: preset().reference_models.map(
                                 (old, i) => (i === index ? slot : old),
                               ),
-                            })
-                          }
+                            })}
                         />
                         <button
                           type="button"
                           disabled={preset().reference_models.length <= 1}
                           onClick={() =>
                             change({
-                              reference_models:
-                                preset().reference_models.filter(
+                              reference_models: preset().reference_models
+                                .filter(
                                   (_, i) => i !== index,
                                 ),
-                            })
-                          }
+                            })}
                         >
                           Remove reference {index + 1}
                         </button>
@@ -418,8 +407,7 @@ export default function MixtureModels() {
                           ...preset().reference_models,
                           { provider: "", model: "", enabled: true },
                         ],
-                      })
-                    }
+                      })}
                   >
                     Add reference model
                   </button>
@@ -429,25 +417,21 @@ export default function MixtureModels() {
                     change={(slot) => change({ aggregator: slot })}
                   />
                   <For
-                    each={
-                      [
-                        "reference_temperature",
-                        "aggregator_temperature",
-                        "reference_timeout",
-                      ] as const
-                    }
+                    each={[
+                      "reference_temperature",
+                      "aggregator_temperature",
+                      "reference_timeout",
+                    ] as const}
                   >
                     {(key) => (
                       <Field
-                        label={
-                          key === "reference_timeout"
-                            ? "Reference timeout in seconds (empty inherits)"
-                            : `${
-                                key === "reference_temperature"
-                                  ? "Reference"
-                                  : "Aggregator"
-                              } temperature (empty uses provider default)`
-                        }
+                        label={key === "reference_timeout"
+                          ? "Reference timeout in seconds (empty inherits)"
+                          : `${
+                            key === "reference_temperature"
+                              ? "Reference"
+                              : "Aggregator"
+                          } temperature (empty uses provider default)`}
                       >
                         <input
                           type="number"
@@ -455,12 +439,10 @@ export default function MixtureModels() {
                           value={preset()[key] ?? ""}
                           onInput={(e) =>
                             change({
-                              [key]:
-                                e.currentTarget.value === ""
-                                  ? null
-                                  : Number(e.currentTarget.value),
-                            })
-                          }
+                              [key]: e.currentTarget.value === ""
+                                ? null
+                                : Number(e.currentTarget.value),
+                            })}
                         />
                       </Field>
                     )}
@@ -471,8 +453,7 @@ export default function MixtureModels() {
                       onChange={(e) =>
                         change({
                           degraded_reference_policy: e.currentTarget.value,
-                        })
-                      }
+                        })}
                     >
                       <option value="loud">Report the failure</option>
                       <option value="silent">Continue quietly</option>
@@ -498,8 +479,7 @@ export default function MixtureModels() {
               <button
                 type="button"
                 onClick={() =>
-                  void run(async () => accept(await resource("moa")))
-                }
+                  void run(async () => accept(await resource("moa")))}
               >
                 Reload mixture presets
               </button>

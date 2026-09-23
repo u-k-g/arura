@@ -3,7 +3,8 @@ import { signIn } from "./sign_in.ts";
 import { requireValue } from "./require_value.ts";
 
 Deno.test({
-  name: "sidebar settings, artifacts, profile selection, and archive navigation",
+  name:
+    "sidebar settings, artifacts, profile selection, and archive navigation",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -67,7 +68,7 @@ Deno.test({
       );
       expect(removed.ok()).toBe(false);
       await page.evaluate(() =>
-        localStorage.setItem("arura.view", "resources:files?path=%2Ftmp"),
+        localStorage.setItem("arura.view", "resources:files?path=%2Ftmp")
       );
       await page.reload();
       await expect(
@@ -157,7 +158,7 @@ Deno.test({
         .poll(() =>
           page.evaluate(
             () => JSON.parse(localStorage.getItem("arura.view") || "[]")[0],
-          ),
+          )
         )
         .toBe("sidebar-profile");
       await page

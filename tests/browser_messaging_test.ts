@@ -3,7 +3,8 @@ import { chromium, expect } from "@playwright/test";
 import { openSettings, signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 Deno.test({
-  name: "messaging matches Hermes platform navigation and keeps credential and access actions scoped",
+  name:
+    "messaging matches Hermes platform navigation and keeps credential and access actions scoped",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({

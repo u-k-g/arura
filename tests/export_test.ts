@@ -9,22 +9,21 @@ Deno.test("conversation exports page public messages without hidden reasoning", 
     (offset) => {
       offsets.push(offset);
       return Promise.resolve({
-        messages:
-          offset === 0
-            ? Array.from({ length: 500 }, (_, id) => ({
-                id,
-                role: "assistant",
-                display_kind: "hidden",
-                content: "PRIVATE",
-              }))
-            : [
-                {
-                  id: 500,
-                  role: "assistant",
-                  content: "<think>PRIVATE</think>Final answer",
-                  reasoning_content: "PRIVATE",
-                },
-              ],
+        messages: offset === 0
+          ? Array.from({ length: 500 }, (_, id) => ({
+            id,
+            role: "assistant",
+            display_kind: "hidden",
+            content: "PRIVATE",
+          }))
+          : [
+            {
+              id: 500,
+              role: "assistant",
+              content: "<think>PRIVATE</think>Final answer",
+              reasoning_content: "PRIVATE",
+            },
+          ],
       });
     },
   );

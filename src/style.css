@@ -741,6 +741,7 @@ small {
   color: var(--muted);
 }
 .interaction,
+.history-error,
 .command-error {
   border: var(--hairline) solid var(--line);
   padding: 18px;
@@ -756,9 +757,14 @@ small {
   margin-right: 7px;
 }
 .error,
+.history-error,
 .command-error {
   color: var(--danger);
   font-size: 13px;
+}
+.history-error button {
+  display: block;
+  margin-top: 8px;
 }
 .dismissible-error {
   position: relative;

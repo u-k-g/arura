@@ -44,12 +44,13 @@ export default function CommandPalette(props: {
           aria-autocomplete="list"
           aria-expanded="true"
           aria-controls="palette-options"
-          aria-activedescendant={
-            items().length ? `palette-option-${active()}` : undefined
-          }
+          aria-activedescendant={items().length
+            ? `palette-option-${active()}`
+            : undefined}
           placeholder="Search conversations and actions"
           value={props.query}
-          onInput={(event) => props.search(event.currentTarget.value)}
+          onInput={(event) =>
+            props.search(event.currentTarget.value)}
           onKeyDown={(event) => {
             if (event.isComposing) {
               return;
@@ -74,9 +75,8 @@ export default function CommandPalette(props: {
           {(item, index) => (
             <>
               <Show
-                when={
-                  index() === 0 || items()[index() - 1].group !== item.group
-                }
+                when={index() === 0 ||
+                  items()[index() - 1].group !== item.group}
               >
                 <div class="palette-group" role="presentation">
                   {item.group}

@@ -117,8 +117,7 @@ export default function ProviderAccess(props: { profile?: string } = {}) {
                       );
                     }
                     setFlow({ ...value, provider: provider.id });
-                  })
-                }
+                  })}
               >
                 {provider.status.logged_in ? "Sign in again" : "Sign in"}
               </button>
@@ -147,8 +146,7 @@ export default function ProviderAccess(props: { profile?: string } = {}) {
                     );
                     await refresh();
                     inform("Provider disconnected");
-                  })
-                }
+                  })}
               >
                 Disconnect
               </button>
@@ -158,7 +156,10 @@ export default function ProviderAccess(props: { profile?: string } = {}) {
       </For>
       <Show when={flow()}>
         {(current) => (
-          <Dialog title="Authorize provider" close={() => void run(close)}>
+          <Dialog
+            title="Authorize provider"
+            close={() => void run(close)}
+          >
             <Show
               when={!current().status || current().status === "pending"}
               fallback={

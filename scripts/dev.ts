@@ -30,8 +30,9 @@ try {
   if (!(error instanceof Deno.errors.NotFound)) throw error;
   instance = {
     name: "arura-dev",
-    secret: Array.from(crypto.getRandomValues(new Uint8Array(32)), (n) =>
-      n.toString(16).padStart(2, "0"),
+    secret: Array.from(
+      crypto.getRandomValues(new Uint8Array(32)),
+      (n) => n.toString(16).padStart(2, "0"),
     ).join(""),
   };
   await Deno.writeTextFile(instanceFile, JSON.stringify(instance), {
@@ -39,8 +40,8 @@ try {
     createNew: true,
   });
 }
-const executable =
-  Deno.env.get("ARURA_CONVEX_EXECUTABLE") ?? "convex-local-backend";
+const executable = Deno.env.get("ARURA_CONVEX_EXECUTABLE") ??
+  "convex-local-backend";
 const keygen = await new Deno.Command(executable, {
   args: [
     "keygen",

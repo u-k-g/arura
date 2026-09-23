@@ -1,7 +1,8 @@
 import { requireValue } from "./require_value.ts";
 import { chromium, expect } from "@playwright/test";
 Deno.test({
-  name: "cache upgrade retains drafts and quota recovery evicts replaceable content",
+  name:
+    "cache upgrade retains drafts and quota recovery evicts replaceable content",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -18,8 +19,7 @@ Deno.test({
         route.fulfill({
           contentType: "text/html",
           body: "<html><body>Cache migration fixture</body></html>",
-        }),
-      );
+        }));
       await page.goto(url);
       const authorized = await page.request.post(`${url}/auth/login`, {
         headers: { origin: url },
@@ -155,7 +155,7 @@ Deno.test({
             ]);
             db.close();
             return values;
-          }),
+          })
         )
         .toEqual([
           "A draft saved after reclaiming cache space",

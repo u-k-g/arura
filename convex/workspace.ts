@@ -6,6 +6,11 @@ import { internalMutation, mutation, query } from "./_generated/server.ts";
 import { adapter, device } from "./access.ts";
 import { resolveKey } from "./conversationKeys.ts";
 import { essentialIcons } from "../shared/essentialIcons.ts";
+import {
+  deleteHistoryChunks,
+  historyChunks,
+  readHistoryChunks,
+} from "./historyPages.ts";
 
 const section = v.union(
   v.literal("essential"),
@@ -90,8 +95,9 @@ export const overview = query({
     const self = await device(ctx);
     const pinned = await ctx.db
       .query("conversations")
-      .withIndex("section", (q) =>
-        q.gt("section", "archived").lt("section", "recent"),
+      .withIndex(
+        "section",
+        (q) => q.gt("section", "archived").lt("section", "recent"),
       )
       .filter((q) => q.neq(q.field("deleted"), true))
       .collect();
@@ -180,24 +186,34 @@ export const transcript = query({
       .take(30);
     const queued = await ctx.db
       .query("commands")
-      .withIndex("pending", (q) =>
-        q.eq("conversation", args.conversation).eq("status", "queued"),
+      .withIndex(
+        "pending",
+        (q) => q.eq("conversation", args.conversation).eq("status", "queued"),
       )
       .collect();
     return {
-      pages: await ctx.db
-        .query("pages")
-        .withIndex("page", (q) => q.eq("conversation", args.conversation))
-        .take(args.pages),
-      turn:
+      pages: await Promise.all(
         (
           await ctx.db
-            .query("turns")
-            .withIndex("conversation", (q) =>
-              q.eq("conversation", args.conversation),
-            )
-            .unique()
-        )?.data ?? null,
+            .query("pages")
+            .withIndex("page", (q) => q.eq("conversation", args.conversation))
+            .take(args.pages)
+        ).map(async (page) => ({
+          ...page,
+          messages: page.chunked
+            ? await readHistoryChunks(ctx, page._id)
+            : page.messages,
+        })),
+      ),
+      turn: (
+        await ctx.db
+          .query("turns")
+          .withIndex(
+            "conversation",
+            (q) => q.eq("conversation", args.conversation),
+          )
+          .unique()
+      )?.data ?? null,
       commands: [
         ...queued,
         ...recent.filter((command) => command.status !== "queued"),
@@ -267,10 +283,9 @@ export const move = mutation({
       folderId: args.folderId,
       rank: args.rank ?? Date.now(),
       archivedAt: args.section === "archived" ? Date.now() : undefined,
-      unarchivedAt:
-        c.section === "archived" && args.section !== "archived"
-          ? Date.now()
-          : c.unarchivedAt,
+      unarchivedAt: c.section === "archived" && args.section !== "archived"
+        ? Date.now()
+        : c.unarchivedAt,
     });
   },
 });
@@ -298,8 +313,9 @@ export const saveDraft = mutation({
     await device(ctx);
     const existing = await ctx.db
       .query("drafts")
-      .withIndex("profile", (q) =>
-        q.eq("profile", args.profile).eq("key", args.key),
+      .withIndex(
+        "profile",
+        (q) => q.eq("profile", args.profile).eq("key", args.key),
       )
       .unique();
     if (!args.text.trim()) {
@@ -331,10 +347,12 @@ export const folder = mutation({
   handler: async (ctx, args) => {
     await device(ctx);
     if (args.remove && args.id) {
-      for (const c of await ctx.db
-        .query("conversations")
-        .filter((q) => q.eq(q.field("folderId"), args.id))
-        .collect()) {
+      for (
+        const c of await ctx.db
+          .query("conversations")
+          .filter((q) => q.eq(q.field("folderId"), args.id))
+          .collect()
+      ) {
         await ctx.db.patch(c._id, { folderId: undefined, section: "pinned" });
       }
       await ctx.db.delete(args.id);
@@ -516,10 +534,12 @@ export const ingest = mutation({
   handler: async (ctx, args) => {
     await adapter(ctx);
     if (args.archivePolicy) {
-      for (const [key, value] of Object.entries({
-        archiveDays: args.archivePolicy.days,
-        archiveEnabled: args.archivePolicy.enabled,
-      })) {
+      for (
+        const [key, value] of Object.entries({
+          archiveDays: args.archivePolicy.days,
+          archiveEnabled: args.archivePolicy.enabled,
+        })
+      ) {
         const previous = await ctx.db
           .query("settings")
           .withIndex("key", (q) => q.eq("key", key))
@@ -535,16 +555,20 @@ export const ingest = mutation({
         .withIndex("key", (q) => q.eq("key", key))
         .unique();
       if (old) await ctx.db.patch(old._id, { deleted: true });
-      for (const scan of await ctx.db
-        .query("artifactScans")
-        .withIndex("conversation", (q) => q.eq("conversation", key))
-        .collect()) {
+      for (
+        const scan of await ctx.db
+          .query("artifactScans")
+          .withIndex("conversation", (q) => q.eq("conversation", key))
+          .collect()
+      ) {
         await ctx.db.delete(scan._id);
       }
-      for (const file of await ctx.db
-        .query("artifacts")
-        .withIndex("conversation", (q) => q.eq("conversation", key))
-        .collect()) {
+      for (
+        const file of await ctx.db
+          .query("artifacts")
+          .withIndex("conversation", (q) => q.eq("conversation", key))
+          .collect()
+      ) {
         await ctx.db.delete(file._id);
       }
     }
@@ -587,37 +611,64 @@ export const ingest = mutation({
       const p = args.page;
       const old = await ctx.db
         .query("pages")
-        .withIndex("page", (q) =>
-          q.eq("conversation", p.conversation).eq("offset", p.offset),
+        .withIndex(
+          "page",
+          (q) => q.eq("conversation", p.conversation).eq("offset", p.offset),
         )
         .unique();
       if (p.offset === 0 && old?.revision !== p.revision) {
-        for (const stale of await ctx.db
-          .query("pages")
-          .withIndex("page", (q) => q.eq("conversation", p.conversation))
-          .collect()) {
-          if (stale.offset !== 0) await ctx.db.delete(stale._id);
+        for (
+          const stale of await ctx.db
+            .query("pages")
+            .withIndex("page", (q) => q.eq("conversation", p.conversation))
+            .collect()
+        ) {
+          if (stale.offset !== 0) {
+            await deleteHistoryChunks(ctx, stale._id);
+            await ctx.db.delete(stale._id);
+          }
         }
       }
       if (p.offset > 0) {
         const head = await ctx.db
           .query("pages")
-          .withIndex("page", (q) =>
-            q.eq("conversation", p.conversation).eq("offset", 0),
+          .withIndex(
+            "page",
+            (q) => q.eq("conversation", p.conversation).eq("offset", 0),
           )
           .unique();
         if (!head || head.revision !== p.headRevision) return;
       }
-      const value = {
-        revision: p.revision,
-        conversation: String(p.conversation),
-        offset: Number(p.offset),
-        messages: p.messages,
-        hasMore: Boolean(p.hasMore),
-        updatedAt: Date.now(),
-      };
-      if (old) await ctx.db.patch(old._id, value);
-      else await ctx.db.insert("pages", value);
+      // Reconnects and background reconciliation often read the same page.
+      // Avoid rewriting megabytes of unchanged tool output on every refresh.
+      if (
+        !old ||
+        !p.revision ||
+        old.revision !== p.revision ||
+        old.hasMore !== Boolean(p.hasMore)
+      ) {
+        const chunks = historyChunks(p.messages);
+        const chunked = chunks.length > 1;
+        const value = {
+          revision: p.revision,
+          conversation: String(p.conversation),
+          offset: Number(p.offset),
+          messages: chunked ? [] : p.messages,
+          chunked,
+          hasMore: Boolean(p.hasMore),
+          updatedAt: Date.now(),
+        };
+        if (old) {
+          await deleteHistoryChunks(ctx, old._id);
+          await ctx.db.patch(old._id, value);
+        }
+        const pageId = old?._id ?? (await ctx.db.insert("pages", value));
+        if (chunked) {
+          for (const [index, content] of chunks.entries()) {
+            await ctx.db.insert("pageChunks", { page: pageId, index, content });
+          }
+        }
+      }
       if (p.offset === 0) {
         const messages: { createdAt?: unknown }[] = Array.isArray(p.messages)
           ? p.messages
@@ -720,8 +771,9 @@ export const pendingOrganization = query({
     await adapter(ctx);
     return await ctx.db
       .query("conversations")
-      .withIndex("organizationPending", (q) =>
-        q.eq("organizationPending", true),
+      .withIndex(
+        "organizationPending",
+        (q) => q.eq("organizationPending", true),
       )
       .filter((q) => q.neq(q.field("deleted"), true))
       .take(100);

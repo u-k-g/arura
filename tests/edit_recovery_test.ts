@@ -72,8 +72,9 @@ Deno.test("a failed submit settles the dispatch-time projection instead of leavi
   const states: string[] = [];
   const idles: number[] = [];
   hermes.on("turn", (turn: { state: string }) => states.push(turn.state));
-  hermes.on("idle", (turn: { startedAt: number }) =>
-    idles.push(turn.startedAt),
+  hermes.on(
+    "idle",
+    (turn: { startedAt: number }) => idles.push(turn.startedAt),
   );
   await rejects(hermes.submitPrompt(key, { text: "Hello" }));
   deepStrictEqual(states, ["running"]);
@@ -86,8 +87,9 @@ Deno.test("an accepted submit keeps the dispatch-time projection running", async
   const states: string[] = [];
   const idles: number[] = [];
   hermes.on("turn", (turn: { state: string }) => states.push(turn.state));
-  hermes.on("idle", (turn: { startedAt: number }) =>
-    idles.push(turn.startedAt),
+  hermes.on(
+    "idle",
+    (turn: { startedAt: number }) => idles.push(turn.startedAt),
   );
   await hermes.submitPrompt(key, { text: "Hello" });
   deepStrictEqual(states, ["running"]);

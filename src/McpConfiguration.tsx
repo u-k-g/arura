@@ -64,7 +64,7 @@ export default function McpConfiguration(props: {
       const current = await resource("config", { profile });
       if (
         serialize(record(current.config ?? current).mcp_servers ?? {}) !==
-        original
+          original
       ) {
         throw new Error(
           "MCP configuration changed elsewhere. Reopen the editor before saving; your draft has been kept.",

@@ -30,11 +30,13 @@ Deno.test({
         await page
           .getByRole("button", { name: "Fixture conversation", exact: true })
           .click();
-        for (const [label, route] of [
-          ["Bots", "resources:profiles"],
-          ["Cron jobs", "resources:jobs"],
-          ["Threads", '["default","fixture-chat"]'],
-        ]) {
+        for (
+          const [label, route] of [
+            ["Bots", "resources:profiles"],
+            ["Cron jobs", "resources:jobs"],
+            ["Threads", '["default","fixture-chat"]'],
+          ]
+        ) {
           await openNavigation();
           const nav = page.getByRole("navigation", {
             name: "Main navigation",

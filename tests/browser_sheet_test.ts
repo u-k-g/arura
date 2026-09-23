@@ -2,7 +2,8 @@ import { chromium, expect } from "@playwright/test";
 import { signIn } from "./sign_in.ts";
 
 Deno.test({
-  name: "mobile navigation follows a touch drag, snaps back, and dismisses from its header",
+  name:
+    "mobile navigation follows a touch drag, snaps back, and dismisses from its header",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({

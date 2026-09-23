@@ -5,7 +5,8 @@ import { identity } from "../server/identity.ts";
 import { signIn } from "./sign_in.ts";
 import { requireValue } from "./require_value.ts";
 Deno.test({
-  name: "recovery preserves the reading anchor and keeps work before the answer after a trailing event",
+  name:
+    "recovery preserves the reading anchor and keeps work before the answer after a trailing event",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -13,6 +14,7 @@ Deno.test({
       executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
     });
     const page = await browser.newPage();
+    const adapterPid = Number(Deno.env.get("ARURA_TEST_ADAPTER_PID"));
     const adapter = new ConvexHttpClient(
       requireValue(Deno.env.get("CONVEX_SELF_HOSTED_URL"), "Convex URL"),
     );
@@ -33,7 +35,7 @@ Deno.test({
       await expect(
         page.getByText("Received: Prepare recovery test", { exact: true }),
       ).toBeVisible();
-      await expect(page.locator(".history-work")).toBeVisible();
+      await expect(page.locator(".history-work").last()).toBeVisible();
       const conversation = '["default","fixture-chat"]';
       const messages = Array.from({ length: 30 }, (_, i) => [
         {
@@ -78,19 +80,20 @@ Deno.test({
           },
           turn: { ...turn, recovering },
         });
+      // These synthetic snapshots must not race the fixture adapter's real turn.
+      if (adapterPid) Deno.kill(adapterPid, "SIGSTOP");
       await publish(false);
       await expect(page.locator('[data-message-id="a-20"]')).toBeAttached();
       await page.locator(".transcript").evaluate(async () => {
         await new Promise<void>((resolve) =>
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
         );
       });
       await page.locator(".transcript").evaluate((element) => {
         element.dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
         const target = element.querySelector('[data-message-id="a-20"]');
         if (!target) throw new Error("Missing reading target");
-        element.scrollTop +=
-          target.getBoundingClientRect().top -
+        element.scrollTop += target.getBoundingClientRect().top -
           element.getBoundingClientRect().top -
           35;
       });
@@ -132,6 +135,7 @@ Deno.test({
         requireValue(await summary.boundingBox(), "summary").y,
       ).toBeLessThan(requireValue(await answer.boundingBox(), "answer").y);
     } finally {
+      if (adapterPid) Deno.kill(adapterPid, "SIGCONT");
       await browser.close();
     }
   },

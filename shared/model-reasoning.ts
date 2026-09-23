@@ -55,8 +55,8 @@ export function reasoningLevels(
       levels = m.startsWith("gpt-6-astra")
         ? ["low", "medium", "high", "xhigh", "max"]
         : /gpt-5\.6|gpt-daybreak-blue-latest/.test(m)
-          ? ["none", "low", "medium", "high", "xhigh", "max"]
-          : ["none", "low", "medium", "high", "xhigh"];
+        ? ["none", "low", "medium", "high", "xhigh", "max"]
+        : ["none", "low", "medium", "high", "xhigh"];
     }
   }
   if (!levels) return undefined;

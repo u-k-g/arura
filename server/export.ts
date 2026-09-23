@@ -7,12 +7,14 @@ export async function exportConversation(
 ) {
   const first = await readPage(0);
   async function* chunks() {
-    yield `${JSON.stringify({
-      format: "arura-conversation",
-      version: 1,
-      id,
-      profile,
-    }).slice(0, -1)},"messages":[`;
+    yield `${
+      JSON.stringify({
+        format: "arura-conversation",
+        version: 1,
+        id,
+        profile,
+      }).slice(0, -1)
+    },"messages":[`;
     let page = first,
       offset = 0,
       written = false;

@@ -3,7 +3,8 @@ import { openSettings, signIn } from "./sign_in.ts";
 import { onceActionDialog } from "./action_dialog.ts";
 import { chromium, expect, type Page } from "@playwright/test";
 Deno.test({
-  name: "conversation rename, context, independent views and deletion work across devices",
+  name:
+    "conversation rename, context, independent views and deletion work across devices",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
