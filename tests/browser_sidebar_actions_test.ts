@@ -192,6 +192,8 @@ Deno.test({
       await page
         .getByRole("button", { name: "Send message", exact: true })
         .click();
+      await expect(page.getByText("Received: Profile draft", { exact: true }))
+        .toBeVisible();
       await expect
         .poll(() =>
           page.evaluate(
