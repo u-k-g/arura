@@ -19,6 +19,7 @@ Deno.test({
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })
         .click();
+      await page.getByLabel("Message Hermes", { exact: true }).focus();
       const row = page.locator(".nav-scroll .thread-row.selected");
       await page.mouse.move(900, 700);
       await expect(row.locator(".session-dot")).toBeVisible();
@@ -223,6 +224,45 @@ Deno.test({
       await page.screenshot({
         path: "/var/tmp/arura-clean-sidebar-expanded.png",
       });
+      const loadedArchiveLayout = await archive.evaluate((list) => {
+        const row = list.querySelector(".thread-row");
+        const section = list.parentElement;
+        if (!row || !section) throw new Error("Missing archive layout");
+        const more = globalThis.document.createElement("button");
+        more.className = "text-button archive-more";
+        more.textContent = "Show 10 more";
+        section.append(more);
+        const copies: Element[] = [];
+        const addRows = (count: number) => {
+          for (let i = 0; i < count; i++) {
+            const copy = row.cloneNode(true) as Element;
+            copies.push(copy);
+            list.append(copy);
+          }
+        };
+        addRows(9);
+        const tenHeight = section.getBoundingClientRect().height;
+        addRows(10);
+        const result = {
+          tenHeight,
+          twentyHeight: section.getBoundingClientRect().height,
+          scrollable: list.scrollHeight > list.clientHeight,
+          buttonWidth: more.getBoundingClientRect().width,
+          sectionWidth: section.getBoundingClientRect().width,
+        };
+        for (const copy of copies) copy.remove();
+        more.remove();
+        return result;
+      });
+      expect(loadedArchiveLayout.twentyHeight).toBeCloseTo(
+        loadedArchiveLayout.tenHeight,
+        0,
+      );
+      expect(loadedArchiveLayout.scrollable).toBe(true);
+      expect(loadedArchiveLayout.buttonWidth).toBeCloseTo(
+        loadedArchiveLayout.sectionWidth,
+        0,
+      );
       await archive
         .getByRole("button", {
           name: "Unarchive Fixture conversation",

@@ -1246,16 +1246,16 @@ export default function App() {
                   </div>
                 )}
               </For>
-              <Show when={archiveHasMore()}>
-                <button
-                  type="button"
-                  class="text-button"
-                  onClick={() => setArchiveLimit((x) => x + 10)}
-                >
-                  Show 10 more
-                </button>
-              </Show>
             </div>
+            <Show when={archiveHasMore()}>
+              <button
+                type="button"
+                class="text-button archive-more"
+                onClick={() => setArchiveLimit((x) => x + 10)}
+              >
+                Show 10 more
+              </button>
+            </Show>
           </Show>
         </div>
       </Show>

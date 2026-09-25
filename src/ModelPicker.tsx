@@ -26,7 +26,7 @@ export type ModelOption = {
 };
 export const modelLabel = (entry: ModelOption) =>
   entry.name ?? entry.label ?? entry.id ?? entry.model ?? String(entry);
-const modelKey = (entry: ModelOption) =>
+export const modelKey = (entry: ModelOption) =>
   JSON.stringify([entry.provider ?? "", entry.id ?? entry.model ?? entry]);
 const providerLabel = (entry: ModelOption) =>
   entry.providerName ?? entry.provider ?? "Default provider";
@@ -41,7 +41,7 @@ export default function ModelPicker(props: {
   effort: string;
   close: () => void;
   choose: (model: ModelOption) => Promise<void>;
-  changeEffort: (effort: string) => Promise<void>;
+  changeEffort: (effort: string, model: ModelOption) => Promise<void>;
 }) {
   let panel!: HTMLDivElement;
   const position = () => {
@@ -258,8 +258,9 @@ export default function ModelPicker(props: {
                 disabled={busy() || !efforts()?.length}
                 onChange={(event) => {
                   const effort = event.currentTarget.value;
-                  if (efforts()?.includes(effort)) {
-                    perform(() => props.changeEffort(effort));
+                  const entry = selected();
+                  if (entry && efforts()?.includes(effort)) {
+                    perform(() => props.changeEffort(effort, entry));
                   }
                 }}
               >

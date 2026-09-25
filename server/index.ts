@@ -11,7 +11,10 @@ import {
   type Turn,
   withoutReasoning,
 } from "../shared/model.ts";
-import { clearsStaleEffort } from "../shared/model-reasoning.ts";
+import {
+  clearsStaleEffort,
+  reasoningLevels,
+} from "../shared/model-reasoning.ts";
 import {
   operationRequest,
   rpcAllowlist,
@@ -453,6 +456,7 @@ async function processCommands() {
           }
           let prompt = payload.text;
           let shouldSubmit = true;
+          let preferredEffort = "";
           // A persisted model without a known reasoning level must not
           // submit with a stale session effort (the Go relay answers HTTP
           // 500). Runs before slash dispatch so an explicit /reasoning in
@@ -462,13 +466,25 @@ async function processCommands() {
             const flag = parts.indexOf("--provider");
             const provider = flag >= 0 ? (parts[flag + 1] ?? "") : "";
             const model = parts[0] ?? "";
+            const capabilities = await currentCatalogReasoningCapabilities(
+              provider,
+              model,
+            );
+            const levels = reasoningLevels(provider, model, capabilities);
+            const unsupportedGoModel = clearsStaleEffort(
+              provider,
+              model,
+              capabilities,
+            );
             if (
-              clearsStaleEffort(
-                provider,
-                model,
-                await currentCatalogReasoningCapabilities(provider, model),
-              )
+              typeof payload.model.effort === "string" &&
+              (levels?.includes(payload.model.effort) ||
+                (levels === undefined && !unsupportedGoModel &&
+                  /^[a-z][a-z0-9_-]{0,63}$/.test(payload.model.effort)))
             ) {
+              preferredEffort = payload.model.effort;
+            }
+            if (unsupportedGoModel) {
               try {
                 await hermes.call("config.set", {
                   session_id,
@@ -541,6 +557,20 @@ async function processCommands() {
                         "Select this model again to confirm before sending.",
                     ),
                   );
+                }
+              }
+              if (preferredEffort) {
+                const current = await hermes.call("config.get", {
+                  session_id,
+                  key: "reasoning",
+                });
+                if (record(current).value !== preferredEffort) {
+                  await hermes.call("config.set", {
+                    session_id,
+                    key: "reasoning",
+                    value: preferredEffort,
+                    scope: "session",
+                  });
                 }
               }
             }

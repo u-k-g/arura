@@ -13,6 +13,7 @@ export type Workspace = {
   settings: Record<string, unknown> & {
     hiddenModels?: string[];
     modelFavorites?: string[];
+    modelEfforts?: Record<string, string>;
     dismissedErrors?: string[];
     chatModel?: {
       value: string;

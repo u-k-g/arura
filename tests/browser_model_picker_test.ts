@@ -145,6 +145,34 @@ Deno.test({
       await expect(
         b.getByRole("button", { name: "Model", exact: true }),
       ).toContainText("fixture-alternative");
+      await a.getByRole("button", { name: "Model", exact: true }).click();
+      await picker.getByRole("combobox", { name: "Reasoning effort" })
+        .selectOption("low");
+      await expect(
+        a.getByRole("button", { name: "Model", exact: true }),
+      ).toContainText("low");
+      await picker.getByRole("button", {
+        name: "Fixture provider",
+        exact: true,
+      }).click();
+      await picker.getByRole("button", {
+        name: "fixture-model · Fixture provider",
+        exact: true,
+      }).click();
+      await expect(
+        a.getByRole("button", { name: "Model", exact: true }),
+      ).toContainText("fixture-model · high");
+      await a.getByRole("button", { name: "Model", exact: true }).click();
+      await picker.getByRole("button", {
+        name: "fixture-alternative · Fixture provider",
+        exact: true,
+      }).click();
+      await expect(
+        a.getByRole("button", { name: "Model", exact: true }),
+      ).toContainText("fixture-alternative · low");
+      await expect(
+        mobile.getByRole("combobox", { name: "Reasoning effort" }),
+      ).toHaveValue("low");
       await a
         .locator(".sidebar-titlebar, .topbar, .nav-footer, .pinned-divider")
         .getByRole("button", { name: "New conversation", exact: true })
@@ -171,6 +199,16 @@ Deno.test({
       });
       expect(runtime.ok()).toBe(true);
       expect((await runtime.json()).model).toBe("fixture-alternative");
+      const effortAfterSend = await a.request.post(`${url}/api/query`, {
+        headers: { Origin: url },
+        data: {
+          method: "config.get",
+          conversation,
+          params: { key: "reasoning" },
+        },
+      });
+      expect(effortAfterSend.ok()).toBe(true);
+      expect((await effortAfterSend.json()).value).toBe("low");
       await a.reload();
       await expect(
         a.getByRole("button", { name: "Model", exact: true }),

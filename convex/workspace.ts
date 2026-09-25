@@ -560,6 +560,31 @@ export const modelFavorite = mutation({
     else await ctx.db.insert("settings", { key: "modelFavorites", value });
   },
 });
+export const modelEffort = mutation({
+  args: { model: v.string(), effort: v.string() },
+  handler: async (ctx, args) => {
+    await device(ctx);
+    if (!args.model || args.model.length > 1024) {
+      throw new Error("Invalid model");
+    }
+    if (!/^[a-z][a-z0-9_-]{0,63}$/.test(args.effort)) {
+      throw new Error("Invalid reasoning effort");
+    }
+    const key = "modelEfforts";
+    const old = await ctx.db
+      .query("settings")
+      .withIndex("key", (q) => q.eq("key", key))
+      .unique();
+    const current = old?.value && typeof old.value === "object" &&
+        !Array.isArray(old.value)
+      ? old.value as Record<string, string>
+      : {};
+    if (current[args.model] === args.effort) return;
+    const value = { ...current, [args.model]: args.effort };
+    if (old) await ctx.db.patch(old._id, { value });
+    else await ctx.db.insert("settings", { key, value });
+  },
+});
 export const sweep = internalMutation({
   args: { cursor: v.optional(v.string()) },
   handler: async (ctx, args) => {

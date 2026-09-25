@@ -1,7 +1,11 @@
 import { toolPresentation } from "../shared/tool-presentation.ts";
 import { workGroup } from "../shared/model.ts";
 import { ask, confirmAction, rejectAction } from "./ActionDialog.tsx";
-import ModelPicker, { modelLabel, type ModelOption } from "./ModelPicker.tsx";
+import ModelPicker, {
+  modelKey,
+  modelLabel,
+  type ModelOption,
+} from "./ModelPicker.tsx";
 import {
   clearsStaleEffort,
   reasoningLevels,
@@ -231,8 +235,18 @@ export default function Chat(props: {
   const selectedModel = () => workspace()?.settings.chatModel;
   const displayedModel = () => selectedModel()?.label || currentModel();
   const [currentEffort, setCurrentEffort] = createSignal("");
+  const rememberedEffort = () => {
+    const selection = selectedModel();
+    if (!selection) return "";
+    return workspace()?.settings.modelEfforts?.[
+      modelKey({
+        provider: selection.provider,
+        id: selection.value.split(/\s+/)[0],
+      })
+    ] ?? "";
+  };
   const displayedEffort = createMemo(() => {
-    const effort = currentEffort();
+    const effort = rememberedEffort() || currentEffort();
     if (!effort) return "";
     const name = displayedModel();
     const provider = selectedModel()?.provider ?? currentProvider();
@@ -699,9 +713,12 @@ export default function Chat(props: {
       // The composer selection follows the user across conversations. Hermes
       // applies it only when a session's current model differs.
       const modelSelection = selectedModel();
+      const effort = rememberedEffort();
       const payload = {
         text: value,
-        ...(modelSelection ? { model: { ...modelSelection } } : {}),
+        ...(modelSelection
+          ? { model: { ...modelSelection, ...(effort ? { effort } : {}) } }
+          : {}),
         attachments: uploads().filter((file) =>
           value.includes(`[Attached file: ${file.path}]`)
         ),
@@ -1711,9 +1728,22 @@ export default function Chat(props: {
                   : c().kind === "send"
                   ? c().status === "unknown"
                     ? "Message delivery is uncertain"
+                    : c().payload.edit
+                    ? "Edit was not sent"
                     : "Message was not sent"
                   : "Action failed"}
               </strong>
+              <Show
+                when={c().payload.edit && c().error?.includes(
+                  "target user message is no longer in session history",
+                )}
+              >
+                <small>
+                  Hermes could not match the message selected for editing.
+                  Restore your text, then refresh the conversation before
+                  trying again.
+                </small>
+              </Show>
               <Show when={commandIssues().length > 1}>
                 <small>{commandIssues().length} issues</small>
               </Show>
@@ -2290,7 +2320,7 @@ export default function Chat(props: {
           models={models()}
           current={displayedModel()}
           provider={selectedModel()?.provider ?? currentProvider()}
-          effort={currentEffort()}
+          effort={rememberedEffort() || currentEffort()}
           close={() => setModel("")}
           choose={async (m) => {
             // Hermes parses this as /model arguments, not JSON or shell quoting.
@@ -2320,11 +2350,25 @@ export default function Chat(props: {
             }
             setCurrentModel(modelLabel(m));
             setCurrentProvider(m.provider ?? "");
+            const levels = reasoningLevels(
+              m.provider ?? "",
+              m.id ?? m.model ?? "",
+              m.capabilities,
+            );
+            const remembered = workspace()?.settings.modelEfforts
+              ?.[modelKey(m)];
             // Models without a reported level reject a stale effort, so clear
             // it instead of sending the previous model's level. "none" parses
             // to disabled, which omits the wire field. Best-effort: the model
             // switch itself already succeeded.
-            if (
+            if (remembered && levels?.includes(remembered)) {
+              await sessionRpc("config.set", {
+                key: "reasoning",
+                value: remembered,
+                scope: "session",
+              });
+              setCurrentEffort(remembered);
+            } else if (
               clearsStaleEffort(
                 m.provider ?? "",
                 m.id ?? m.model ?? "",
@@ -2357,13 +2401,17 @@ export default function Chat(props: {
             });
             setModel("");
           }}
-          changeEffort={async (effort) => {
+          changeEffort={async (effort, selected) => {
             await sessionRpc("config.set", {
               key: "reasoning",
               value: effort,
               scope: "session",
             });
             setCurrentEffort(effort);
+            await mutate("workspace.modelEffort", {
+              model: modelKey(selected),
+              effort,
+            });
           }}
         />
       </Show>

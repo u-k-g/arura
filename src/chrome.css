@@ -920,8 +920,16 @@ dialog.conversation-menu {
 }
 .archive-list {
   min-height: 0;
+  max-height: 270px;
   overflow-y: auto;
   color: var(--muted);
+}
+.archive-more {
+  flex: none;
+  width: 100%;
+  min-height: 32px;
+  justify-content: flex-start;
+  padding: 6px 8px;
 }
 .archive-list .thread-select {
   color: var(--muted);
