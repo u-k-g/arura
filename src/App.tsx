@@ -3,7 +3,7 @@ import SettingsFrame from "./SettingsFrame.tsx";
 import ActionDialog from "./ActionDialog.tsx";
 import { confirmAction } from "./ActionDialog.tsx";
 import type { ConversationPage, Doc } from "../shared/contracts.ts";
-import { essentialIconChoices } from "../shared/essentialIcons.ts";
+import { searchEssentialIcons } from "../shared/essentialIcons.ts";
 import {
   createEffect,
   createMemo,
@@ -128,6 +128,7 @@ export default function App() {
   const [menuAnchor, setMenuAnchor] = createSignal<{ x: number; y: number }>();
   const [iconPicker, setIconPicker] = createSignal<Conversation>();
   const [iconSearch, setIconSearch] = createSignal("");
+  const iconMatches = createMemo(() => searchEssentialIcons(iconSearch()));
   createEffect(() => {
     iconPicker();
     setIconSearch("");
@@ -951,7 +952,11 @@ export default function App() {
                 {(c) => (
                   <button
                     type="button"
-                    classList={{ selected: view() === c.key }}
+                    classList={{
+                      selected: view() === c.key,
+                      unread: Boolean(unread(c)),
+                      running: Boolean(c.running),
+                    }}
                     title={c.title}
                     aria-label={c.title}
                     onClick={() => navigate(c.key)}
@@ -1545,17 +1550,13 @@ export default function App() {
               class="filter"
               aria-label="Search icons"
               placeholder="Search icons…"
+              autocapitalize="none"
+              spellcheck={false}
               value={iconSearch()}
               onInput={(event) => setIconSearch(event.currentTarget.value)}
             />
             <div class="essential-icon-picker">
-              <For
-                each={essentialIconChoices.filter(([icon, label]) =>
-                  `${icon} ${label}`
-                    .toLowerCase()
-                    .includes(iconSearch().trim().toLowerCase())
-                )}
-              >
+              <For each={iconMatches()}>
                 {([icon, label]) => (
                   <button
                     type="button"
@@ -1579,13 +1580,7 @@ export default function App() {
                 )}
               </For>
             </div>
-            <Show
-              when={!essentialIconChoices.some(([icon, label]) =>
-                `${icon} ${label}`
-                  .toLowerCase()
-                  .includes(iconSearch().trim().toLowerCase())
-              )}
-            >
+            <Show when={!iconMatches().length}>
               <p>No icons found.</p>
             </Show>
           </Dialog>

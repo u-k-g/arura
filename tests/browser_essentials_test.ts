@@ -86,6 +86,24 @@ Deno.test({
       await expect(tile.locator(".icon")).toBeVisible();
       await tile.click();
       await tile.click({ button: "right" });
+      await a.getByRole("button", { name: "Mark as unread" }).click();
+      await expect(tile).toHaveClass(/unread/);
+      const unreadIconColor = await tile.locator(".icon").evaluate((icon) =>
+        getComputedStyle(icon).color
+      );
+      const warningColor = await a.locator(".essentials").evaluate((element) => {
+        const sample = globalThis.document.createElement("span");
+        element.append(sample);
+        sample.style.color = "var(--warning)";
+        const color = getComputedStyle(sample).color;
+        sample.remove();
+        return color;
+      });
+      expect(unreadIconColor).toBe(warningColor);
+      await tile.click({ button: "right" });
+      await a.getByRole("button", { name: "Mark as read" }).click();
+      await expect(tile).not.toHaveClass(/unread/);
+      await tile.click({ button: "right" });
       await a.getByRole("button", { name: "Change icon", exact: true }).click();
       await a
         .getByRole("dialog")

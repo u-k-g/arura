@@ -1,3 +1,5 @@
+import { essentialIconSearchData } from "./essentialIconSearchData.ts";
+
 export const essentialIcons = [
   ["message-text", "Chat"],
   ["bot", "Bot"],
@@ -98,18 +100,39 @@ export const essentialIcons = [
   ["attachment", "Attachment"],
   ["book-stack", "Book Stack"],
   ["open-book", "Open Book"],
+  ["coffee-cup", "Coffee"],
+  ["mail", "Email"],
+  ["gift", "Gift"],
+  ["bed", "Sleep"],
+  ["umbrella", "Umbrella"],
+  ["building", "Building"],
+  ["church", "Faith"],
+  ["piggy-bank", "Savings"],
+  ["battery-indicator", "Battery"],
+  ["bonfire", "Campfire"],
+  ["dice-six", "Dice"],
+  ["wolf", "Wolf"],
+  ["package", "Package"],
+  ["director-chair", "Movies"],
+  ["lamp", "Lamp"],
+  ["fridge", "Kitchen"],
+  ["user", "Person"],
 ] as const;
 
 const reservedIcons = new Set([
+  // Icons used by Arura controls and navigation must keep one meaning.
   "attachment",
   "bot",
+  "brain",
   "capabilities",
   "message-text",
+  "network",
   "check",
   "clock",
   "cloud",
   "computer",
   "edit-pencil",
+  "eye",
   "folder",
   "key",
   "page",
@@ -119,8 +142,62 @@ const reservedIcons = new Set([
   "smartphone-device",
   "star",
   "terminal",
+  "light-bulb-on",
+  "code-brackets",
+  "book-stack",
+  "open-book",
+  "tools",
+  "bag",
+  "medal",
+  "internet",
 ]);
 
 export const essentialIconChoices = essentialIcons.filter(
   ([icon]) => !reservedIcons.has(icon),
 );
+
+const searchAliases: Record<string, string> = {
+  bed: "rest bedroom",
+  "coffee-cup": "beverage",
+  "director-chair": "cinema movie film",
+  fridge: "kitchen appliance",
+  gift: "present birthday celebration",
+  journal: "writing",
+  leaf: "sustainability environment",
+  wolf: "pet wildlife",
+};
+
+function normalizeSearch(value: string): string {
+  return value
+    .normalize("NFKD")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+export function searchEssentialIcons(query: string) {
+  const terms = normalizeSearch(query).split(/\s+/).filter(Boolean);
+  if (!terms.length) return essentialIconChoices;
+
+  return essentialIconChoices
+    .map((choice, index) => {
+      const [icon, label] = choice;
+      const name = normalizeSearch(`${icon} ${label}`);
+      const related = normalizeSearch(
+        `${essentialIconSearchData[icon] ?? ""} ${searchAliases[icon] ?? ""}`,
+      );
+      if (
+        !terms.every((term) => name.includes(term) || related.includes(term))
+      ) {
+        return undefined;
+      }
+      const score = terms.reduce(
+        (total, term) => total + (name.includes(term) ? 2 : 1),
+        0,
+      );
+      return { choice, index, score };
+    })
+    .filter((result) => result !== undefined)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .map((result) => result.choice);
+}

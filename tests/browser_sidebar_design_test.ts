@@ -101,6 +101,20 @@ Deno.test({
         .click();
       const tile = page.locator(".essentials button");
       await expect(tile).toHaveCount(1);
+      const iconColors = await tile.evaluate((button) => {
+        const icon = button.querySelector(".icon");
+        if (!icon) throw new Error("Missing Essentials icon");
+        const current = getComputedStyle(icon).color;
+        button.classList.add("unread");
+        const unread = getComputedStyle(icon).color;
+        button.classList.add("running");
+        const running = getComputedStyle(icon).color;
+        button.classList.remove("unread", "running");
+        return { current, unread, running };
+      });
+      expect(iconColors.current).toBe(statusColors.muted);
+      expect(iconColors.unread).toBe(statusColors.warning);
+      expect(iconColors.running).toBe(statusColors.success);
       await expect(
         page.locator(".navigation").getByText("Essentials", { exact: true }),
       ).toHaveCount(0);
@@ -122,11 +136,11 @@ Deno.test({
       ).toBeGreaterThan(80);
       await picker
         .getByRole("searchbox", { name: "Search icons" })
-        .fill("brain");
+        .fill("caffeine");
       await expect(picker.locator(".essential-icon-picker button")).toHaveCount(
         1,
       );
-      await picker.getByRole("button", { name: "Brain", exact: true }).click();
+      await picker.getByRole("button", { name: "Coffee", exact: true }).click();
       await tile.click({ button: "right" });
       await page
         .getByRole("button", { name: "Change icon", exact: true })
@@ -135,7 +149,7 @@ Deno.test({
         picker.getByRole("searchbox", { name: "Search icons" }),
       ).toHaveValue("");
       await expect(
-        picker.getByRole("button", { name: "Brain", exact: true }),
+        picker.getByRole("button", { name: "Coffee", exact: true }),
       ).toHaveAttribute("aria-pressed", "true");
       await picker.getByRole("button", { name: "Close", exact: true }).click();
       const sidebar = requireValue(

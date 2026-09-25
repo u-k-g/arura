@@ -16,6 +16,7 @@
 !public/**/
 !scripts/
 !scripts/**/
+!scripts/generate-essential-icon-search.py
 !server/
 !server/**/
 !shared/

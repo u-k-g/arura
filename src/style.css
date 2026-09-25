@@ -286,8 +286,13 @@ small {
 .essentials .icon {
   width: var(--essential-icon-size);
   height: var(--essential-icon-size);
-  color: var(--essential-icon-color, var(--muted));
-  opacity: var(--essential-icon-opacity, 0.7);
+  color: var(--subtle);
+}
+.essentials > button.unread .icon {
+  color: var(--warning);
+}
+.essentials > button.running .icon {
+  color: var(--success);
 }
 .essentials > button:hover {
   background: color-mix(in srgb, var(--panel) 84%, black);
@@ -309,8 +314,6 @@ small {
 }
 .essentials > .selected {
   border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-  --essential-icon-color: var(--ink);
-  --essential-icon-opacity: 1;
 }
 .section-heading {
   display: flex;
