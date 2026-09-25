@@ -71,7 +71,7 @@ Deno.test({
       await expect(a.locator(".topbar")).not.toContainText(
         requireValue(original, "original"),
       );
-      let title = `Garden notes ${crypto.randomUUID().slice(0, 6)}`;
+      let title = `Slow rename ${crypto.randomUUID().slice(0, 6)}`;
       await a
         .locator(
           '.thread-row.selected > .icon-button[aria-label^="Actions for"]',
@@ -84,6 +84,8 @@ Deno.test({
       await expect(renameInput).toBeFocused();
       await renameInput.fill(title);
       await renameInput.press("Enter");
+      await renameInput.press("Enter");
+      await expect(renameInput).toHaveValue(title);
       await expect(
         b.getByRole("button", { name: title, exact: true }),
       ).toBeVisible();

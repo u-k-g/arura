@@ -25,7 +25,7 @@ Deno.test({
         await page.getByRole("button", {
           name: "New conversation",
           exact: true,
-        }).click();
+        }).first().click();
         await page.getByLabel("Message Hermes", { exact: true }).fill(message);
         await page.getByRole("button", { name: "Send message" }).click();
         await expect(page.getByText(`Received: ${message}`, { exact: true }))
@@ -61,11 +61,6 @@ Deno.test({
         const palette = page.getByRole("dialog", { name: "Find anything" });
         const search = palette.getByRole("combobox");
         await search.fill(String(index + 1));
-        const option = palette.getByRole("option");
-        await expect(option).toHaveCount(1);
-        await expect(option.locator(".palette-slot"))
-          .toHaveText(String(index + 1));
-        await search.press("Enter");
         await expect(palette).toHaveCount(0);
         await expect.poll(currentKey).toBe(key);
       }

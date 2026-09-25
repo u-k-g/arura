@@ -187,10 +187,10 @@ Deno.test({
         path: `${Deno.env.get("TMPDIR")}/essentials-mobile.png`,
       });
       await a
-        .getByRole("button", { name: "Close", exact: true })
-        .last()
-        .click();
-      await actions();
+        .getByRole("dialog", { name: "Conversations", exact: true })
+        .locator(".essentials")
+        .getByRole("button", { name: "Fixture conversation", exact: true })
+        .click({ button: "right" });
       await a
         .getByRole("button", { name: "Toggle Essentials", exact: true })
         .click();

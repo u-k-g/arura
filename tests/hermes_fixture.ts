@@ -223,6 +223,35 @@ export function hermesFixture(
     s.pendingPersistence = false;
     s.messages.push({ id: rowId++, role: "user", content: text });
     event("message.start", sid, {});
+    if (text === "ARURA_TEST_INTERIM_DUPLICATE") {
+      const interim = "Let me zoom into the photo first.";
+      const reply = `${interim}\n\nThe fade starts higher near the temple.`;
+      s.messages.push({ id: rowId++, role: "assistant", content: interim });
+      event("message.interim", sid, { text: interim });
+      event("sessions.changed", "", {});
+      event("tool.start", sid, {
+        tool_call_id: "interim-vision",
+        name: "vision_analyze",
+      });
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      for (const piece of reply.match(/[\s\S]{1,6}/g) ?? []) {
+        event("message.delta", sid, { text: piece });
+        await new Promise((resolve) => setTimeout(resolve, 12));
+      }
+      s.messages.push({
+        id: rowId++,
+        role: "tool",
+        content: "Image inspected",
+        name: "vision_analyze",
+        tool_call_id: "interim-vision",
+      });
+      s.messages.push({ id: rowId++, role: "assistant", content: reply });
+      s.last_active = Date.now() / 1000;
+      event("tool.complete", sid, { tool_call_id: "interim-vision" });
+      event("message.complete", sid, { text: reply });
+      event("sessions.changed", "", {});
+      return;
+    }
     if (text === "ARURA_TEST_CONTROLS") {
       const steering: string[] = [];
       await new Promise<void>((finish) => {
@@ -868,7 +897,11 @@ export function hermesFixture(
           });
         }
         if (request.method === "PATCH") {
-          Object.assign(s, await request.json());
+          const patch = await request.json();
+          if (String(patch.title ?? "").startsWith("Slow rename")) {
+            await new Promise((resolve) => setTimeout(resolve, 600));
+          }
+          Object.assign(s, patch);
           event("sessions.changed", "", {});
           return json({ ok: true });
         }

@@ -65,7 +65,9 @@ Deno.test({
       await expect.poll(distanceFromBottom).toBeLessThan(4);
       await expect(transcript.locator(".transcript-group")).toHaveCount(150);
       await transcript.evaluate((node) => {
-        node.dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+        node.dispatchEvent(
+          new WheelEvent("wheel", { bubbles: true, deltaY: -100 }),
+        );
         node.scrollTo(0, 0);
       });
       await expect(transcript.locator(".transcript-group")).toHaveCount(200);
@@ -96,7 +98,7 @@ Deno.test({
       await expect(transcript.locator(".transcript-group")).toHaveCount(225);
       await expect(transcript.locator(".transcript-group").first()).toHaveCSS(
         "content-visibility",
-        "auto",
+        "visible",
       );
       await page
         .getByRole("button", {
@@ -113,7 +115,9 @@ Deno.test({
         transcript.getByText("History row 450", { exact: true }),
       ).toBeVisible();
       await transcript.evaluate((node) => {
-        node.dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+        node.dispatchEvent(
+          new WheelEvent("wheel", { bubbles: true, deltaY: -100 }),
+        );
         node.scrollTo(0, 0);
       });
       const latest = page.getByRole("button", {

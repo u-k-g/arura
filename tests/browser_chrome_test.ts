@@ -20,6 +20,8 @@ Deno.test({
         ),
       );
       await signIn(page, "Navigation review");
+      await expect(page.locator(".mobile-composer-navigation"))
+        .toBeHidden();
       await expect(
         page.getByRole("heading", {
           name: "HERMES",
@@ -139,11 +141,9 @@ Deno.test({
         .toHaveCount(0);
       await page.keyboard.press("Escape");
       await page.setViewportSize({ width: 390, height: 844 });
-      await page
-        .locator(
-          '.thread-row.selected > .icon-button[aria-label^="Actions for"]',
-        )
-        .click();
+      await page.getByRole("button", { name: "Open conversations" }).click();
+      await page.locator(".navigation-sheet .thread-row.selected .thread-select")
+        .click({ button: "right" });
       await expect(menu).toBeVisible();
       await expect(
         menu.getByRole("button", { name: "Toggle pinned", exact: true }),
@@ -160,12 +160,13 @@ Deno.test({
         path: `${Deno.env.get("TMPDIR")}/chrome-mobile-menu.png`,
       });
       await page.keyboard.press("Escape");
-      await page
-        .getByRole("button", { name: "Open conversations", exact: true })
-        .click();
       await expect(
         page.getByRole("dialog", { name: "Conversations", exact: true }),
       ).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(
+        page.getByRole("dialog", { name: "Conversations", exact: true }),
+      ).toHaveCount(0);
     } finally {
       await browser.close();
     }

@@ -66,12 +66,13 @@ export default defineConfig({
         ],
       },
       workbox: {
+        clientsClaim: true,
         navigateFallbackDenylist: [
           /^\/api\//,
           /^\/auth\//,
           /^\/\.well-known\//,
         ],
-        globPatterns: ["**/*.{js,css,svg,png,woff2,webmanifest}"],
+        globPatterns: ["**/*.{html,js,css,svg,png,woff2,webmanifest}"],
         cleanupOutdatedCaches: true,
         runtimeCaching: [
           {

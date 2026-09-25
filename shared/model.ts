@@ -455,6 +455,13 @@ export function normalizeMessages(rows: Record<string, unknown>[]): Message[] {
     return messages;
   });
 }
+export function streamedInterimText(interim: string, stream: string): string {
+  if (!interim) return stream;
+  if (interim.startsWith(stream)) return interim;
+  if (stream.startsWith(interim)) return stream;
+  return interim + stream;
+}
+
 export function elapsed(start: number, end = Date.now()): string {
   const seconds = Math.max(0, Math.floor((end - start) / 1000));
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;

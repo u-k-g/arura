@@ -31,6 +31,7 @@ Deno.test({
       });
       await input.fill("ARURA_TEST_CONTROLS");
       await input.press("Meta+Enter");
+      await expect(input).toBeFocused();
       await expect(
         page.getByText("Waiting for instructions.", { exact: true }),
       ).toBeVisible();
@@ -104,7 +105,7 @@ Deno.test({
       await page.getByRole("button", { name: "Stop", exact: true }).click();
       await expect(
         page.locator(".markdown").filter({
-          hasText: /Stopped\. Instructions received: first\s*; second/,
+          hasText: /Stopped\. Instructions received: second\s*; first/,
         }),
       ).toBeVisible();
     } catch (error) {

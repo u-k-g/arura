@@ -134,7 +134,12 @@ Deno.test({
       ).toBeLessThanOrEqual(1);
       await expect(latest).toHaveCount(0);
       await expect(page.locator(".turn-minimap-step")).toBeHidden();
-      await transcript.evaluate((node) => node.scrollTo(0, 0));
+      await transcript.evaluate((node) => {
+        node.dispatchEvent(
+          new WheelEvent("wheel", { bubbles: true, deltaY: -100 }),
+        );
+        node.scrollTo(0, 0);
+      });
       await expect(latest).toBeVisible();
       await transcript.evaluate((node) => node.scrollTo(0, node.scrollHeight));
       await expect(latest).toHaveCount(0);

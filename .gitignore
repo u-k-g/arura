@@ -6,6 +6,8 @@
 !.agents/**/
 !convex/
 !convex/**/
+!component-tests/
+!component-tests/**/
 !docs/
 !docs/**/
 !nix/

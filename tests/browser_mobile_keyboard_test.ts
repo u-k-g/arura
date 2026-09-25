@@ -22,6 +22,14 @@ Deno.test({
       await page.goto(requireValue(Deno.env.get("ARURA_TEST_URL"), "App URL"));
       await signIn(page, "Keyboard viewport");
       await expect(page.locator(".app-shell")).toBeVisible();
+      const navigation = page.locator(".mobile-composer-navigation");
+      await expect(navigation).toBeVisible();
+      const composerEntry = await page.locator(".composer-entry").boundingBox();
+      const navigationBox = await navigation.boundingBox();
+      if (!composerEntry || !navigationBox) throw new Error("Composer layout missing");
+      expect(navigationBox.y).toBeGreaterThanOrEqual(
+        composerEntry.y + composerEntry.height - 1,
+      );
       const input = page.getByRole("textbox", { name: "Message Hermes" });
       await input.focus();
       await page.evaluate(() => {

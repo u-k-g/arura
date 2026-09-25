@@ -975,6 +975,14 @@ export default function Resources(props: {
             <button
               type="button"
               onClick={() => {
+                setBlueprintValues(
+                  Object.fromEntries(
+                    item.fields.map((field) => [
+                      field.name,
+                      field.default ?? "",
+                    ]),
+                  ),
+                );
                 setBlueprint(item);
                 props.closeSidebar?.();
               }}

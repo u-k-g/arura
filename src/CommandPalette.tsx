@@ -18,6 +18,7 @@ export default function CommandPalette(props: {
   close: () => void;
 }) {
   const [active, setActive] = createSignal(0);
+  let chosen = false;
   const items = createMemo(() => props.items);
   createEffect(() => {
     props.query;
@@ -33,7 +34,8 @@ export default function CommandPalette(props: {
       ?.scrollIntoView({ block: "nearest" });
   };
   const choose = (item: PaletteItem | undefined) => {
-    if (!item) return;
+    if (!item || chosen) return;
+    chosen = true;
     props.close();
     item.run();
   };
@@ -58,7 +60,17 @@ export default function CommandPalette(props: {
             : undefined}
           placeholder="Search conversations and actions"
           value={props.query}
-          onInput={(event) => props.search(event.currentTarget.value)}
+          onInput={(event) => {
+            const value = event.currentTarget.value;
+            props.search(value);
+            if (/^[1-9]$/.test(value)) {
+              globalThis.queueMicrotask(() => {
+                if (props.query === value) {
+                  choose(items().find((item) => item.slot === Number(value)));
+                }
+              });
+            }
+          }}
           onKeyDown={(event) => {
             if (event.isComposing) {
               return;

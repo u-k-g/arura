@@ -719,6 +719,9 @@ dialog.conversation-menu {
   .navigation-sheet .thread-row > .icon-button {
     display: none;
   }
+  .navigation-sheet .thread-row > .icon-button[aria-label^="Unarchive"] {
+    display: inline-flex;
+  }
 }
 .conversation-menu .action-list .icon {
   width: 13px;

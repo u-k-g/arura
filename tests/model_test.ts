@@ -9,12 +9,23 @@ import {
   mergeHistoryMessages,
   normalizeMessages,
   shouldArchive,
+  streamedInterimText,
   subagentTranscript,
   userMessageText,
   visibleText,
   withoutReasoning,
   workGroup,
 } from "../shared/model.ts";
+
+Deno.test("repeated interim stream text remains visible once", () => {
+  const interim = "Let me zoom into the photo first.";
+  equal(streamedInterimText(interim, "Let me "), interim);
+  equal(streamedInterimText(interim, interim), interim);
+  equal(streamedInterimText(interim, `${interim}\n\nThe fade starts higher.`),
+    `${interim}\n\nThe fade starts higher.`);
+  equal(streamedInterimText(interim, "\n\nThe fade starts higher."),
+    `${interim}\n\nThe fade starts higher.`);
+});
 
 Deno.test("user message display hides expanded context and preserves unique references", () => {
   const payload =

@@ -21,6 +21,7 @@
     "convex",
     "scripts",
     "tests",
+    "component-tests",
     "vite.config.ts"
   ]
 }

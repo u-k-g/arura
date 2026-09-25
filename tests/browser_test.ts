@@ -618,10 +618,11 @@ Deno.test({
         .last()
         .click();
       await a
-        .getByRole("button", {
-          name: "Archive Fixture conversation",
-          exact: true,
-        })
+        .locator(".essentials")
+        .getByRole("button", { name: "Fixture conversation", exact: true })
+        .click({ button: "right" });
+      await a
+        .getByRole("button", { name: "Archive", exact: true })
         .click();
       await b
         .getByRole("button", { name: "Open conversations", exact: true })
@@ -675,6 +676,11 @@ Deno.test({
         .getByLabel("Message Hermes", { exact: true })
         .fill("An offline draft");
       await b.evaluate(() => navigator.serviceWorker.ready);
+      await expect
+        .poll(() =>
+          b.evaluate(() => Boolean(navigator.serviceWorker.controller))
+        )
+        .toBe(true);
       await mobile.setOffline(true);
       await b.reload();
       await expect(b.getByLabel("Message Hermes", { exact: true })).toHaveText(
@@ -692,14 +698,15 @@ Deno.test({
       ).toBeVisible({ timeout: 15000 });
       await openSettings(a);
       await a.getByRole("button", { name: "Schedules", exact: true }).click();
+      await a.getByRole("button", { name: "Daily note", exact: true }).click();
+      await expect(
+        a.getByRole("dialog", { name: "Daily note", exact: true })
+          .getByLabel("Time", { exact: true }),
+      ).toHaveValue("08:00");
       await a
-        .getByRole("button", { name: "Automation blueprints", exact: true })
-        .click();
-      await a
-        .getByRole("dialog", { name: "Automation blueprints" })
-        .getByRole("button", { name: /Daily note/ })
-        .click();
-      await a.getByLabel("Topic", { exact: true }).fill("Garden notes");
+        .getByRole("dialog", { name: "Daily note", exact: true })
+        .getByLabel("Topic", { exact: true })
+        .fill("Garden notes");
       await a
         .getByRole("button", { name: "Create schedule", exact: true })
         .click();

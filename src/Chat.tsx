@@ -185,7 +185,7 @@ export default function Chat(props: {
       )
       .sort((a, b) => a.createdAt - b.createdAt);
   const sendNow = (id: Transcript["commands"][number]["_id"]) =>
-    mutate("commands.edit", { id, sendNow: true });
+    mutate("commands.edit", { id, sendNow: true, next: true });
   const [historyLoading, setHistoryLoading] = createSignal(false);
   const [historyRetry, setHistoryRetry] = createSignal(0);
   const [pendingPrompt, setPendingPrompt] = createSignal<{
@@ -248,6 +248,7 @@ export default function Chat(props: {
         entry.capabilities,
       )
       : reasoningLevels(provider ?? "", name);
+    if (!models().length && levels === undefined) return effort;
     return levels?.includes(effort) ? effort : "";
   });
   createEffect(() => {
@@ -313,9 +314,11 @@ export default function Chat(props: {
   let liveScrollFrame: number | undefined;
   let scrollIntent = 0;
   let readingHistory = false;
+  let touchStartY: number | undefined;
   const userScroll = () => {
     if (needsInitialScroll) return;
     readingHistory = true;
+    setAwayFromBottom(true);
     scrollIntent++;
     if (scrollFrame !== undefined) cancelAnimationFrame(scrollFrame);
     scrollFrame = undefined;
@@ -393,17 +396,6 @@ export default function Chat(props: {
     }
   });
   const turn = () => activity().turn as Turn | null;
-  const turnIsInHistory = () => {
-    const last = turn()?.state === "running"
-        ? messages().at(-1)
-        : messages().findLast((message) => message.role === "assistant"),
-      live = turn()?.text.replace(/\s+/g, "");
-    return Boolean(
-      live &&
-        last?.role === "assistant" &&
-        last.text.replace(/\s+/g, "").startsWith(live),
-    );
-  };
   // A send is on its way but no turn projection has arrived yet — the queue
   // poll, dispatch, and agent build all precede the first message.start.
   const thinking = createMemo(() => {
@@ -688,6 +680,7 @@ export default function Chat(props: {
     dismissError(item._id);
   }
   let submission: { signature: string; id: string } | undefined;
+  let submitPending = false;
   async function send() {
     if (
       !text().trim() ||
@@ -783,6 +776,13 @@ export default function Chat(props: {
         saveDraft(profileOf(""), "", "");
         saveDraft(profileOf(key), key, "");
         props.navigate(key);
+        if (composerHadFocus) {
+          globalThis.requestAnimationFrame(() =>
+            globalThis.document
+              .querySelector<HTMLElement>('[aria-label="Message Hermes"]')
+              ?.focus()
+          );
+        }
       }
       // Acceptance into the durable queue is enough to compose the next turn.
       // Never erase newer text typed while the request was in flight.
@@ -1136,15 +1136,24 @@ export default function Chat(props: {
       if (minimapFrame !== undefined) cancelAnimationFrame(minimapFrame);
     });
   });
-  const settledHistoryGroup = createMemo(() =>
-    turn()?.state !== "running" && turnIsInHistory()
-      ? groups().findLast((group) => group.answer)
-      : undefined
-  );
-  const historyOwnsWork = () => Boolean(settledHistoryGroup()?.work.length);
+  const settledHistoryGroup = createMemo(() => {
+    const current = turn();
+    return current && current.state !== "running"
+      ? workGroup(groups(), current)
+      : undefined;
+  });
+  const turnIsInHistory = () => Boolean(settledHistoryGroup());
+  const historyOwnsWork = () => Boolean(settledHistoryGroup());
   const liveWorkGroup = createMemo(() => {
     const current = turn();
     return current ? workGroup(groups(), current) : undefined;
+  });
+  const pendingHistoryGroup = createMemo(() => {
+    const current = turn();
+    return current && current.state !== "running" &&
+        !settledHistoryGroup() && current.text
+      ? workGroup(groups(), { ...current, state: "running" })
+      : undefined;
   });
   const renderActivity = (activity: Turn["activity"][number]) => (
     <div class="activity">
@@ -1155,7 +1164,7 @@ export default function Chat(props: {
           ? "xmark"
           : "clock"}
       />
-      {toolPresentation(activity.label).label}
+      {activity.label}
     </div>
   );
   // The elapsed summary anchors inside a history group only once the agent
@@ -1214,7 +1223,7 @@ export default function Chat(props: {
               ).label}
               <Icon name="nav-arrow-down" />
             </summary>
-            <div class="desktop-only tool-payload">
+            <div class="tool-payload">
               <pre>
                 {JSON.stringify(message.details ?? message.text, null, 2)}
               </pre>
@@ -1355,8 +1364,21 @@ export default function Chat(props: {
           class="transcript"
           aria-label="Conversation history"
           ref={scroller}
-          onWheel={userScroll}
-          onTouchStart={userScroll}
+          onWheel={(event) => {
+            if (event.deltaY < 0 || awayFromBottom()) userScroll();
+          }}
+          onTouchStart={(event) => {
+            touchStartY = event.touches[0]?.clientY;
+          }}
+          onTouchMove={(event) => {
+            const y = event.touches[0]?.clientY;
+            if (y !== undefined && touchStartY !== undefined &&
+              Math.abs(y - touchStartY) > 6) {
+              userScroll();
+              touchStartY = undefined;
+            }
+          }}
+          onTouchEnd={() => touchStartY = undefined}
           onPointerDown={(event) => {
             // A click in the transcript is not a request to stop following.
             // Thumb dragging is, even on browsers that do not emit wheel events.
@@ -1393,7 +1415,7 @@ export default function Chat(props: {
           >
             <div class="transcript-groups" ref={groupContainer}>
               <For each={groups()}>
-                {(group, groupIndex) => (
+                {(group) => (
                   <div class="transcript-group">
                     <Show when={group.event}>
                       <p class="timeline-event" role="status">
@@ -1410,23 +1432,12 @@ export default function Chat(props: {
                       {(t) => renderLiveWork(t())}
                     </Show>
                     <Show
-                      when={turn()?.state === "running" &&
-                        groupIndex() === groups().length - 1}
-                    >
-                      <For
-                        each={group.work.filter(
-                          (message) => message.role === "assistant",
-                        )}
-                      >
-                        {renderMessage}
-                      </For>
-                    </Show>
-                    <Show
-                      when={group.work.length &&
-                        !(
-                          turn()?.state === "running" &&
-                          groupIndex() === groups().length - 1
-                        )}
+                      when={(group.prompt && group.answer ||
+                        (group.work.length &&
+                          (!turn() || group !== groups().at(-1)))) &&
+                        group !== pendingHistoryGroup() &&
+                        !(turn()?.state === "running" &&
+                          group === liveWorkGroup())}
                     >
                       <details
                         class="work-summary history-work"
@@ -1475,7 +1486,11 @@ export default function Chat(props: {
                         </Show>
                       </details>
                     </Show>
-                    <Show when={group.answer}>
+                    <Show when={group === pendingHistoryGroup() ||
+                        (turn()?.state === "running" &&
+                          group === liveWorkGroup())
+                      ? undefined
+                      : group.answer}>
                       {(message) => renderMessage(message())}
                     </Show>
                   </div>
@@ -1521,7 +1536,8 @@ export default function Chat(props: {
                   <Show when={!liveWorkGroup() || !hasTurnOutput()}>
                     {renderLiveWork(t())}
                   </Show>
-                  <Show when={t().text && !turnIsInHistory()}>
+                  <Show when={t().text &&
+                    (t().state === "running" || !turnIsInHistory())}>
                     <Markdown text={t().text} />
                   </Show>
                   <Show
@@ -1935,15 +1951,19 @@ export default function Chat(props: {
           class="composer"
           onSubmit={async (e) => {
             e.preventDefault();
-            if (
-              edit() &&
-              (await rejectAction(
-                "Replace the conversation after this message? Files and external actions will not be undone.",
-              ))
-            ) {
-              return;
+            if (submitPending || sending()) return;
+            submitPending = true;
+            try {
+              if (
+                edit() &&
+                (await rejectAction(
+                  "Replace the conversation after this message? Files and external actions will not be undone.",
+                ))
+              ) return;
+              await run(send);
+            } finally {
+              submitPending = false;
             }
-            void run(send);
           }}
         >
           <div class="composer-entry">
@@ -1985,7 +2005,10 @@ export default function Chat(props: {
                 ) {
                   e.preventDefault();
                   if (e.repeat) return;
-                  if (text().trim()) void run(send);
+                  if (text().trim()) {
+                    (e.currentTarget as HTMLElement).closest("form")
+                      ?.requestSubmit();
+                  }
                   else if (queued()[0])
                     void run(() => sendNow(queued()[0]._id));
                   return;
@@ -2372,6 +2395,8 @@ export default function Chat(props: {
           <Suspense fallback={<p>Loading controls…</p>}>
             <RunControls
               conversation={props.conversation}
+              profile={props.profile}
+              navigate={props.navigate}
               view={view()}
               close={() => setControls(undefined)}
             />

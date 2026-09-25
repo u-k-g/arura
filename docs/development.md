@@ -35,15 +35,15 @@ The Convex package is currently available only on x86-64 Linux. Development
 shells also support ARM Linux and Apple Silicon; those systems need a reachable
 self-hosted Convex instance. No hosted Convex account is required.
 
-`deno task test:integration` builds the UI, starts an isolated self-hosted
-Convex backend and a synthetic Hermes gateway, deploys the functions, and runs
-desktop and mobile Chromium tests. It uses random local ports, disposable
+`deno task test:integration` builds the UI and runs each browser test file with
+its own self-hosted Convex backend and synthetic Hermes gateway. This keeps
+conversation edits and archive state from leaking between tests. It uses random local ports, disposable
 credentials, and a private directory in `/var/tmp`. It does not connect to the
 configured Hermes deployment. Linux shells provide Chromium; another platform
 can set `ARURA_BROWSER_EXECUTABLE` and `ARURA_CONVEX_EXECUTABLE` to compatible
 binaries.
 
-`deno task test` runs unit and gateway tests. Tests needing the complete stack
+`deno task test` runs unit, gateway, and Solid component tests. Tests needing the complete stack
 skip unless its environment variables are set by the integration runner. The
 integration suite covers live updates, archive/restore, offline reopening,
 storage-disabled browsers, device revocation, command deduplication, reasoning

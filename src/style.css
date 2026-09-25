@@ -571,8 +571,6 @@ small {
 }
 .transcript-group {
   width: 100%;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 180px;
 }
 .message {
   margin: 0 0 16px;
@@ -1292,6 +1290,7 @@ dialog::backdrop {
     inset-inline: 0;
     top: var(--app-viewport-top, 0px);
     height: var(--app-viewport-height, 100dvh);
+    padding-top: env(safe-area-inset-top);
     overflow: hidden;
   }
   .app-shell .desktop-navigation,

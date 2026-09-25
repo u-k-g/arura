@@ -14,6 +14,7 @@ import {
   interactionFromEvent,
   normalizeMessages,
   plainText,
+  streamedInterimText,
   type Turn,
   visibleText,
 } from "../shared/model.ts";
@@ -56,6 +57,7 @@ export class Hermes extends EventEmitter {
   private attaching = new Map<string, Promise<string>>();
   private reverse = new Map<string, string>();
   private turns = new Map<string, Turn>();
+  private interimStreams = new Map<string, { interim: string; stream: string }>();
   private persistedTurns = new Set<string>();
   private connecting?: Promise<void>;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
@@ -371,6 +373,7 @@ export class Hermes extends EventEmitter {
     if (/reasoning|thinking/.test(type)) return;
     let turn = this.turns.get(key);
     if (type === "message.start" || (!turn && type === "message.delta")) {
+      this.interimStreams.delete(key);
       turn = {
         conversation: key,
         text: "",
@@ -391,9 +394,17 @@ export class Hermes extends EventEmitter {
       );
     }
     if (type === "message.delta") {
-      turn.text += typeof payload.text === "string" ? payload.text : "";
+      const delta = typeof payload.text === "string" ? payload.text : "";
+      const interim = this.interimStreams.get(key);
+      if (interim) {
+        interim.stream += delta;
+        turn.text = streamedInterimText(interim.interim, interim.stream);
+      } else turn.text += delta;
     }
-    if (type === "message.interim") turn.text = visibleText(payload.text);
+    if (type === "message.interim") {
+      turn.text = visibleText(payload.text);
+      this.interimStreams.set(key, { interim: turn.text, stream: "" });
+    }
     if (type === "tool.start" || type === "tool.generating") {
       const id = String(
         payload.tool_call_id ??
@@ -441,6 +452,7 @@ export class Hermes extends EventEmitter {
       }
     }
     if (type === "message.complete") {
+      this.interimStreams.delete(key);
       turn.recovering = false;
       turn.text = visibleText(payload.text ?? turn.text);
       turn.state = payload.status === "error"

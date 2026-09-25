@@ -8,13 +8,14 @@
     "dev": "deno run -A scripts/dev.ts",
     "web": "deno run -A npm:vite --host 127.0.0.1",
     "build": "deno task check && deno run -A npm:vite build",
-    "test": "deno test -A tests/",
+    "test": "deno test -A tests/ && deno task test:components",
+    "test:components": "deno run -A npm:vitest run --config vitest.config.ts",
     "format": "deno run -A npm:@biomejs/biome format --write .",
     "format:check": "deno run -A npm:@biomejs/biome format .",
     "lint": "deno lint && deno run -A npm:@biomejs/biome lint .",
     "convex": "CI=1 VERCEL=0 deno run -A npm:convex",
     "browser": "deno run -A npm:@playwright/test",
-    "test:integration": "deno task build && deno run -A scripts/test-stack.ts",
+    "test:integration": "deno task build && deno run -A scripts/test-suite.ts",
     "dev:external": {
       "dependencies": ["watch", "web"]
     },

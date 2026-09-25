@@ -43,6 +43,8 @@ type Agent = {
 };
 export default function RunControls(props: {
   conversation: string;
+  profile?: string;
+  navigate: (key: string) => void;
   view: ControlView;
   close: () => void;
 }) {
@@ -183,7 +185,11 @@ export default function RunControls(props: {
         : kind() === "loop"
         ? `/loop ${interval()} ${prompt().trim()}`
         : `/heartbeat every ${interval()} ${prompt().trim()}`;
-      await command("send", props.conversation, { text });
+      const key = props.conversation || String(
+        (await command("create", "", { profile: props.profile ?? "default" })).key,
+      );
+      await command("send", key, { text });
+      if (!props.conversation) props.navigate(key);
       setPrompt("");
       setVerification("");
       await refresh();

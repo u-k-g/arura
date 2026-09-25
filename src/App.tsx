@@ -57,11 +57,20 @@ const Artifacts = lazy(() => import("./Artifacts.tsx"));
 function InlineRename(props: {
   initial: string;
   label: string;
-  save: (name: string) => void;
+  save: (name: string) => Promise<void>;
   cancel: () => void;
 }) {
   let input!: HTMLInputElement;
   let cancelled = false;
+  let saving = false;
+  const [draftName, setDraftName] = createSignal(props.initial);
+  const save = () => {
+    if (cancelled || saving) return;
+    saving = true;
+    void props.save(draftName().trim()).finally(() => {
+      saving = false;
+    });
+  };
   onMount(() =>
     globalThis.queueMicrotask(() => {
       input.scrollIntoView({ block: "nearest" });
@@ -74,14 +83,15 @@ function InlineRename(props: {
       ref={input}
       class="inline-rename"
       aria-label={props.label}
-      value={props.initial}
+      value={draftName()}
+      onInput={(event) => setDraftName(event.currentTarget.value)}
       onClick={(event) => event.stopPropagation()}
       onDblClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
         event.stopPropagation();
         if (event.key === "Enter") {
           event.preventDefault();
-          input.blur();
+          save();
         } else if (event.key === "Escape") {
           event.preventDefault();
           cancelled = true;
@@ -89,7 +99,7 @@ function InlineRename(props: {
         }
       }}
       onBlur={() => {
-        if (!cancelled) props.save(input.value.trim());
+        save();
       }}
     />
   );
@@ -588,19 +598,26 @@ export default function App() {
       current?.kind === kind && current.id === id ? undefined : current,
     );
   };
-  const saveRename = (
+  const saveRename = async (
     kind: "conversation" | "folder",
     id: string,
     initial: string,
     name: string,
   ) => {
     if (editing()?.kind !== kind || editing()?.id !== id) return;
-    stopRename(kind, id);
-    if (!name || name === initial) return;
-    if (kind === "conversation") {
-      void run(() => command("rename", id, { title: name }));
-    } else {
-      void run(() => mutate("workspace.folder", { id, name }));
+    if (!name || name === initial) {
+      stopRename(kind, id);
+      return;
+    }
+    try {
+      if (kind === "conversation") {
+        await command("rename", id, { title: name });
+      } else {
+        await mutate("workspace.folder", { id, name });
+      }
+      stopRename(kind, id);
+    } catch (error) {
+      inform(error instanceof Error ? error.message : "Rename failed");
     }
   };
   const destinations = [
@@ -1417,26 +1434,14 @@ export default function App() {
                     <Show
                       when={view().startsWith("resources:")}
                       fallback={
-                        <Show
-                          when={view()}
-                          fallback={
-                            <Chat
-                              conversation=""
-                              reset={blankChatVersion()}
-                              profile={chosenProfile()}
-                              title="New session"
-                              navigate={navigate}
-                              mobileActions={mobileChatActions}
-                            />
-                          }
-                        >
-                          <Chat
-                            conversation={view()}
-                            title={selected()?.title ?? "Conversation"}
-                            navigate={navigate}
-                            mobileActions={mobileChatActions}
-                          />
-                        </Show>
+                        <Chat
+                          conversation={view()}
+                          reset={blankChatVersion()}
+                          profile={chosenProfile()}
+                          title={selected()?.title ?? "New session"}
+                          navigate={navigate}
+                          mobileActions={mobileChatActions}
+                        />
                       }
                     >
                       <Show
