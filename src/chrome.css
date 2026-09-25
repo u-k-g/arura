@@ -869,7 +869,7 @@ dialog.conversation-menu {
   display: contents;
 }
 .mobile-send,
-.mobile-composer-navigation {
+.composer-bottom .mobile-composer-navigation {
   display: none;
 }
 
