@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@solidjs/testing-library";
-import { createSignal, Show, type JSX } from "solid-js";
+import { createSignal, type JSX, Show } from "solid-js";
 import { expect, test, vi } from "vitest";
 import CommandPalette, { type PaletteItem } from "../src/CommandPalette.tsx";
 
@@ -26,11 +26,11 @@ function renderPalette(items: PaletteItem[]) {
         <CommandPalette
           query={query()}
           search={setQuery}
-          items={
-            query().match(/^[1-9]$/)
-              ? choices.filter((item) => item.slot === Number(query()))
-              : choices
-          }
+          items={query().match(/^[1-9]$/)
+            ? choices.filter((item) => item.slot === Number(query()))
+            : choices.filter((item) =>
+              item.label.toLowerCase().includes(query().toLowerCase())
+            )}
           searching={false}
           error=""
           close={() => setOpen(false)}
@@ -76,6 +76,67 @@ test("rapid repeated selection runs the action once", () => {
   expect(run).toHaveBeenCalledTimes(1);
 });
 
+test("arrow keys, Home, and End select the visible action", () => {
+  const run = renderPalette([
+    { id: "first", label: "First", group: "Commands", run() {} },
+    { id: "second", label: "Second", group: "Commands", run() {} },
+    { id: "third", label: "Third", group: "Commands", run() {} },
+  ]);
+  const input = screen.getByRole("combobox");
+  fireEvent.keyDown(input, { key: "ArrowUp" });
+  expect(
+    screen.getByRole("option", { name: "Third" }).getAttribute(
+      "aria-selected",
+    ),
+  ).toBe("true");
+  fireEvent.keyDown(input, { key: "Home" });
+  fireEvent.keyDown(input, { key: "ArrowDown" });
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(run).toHaveBeenCalledExactlyOnceWith("second");
+});
+
+test("clear search restores results and keeps focus in the input", () => {
+  const run = renderPalette([
+    { id: "first", label: "First", group: "Commands", run() {} },
+  ]);
+  const input = screen.getByRole("combobox") as HTMLInputElement;
+  input.focus();
+  fireEvent.input(input, { target: { value: "missing" } });
+  expect(screen.queryAllByRole("option")).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+  expect(input.value).toBe("");
+  expect(screen.getByRole("option", { name: "First" })).toBeTruthy();
+  expect(document.activeElement).toBe(input);
+  expect(run).not.toHaveBeenCalled();
+});
+
+test("a late result does not change the selected action", () => {
+  const run = vi.fn();
+  const first = { id: "first", label: "First", group: "Chats", run };
+  const second = { id: "second", label: "Second", group: "Chats", run };
+  const [items, setItems] = createSignal([first, second]);
+  render(() => (
+    <CommandPalette
+      query=""
+      search={() => {}}
+      items={items()}
+      searching={false}
+      error=""
+      close={() => {}}
+    />
+  ));
+  const input = screen.getByRole("combobox");
+  fireEvent.keyDown(input, { key: "ArrowDown" });
+  setItems([{ id: "late", label: "Late", group: "Chats", run }, first, second]);
+  expect(
+    screen.getByRole("option", { name: "Second" }).getAttribute(
+      "aria-selected",
+    ),
+  ).toBe("true");
+  fireEvent.keyDown(input, { key: "Enter" });
+  expect(run).toHaveBeenCalledTimes(1);
+});
+
 test("empty, loading, and error states remain understandable", () => {
   const [searching, setSearching] = createSignal(false);
   const [error, setError] = createSignal("");
@@ -102,4 +163,6 @@ test("empty, loading, and error states remain understandable", () => {
   setSearching(false);
   setError("Search is offline");
   expect(screen.getByRole("alert").textContent).toContain("Search is offline");
+  expect(screen.queryByText("No matches. Try a different name or phrase."))
+    .toBeNull();
 });

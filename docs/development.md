@@ -37,18 +37,19 @@ self-hosted Convex instance. No hosted Convex account is required.
 
 `deno task test:integration` builds the UI and runs each browser test file with
 its own self-hosted Convex backend and synthetic Hermes gateway. This keeps
-conversation edits and archive state from leaking between tests. It uses random local ports, disposable
-credentials, and a private directory in `/var/tmp`. It does not connect to the
-configured Hermes deployment. Linux shells provide Chromium; another platform
-can set `ARURA_BROWSER_EXECUTABLE` and `ARURA_CONVEX_EXECUTABLE` to compatible
-binaries.
+conversation edits and archive state from leaking between tests. It uses random
+local ports, disposable credentials, and a private directory in `/var/tmp`. It
+does not connect to the configured Hermes deployment. Linux shells provide
+Chromium; another platform can set `ARURA_BROWSER_EXECUTABLE` and
+`ARURA_CONVEX_EXECUTABLE` to compatible binaries.
 
-`deno task test` runs unit, gateway, and Solid component tests. Tests needing the complete stack
-skip unless its environment variables are set by the integration runner. The
-integration suite covers live updates, archive/restore, offline reopening,
-storage-disabled browsers, device revocation, command deduplication, reasoning
-filtering, ordered replay, and gateway restart recovery. This is fixture
-coverage, not a claim of complete compatibility with a live Hermes installation.
+`deno task test` runs unit, gateway, and Solid component tests. Tests needing
+the complete stack skip unless its environment variables are set by the
+integration runner. The integration suite covers live updates, archive/restore,
+offline reopening, storage-disabled browsers, device revocation, command
+deduplication, reasoning filtering, ordered replay, and gateway restart
+recovery. This is fixture coverage, not a claim of complete compatibility with a
+live Hermes installation.
 
 Use `deno task format` to apply Biome formatting. `package.json` is the
 dependency manifest used by Deno and npm-compatible tools; it does not select a

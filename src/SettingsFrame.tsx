@@ -6,7 +6,7 @@ const groups = [
   [
     ["resources:models", "Models & providers", "brain"],
     ["settings:navigation", "Conversations & archive", "archive"],
-    ["settings:appearance", "Appearance", "settings"],
+    ["settings:appearance", "Appearance", "brightness"],
     ["capabilities", "Capabilities", "capabilities"],
     ["resources:memory", "Memory", "page"],
     ["resources:advanced", "Advanced settings", "settings"],
@@ -17,7 +17,7 @@ const groups = [
     ["resources:platforms", "Messaging", "message-text"],
     ["resources:computer", "Computer use", "computer"],
     ["resources:delegation", "Delegated work", "network"],
-    ["resources:resources", "Backend resources", "settings"],
+    ["resources:resources", "Backend resources", "cpu"],
     ["resources:connectors", "App connections", "key"],
     ["resources:agentPlugins", "Agent plugins", "capabilities"],
     ["resources:pairing", "Messaging access", "key"],
@@ -26,11 +26,11 @@ const groups = [
     ["resources:curator", "Skill curator", "refresh"],
   ],
   [
-    ["settings:devices", "Access & devices", "computer"],
-    ["settings:storage", "Storage & offline", "download"],
-    ["resources:usage", "Usage", "clock"],
+    ["settings:devices", "Access & devices", "fingerprint-window"],
+    ["settings:storage", "Storage & offline", "download-data-window"],
+    ["resources:usage", "Usage", "energy-usage-window"],
     ["resources:status", "Status & logs", "computer"],
-    ["settings:maintenance", "Maintenance & backups", "refresh"],
+    ["settings:maintenance", "Maintenance & backups", "system-restart"],
   ],
 ];
 const separate = new Set(["profiles", "jobs", "files", "artifacts"]);
@@ -58,7 +58,8 @@ export default function SettingsFrame(props: {
                 <button
                   type="button"
                   classList={{
-                    selected: selected() === route ||
+                    selected:
+                      selected() === route ||
                       (route === "capabilities" &&
                         [
                           "resources:skills",
@@ -87,7 +88,8 @@ export default function SettingsFrame(props: {
         title="Settings"
         class="settings-dialog"
         close={() =>
-          props.navigate(preferences.getItem("arura.lastConversation") ?? "")}
+          props.navigate(preferences.getItem("arura.lastConversation") ?? "")
+        }
       >
         <div class="settings-layout">
           <div class="settings-desktop-rail">{navigation()}</div>

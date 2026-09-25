@@ -23,10 +23,10 @@ const groups = [
   {
     title: "Your workspace",
     items: [
-      ["devices", "Access & devices", "computer"],
-      ["storage", "Storage & offline", "download"],
+      ["devices", "Access & devices", "fingerprint-window"],
+      ["storage", "Storage & offline", "download-data-window"],
       ["navigation", "Conversations & archive", "archive"],
-      ["appearance", "Appearance", "settings"],
+      ["appearance", "Appearance", "brightness"],
     ],
   },
   {
@@ -40,7 +40,7 @@ const groups = [
       ["toolsets", "Tools", "settings"],
       ["computer", "Computer use", "computer"],
       ["delegation", "Delegated work", "network"],
-      ["resources", "Backend resources", "settings"],
+      ["resources", "Backend resources", "cpu"],
       ["mcp", "MCP servers", "computer"],
       ["connectors", "App connections", "key"],
       ["agentPlugins", "Agent plugins", "settings"],
@@ -55,9 +55,9 @@ const groups = [
   {
     title: "Administration",
     items: [
-      ["usage", "Usage", "clock"],
+      ["usage", "Usage", "energy-usage-window"],
       ["status", "Status & logs", "computer"],
-      ["maintenance", "Maintenance & backups", "refresh"],
+      ["maintenance", "Maintenance & backups", "system-restart"],
       ["advanced", "Advanced settings", "settings"],
     ],
   },
@@ -111,19 +111,21 @@ export default function Settings(props: {
   });
   const route = (id: string) =>
     props.navigate(
-      id === "capabilities" ? "capabilities" : [
-          "devices",
-          "storage",
-          "navigation",
-          "appearance",
-          "maintenance",
-        ].includes(id)
-        ? `settings:${id}`
-        : `resources:${id}`,
+      id === "capabilities"
+        ? "capabilities"
+        : [
+              "devices",
+              "storage",
+              "navigation",
+              "appearance",
+              "maintenance",
+            ].includes(id)
+          ? `settings:${id}`
+          : `resources:${id}`,
     );
   const title = () =>
     groups.flatMap((g) => g.items).find((x) => x[0] === props.section)?.[1] ??
-      "Settings";
+    "Settings";
   return (
     <div class="settings-page">
       <Show
@@ -139,10 +141,7 @@ export default function Settings(props: {
                   <div class="settings-grid">
                     <For each={group.items}>
                       {([id, label, icon]) => (
-                        <button
-                          type="button"
-                          onClick={() => route(id)}
-                        >
+                        <button type="button" onClick={() => route(id)}>
                           <Icon name={icon} />
                           <span>{label}</span>
                           <span aria-hidden="true">›</span>
@@ -166,9 +165,11 @@ export default function Settings(props: {
             {(d) => (
               <div class="device-card">
                 <Icon
-                  name={/phone|mobile/i.test(d.name)
-                    ? "smartphone-device"
-                    : "computer"}
+                  name={
+                    /phone|mobile/i.test(d.name)
+                      ? "smartphone-device"
+                      : "computer"
+                  }
                 />
                 <div>
                   <h3>
@@ -194,7 +195,7 @@ export default function Settings(props: {
                       const name = await ask("Device name", d.name);
                       if (name) {
                         void run(() =>
-                          mutate("devices.rename", { id: d.id, name })
+                          mutate("devices.rename", { id: d.id, name }),
                         );
                       }
                     }}
@@ -258,10 +259,12 @@ export default function Settings(props: {
             </p>
           </Show>
           <Show
-            when={!appInstall.installed() &&
+            when={
+              !appInstall.installed() &&
               !appInstall.canInstall() &&
               !appInstall.iosHint() &&
-              /Android/i.test(navigator.userAgent)}
+              /Android/i.test(navigator.userAgent)
+            }
           >
             <p>
               In Chrome on Android, open the menu and choose Install app or Add
@@ -285,8 +288,8 @@ export default function Settings(props: {
             />
           </Field>
           <p>
-            {((storage().usage ?? 0) / 1024 / 1024).toFixed(1)}{" "}
-            MB stored on this device
+            {((storage().usage ?? 0) / 1024 / 1024).toFixed(1)} MB stored on
+            this device
           </p>
           <button
             type="button"
@@ -297,7 +300,8 @@ export default function Settings(props: {
                 inform(
                   "Saved conversations and drafts cleared from this device",
                 );
-              })}
+              })
+            }
           >
             Clear local data
           </button>
@@ -312,8 +316,9 @@ export default function Settings(props: {
                   saveArchivePolicy(
                     Number(workspace()?.settings?.archiveDays ?? 14),
                     e.currentTarget.checked,
-                  )
-                )}
+                  ),
+                )
+              }
             />
           </Field>
           <Field
@@ -331,8 +336,9 @@ export default function Settings(props: {
                     saveArchivePolicy(
                       Number(e.currentTarget.value),
                       workspace()?.settings?.archiveEnabled !== false,
-                    )
-                  )}
+                    ),
+                  )
+                }
               />
               <span>days</span>
             </div>
@@ -423,7 +429,8 @@ export default function Settings(props: {
                   });
                 });
                 download("arura-workspace.json", result);
-              })}
+              })
+            }
           >
             Download workspace backup
           </button>

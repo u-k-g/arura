@@ -29,8 +29,9 @@ Deno.test({
           .right,
         rowRight: element.getBoundingClientRect().right,
       }));
-      expect(restingLayout.rowRight - (restingLayout.ageRight ?? 0))
-        .toBeLessThan(12);
+      expect(
+        restingLayout.rowRight - (restingLayout.ageRight ?? 0),
+      ).toBeLessThan(12);
       await row.hover();
       const hoverLayout = await row.evaluate((element) => {
         const dot = element.querySelector(".session-dot")!;
@@ -50,22 +51,26 @@ Deno.test({
       expect(hoverLayout.ageHidden).toBe(true);
       expect(hoverLayout.menuLeft - hoverLayout.rowLeft).toBeLessThan(3);
       expect(hoverLayout.rowRight - hoverLayout.archiveRight).toBeLessThan(3);
-      await row.getByRole("button", {
-        name: "Actions for Fixture conversation",
-      }).click();
+      await row
+        .getByRole("button", {
+          name: "Actions for Fixture conversation",
+        })
+        .click();
       await page.getByRole("button", { name: "Mark as unread" }).click();
       await expect(row).toHaveClass(/unread/);
-      const unreadColor = await row.locator(".session-dot").evaluate((dot) =>
-        getComputedStyle(dot).backgroundColor
-      );
-      await row.getByRole("button", {
-        name: "Actions for Fixture conversation",
-      }).click();
+      const unreadColor = await row
+        .locator(".session-dot")
+        .evaluate((dot) => getComputedStyle(dot).backgroundColor);
+      await row
+        .getByRole("button", {
+          name: "Actions for Fixture conversation",
+        })
+        .click();
       await page.getByRole("button", { name: "Mark as read" }).click();
       await expect(row).not.toHaveClass(/unread/);
-      const readColor = await row.locator(".session-dot").evaluate((dot) =>
-        getComputedStyle(dot).backgroundColor
-      );
+      const readColor = await row
+        .locator(".session-dot")
+        .evaluate((dot) => getComputedStyle(dot).backgroundColor);
       expect(unreadColor).not.toBe(readColor);
       const statusColors = await row.evaluate((element) => {
         const dot = element.querySelector(".session-dot");
@@ -134,6 +139,28 @@ Deno.test({
       expect(
         await picker.locator(".essential-icon-picker button").count(),
       ).toBeGreaterThan(80);
+      await expect(picker.getByRole("button", { name: "Windows" })).toHaveCount(
+        0,
+      );
+      await expect(
+        picker.getByRole("button", { name: "Settings" }),
+      ).toHaveCount(0);
+      await page.screenshot({
+        path: "/var/tmp/arura-essential-icon-picker.png",
+      });
+      const iconSearch = picker.getByRole("searchbox", {
+        name: "Search icons",
+      });
+      await iconSearch.fill("arc3d");
+      await expect(
+        picker.getByRole("button", { name: "3D Arc" }),
+      ).toBeVisible();
+      await iconSearch.fill("money");
+      await expect(picker.getByRole("button", { name: "Coins" })).toBeVisible();
+      await iconSearch.fill("vehicle");
+      await expect(picker.getByRole("button", { name: "Truck" })).toBeVisible();
+      await iconSearch.fill("sparkle");
+      await expect(picker.getByRole("button", { name: "Spark" })).toBeVisible();
       await picker
         .getByRole("searchbox", { name: "Search icons" })
         .fill("caffeine");

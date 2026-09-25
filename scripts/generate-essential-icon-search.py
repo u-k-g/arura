@@ -35,9 +35,10 @@ lines = [
 for name in names:
     if name in reserved:
         continue
-    if name not in rows:
+    metadata_name = name.removesuffix("-solid")
+    if metadata_name not in rows:
         raise ValueError(f"Missing Iconoir search metadata for {name}")
-    row = rows[name]
+    row = rows[metadata_name]
     terms = " ".join((row["category"], row["tags"].replace(",", " ")))
     lines.append(f"  {json.dumps(name)}: {json.dumps(terms)},")
 lines.append("};")

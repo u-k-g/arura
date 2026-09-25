@@ -57,7 +57,10 @@ export class Hermes extends EventEmitter {
   private attaching = new Map<string, Promise<string>>();
   private reverse = new Map<string, string>();
   private turns = new Map<string, Turn>();
-  private interimStreams = new Map<string, { interim: string; stream: string }>();
+  private interimStreams = new Map<
+    string,
+    { interim: string; stream: string }
+  >();
   private persistedTurns = new Set<string>();
   private connecting?: Promise<void>;
   private reconnectTimer?: ReturnType<typeof setTimeout>;

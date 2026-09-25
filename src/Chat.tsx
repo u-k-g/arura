@@ -1372,8 +1372,10 @@ export default function Chat(props: {
           }}
           onTouchMove={(event) => {
             const y = event.touches[0]?.clientY;
-            if (y !== undefined && touchStartY !== undefined &&
-              Math.abs(y - touchStartY) > 6) {
+            if (
+              y !== undefined && touchStartY !== undefined &&
+              Math.abs(y - touchStartY) > 6
+            ) {
               userScroll();
               touchStartY = undefined;
             }
@@ -1486,11 +1488,13 @@ export default function Chat(props: {
                         </Show>
                       </details>
                     </Show>
-                    <Show when={group === pendingHistoryGroup() ||
-                        (turn()?.state === "running" &&
-                          group === liveWorkGroup())
-                      ? undefined
-                      : group.answer}>
+                    <Show
+                      when={group === pendingHistoryGroup() ||
+                          (turn()?.state === "running" &&
+                            group === liveWorkGroup())
+                        ? undefined
+                        : group.answer}
+                    >
                       {(message) => renderMessage(message())}
                     </Show>
                   </div>
@@ -1536,8 +1540,10 @@ export default function Chat(props: {
                   <Show when={!liveWorkGroup() || !hasTurnOutput()}>
                     {renderLiveWork(t())}
                   </Show>
-                  <Show when={t().text &&
-                    (t().state === "running" || !turnIsInHistory())}>
+                  <Show
+                    when={t().text &&
+                      (t().state === "running" || !turnIsInHistory())}
+                  >
                     <Markdown text={t().text} />
                   </Show>
                   <Show
@@ -1978,19 +1984,15 @@ export default function Chat(props: {
                 input = handle;
               }}
               context={`${props.conversation}:${edit() ?? ""}`}
-              controls={
-                completions().length ? "composer-completions" : undefined
-              }
-              activeDescendant={
-                completions().length
-                  ? `completion-${completionIndex()}`
-                  : undefined
-              }
-              placeholder={
-                connected()
-                  ? "Describe what you need"
-                  : "Write a draft while offline…"
-              }
+              controls={completions().length
+                ? "composer-completions"
+                : undefined}
+              activeDescendant={completions().length
+                ? `completion-${completionIndex()}`
+                : undefined}
+              placeholder={connected()
+                ? "Describe what you need"
+                : "Write a draft while offline…"}
               value={text()}
               onChange={changeText}
               onCursor={setCursor}
@@ -2008,9 +2010,9 @@ export default function Chat(props: {
                   if (text().trim()) {
                     (e.currentTarget as HTMLElement).closest("form")
                       ?.requestSubmit();
-                  }
-                  else if (queued()[0])
+                  } else if (queued()[0]) {
                     void run(() => sendNow(queued()[0]._id));
+                  }
                   return;
                 }
                 if (completions().length && !e.isComposing) {
@@ -2043,15 +2045,13 @@ export default function Chat(props: {
             <button
               class="send mobile-send"
               type="submit"
-              aria-label={
-                turn()?.state === "running" ? "Queue message" : "Send message"
-              }
-              disabled={
-                !text().trim() ||
+              aria-label={turn()?.state === "running"
+                ? "Queue message"
+                : "Send message"}
+              disabled={!text().trim() ||
                 !connected() ||
                 sending() ||
-                pendingUploads().some((item) => !item.error)
-              }
+                pendingUploads().some((item) => !item.error)}
             >
               <Icon name="send" />
             </button>
@@ -2195,15 +2195,13 @@ export default function Chat(props: {
               <button
                 class="send desktop-send"
                 type="submit"
-                aria-label={
-                  turn()?.state === "running" ? "Queue message" : "Send message"
-                }
-                disabled={
-                  !text().trim() ||
+                aria-label={turn()?.state === "running"
+                  ? "Queue message"
+                  : "Send message"}
+                disabled={!text().trim() ||
                   !connected() ||
                   sending() ||
-                  pendingUploads().some((item) => !item.error)
-                }
+                  pendingUploads().some((item) => !item.error)}
               >
                 <Icon name="send" />
               </button>

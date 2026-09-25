@@ -47,7 +47,8 @@ Deno.test({
         }
       });
       const dialog = page.getByRole("dialog", {
-        name: "Replace the conversation after this message? Files and external actions will not be undone.",
+        name:
+          "Replace the conversation after this message? Files and external actions will not be undone.",
       });
       await expect(dialog).toHaveCount(1);
       await dialog

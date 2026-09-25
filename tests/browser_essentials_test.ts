@@ -91,14 +91,16 @@ Deno.test({
       const unreadIconColor = await tile.locator(".icon").evaluate((icon) =>
         getComputedStyle(icon).color
       );
-      const warningColor = await a.locator(".essentials").evaluate((element) => {
-        const sample = globalThis.document.createElement("span");
-        element.append(sample);
-        sample.style.color = "var(--warning)";
-        const color = getComputedStyle(sample).color;
-        sample.remove();
-        return color;
-      });
+      const warningColor = await a.locator(".essentials").evaluate(
+        (element) => {
+          const sample = globalThis.document.createElement("span");
+          element.append(sample);
+          sample.style.color = "var(--warning)";
+          const color = getComputedStyle(sample).color;
+          sample.remove();
+          return color;
+        },
+      );
       expect(unreadIconColor).toBe(warningColor);
       await tile.click({ button: "right" });
       await a.getByRole("button", { name: "Mark as read" }).click();

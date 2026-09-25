@@ -5,8 +5,8 @@ Official regular SVGs from
 distributed under the accompanying MIT license. Read when adding or updating
 icons; keep this family consistent.
 
-`comp-align-bottom-solid.svg` is from the same revision's solid set, selected
-for the Bots navigation icon.
+Files ending in `-solid.svg` come from the same revision's solid set; the
+suffix keeps them distinct from regular variants.
 
 The rocket and globe marks were added from the same
 [official regular icon set](https://github.com/iconoir-icons/iconoir/tree/main/icons/regular).

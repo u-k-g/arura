@@ -76,7 +76,7 @@ function InlineRename(props: {
       input.scrollIntoView({ block: "nearest" });
       input.focus();
       input.select();
-    })
+    }),
   );
   return (
     <input
@@ -134,40 +134,41 @@ export default function App() {
     setIconSearch("");
   });
   const savedView = preferences.getItem("arura.view") ?? "";
-  const initialView = savedView.split("?")[0] === "resources:files"
-    ? "resources:artifacts"
-    : savedView;
+  const initialView =
+    savedView.split("?")[0] === "resources:files"
+      ? "resources:artifacts"
+      : savedView;
   if (initialView !== savedView) preferences.setItem("arura.view", initialView);
   const [view, setView] = createSignal(initialView);
   const [sheet, setSheet] = createSignal(false),
     [search, setSearch] = createSignal(""),
     [palette, setPalette] = createSignal(false);
-  const [desktopResourceHost, setDesktopResourceHost] = createSignal<
-    HTMLElement
-  >();
-  const [mobileResourceHost, setMobileResourceHost] = createSignal<
-    HTMLElement
-  >();
+  const [desktopResourceHost, setDesktopResourceHost] =
+    createSignal<HTMLElement>();
+  const [mobileResourceHost, setMobileResourceHost] =
+    createSignal<HTMLElement>();
   const resourceSection = () => {
     const route = view().split("?")[0];
     return route === "resources:profiles"
       ? "profiles"
       : route === "resources:jobs"
-      ? "jobs"
-      : undefined;
+        ? "jobs"
+        : undefined;
   };
   const resourceSidebarMount = () =>
     narrow()
-      ? sheet() ? mobileResourceHost() : undefined
+      ? sheet()
+        ? mobileResourceHost()
+        : undefined
       : collapsed()
-      ? undefined
-      : desktopResourceHost();
+        ? undefined
+        : desktopResourceHost();
   const navigationTitle = () =>
     resourceSection() === "profiles"
       ? "Profiles & bots"
       : resourceSection() === "jobs"
-      ? "Scheduled jobs"
-      : "Conversations";
+        ? "Scheduled jobs"
+        : "Conversations";
   const [matches, setMatches] = createSignal<
     { key: string; title: string; profile: string }[]
   >([]);
@@ -206,11 +207,10 @@ export default function App() {
     setSearchError("");
     const timer = setTimeout(async () => {
       const cacheKey = `search:${query}`;
-      const cached = await loadCache<
-        { key: string; title: string; profile: string }[]
-      >(
-        cacheKey,
-      );
+      const cached =
+        await loadCache<{ key: string; title: string; profile: string }[]>(
+          cacheKey,
+        );
       if (disposed) return;
       if (cached) setMatches(cached);
       if (!online) return;
@@ -265,9 +265,8 @@ export default function App() {
     kind: "conversation" | "folder";
     id: string;
   }>();
-  const [activeConversation, setActiveConversation] = createSignal<
-    Conversation | null
-  >(null);
+  const [activeConversation, setActiveConversation] =
+    createSignal<Conversation | null>(null);
   createEffect(() => {
     const key = view();
     connected();
@@ -421,8 +420,8 @@ export default function App() {
     text.trim().split("\n")[0]?.slice(0, 60) || "Draft";
   const selected = () =>
     chats().find((c) => c.key === view()) ??
-      archived().find((c) => c.key === view()) ??
-      activeConversation();
+    archived().find((c) => c.key === view()) ??
+    activeConversation();
   const unread = (conversation: Conversation) => {
     const state = workspace()?.reads?.find(
       (item) => item.key === conversation.key,
@@ -437,7 +436,8 @@ export default function App() {
     const markVisible = () => {
       const current = selected();
       if (
-        connected() && current &&
+        connected() &&
+        current &&
         globalThis.document.visibilityState === "visible"
       ) {
         void mutate("workspace.markRead", {
@@ -448,7 +448,7 @@ export default function App() {
     };
     globalThis.document.addEventListener("visibilitychange", markVisible);
     onCleanup(() =>
-      globalThis.document.removeEventListener("visibilitychange", markVisible)
+      globalThis.document.removeEventListener("visibilitychange", markVisible),
     );
   });
   const viewedRevision = createMemo(() => {
@@ -461,7 +461,9 @@ export default function App() {
     untrack(() => {
       const current = selected();
       if (
-        online && globalThis.document.visibilityState === "visible" && current
+        online &&
+        globalThis.document.visibilityState === "visible" &&
+        current
       ) {
         void mutate("workspace.markRead", {
           key: current.key,
@@ -530,13 +532,13 @@ export default function App() {
   onCleanup(cancelTitlePress);
   let threadPress:
     | {
-      pointer: number;
-      x: number;
-      y: number;
-      conversation: Conversation;
-      triggered: boolean;
-      timer: ReturnType<typeof setTimeout>;
-    }
+        pointer: number;
+        x: number;
+        y: number;
+        conversation: Conversation;
+        triggered: boolean;
+        timer: ReturnType<typeof setTimeout>;
+      }
     | undefined;
   let suppressedThreadClick: string | undefined;
   const cancelThreadPress = () => {
@@ -565,7 +567,7 @@ export default function App() {
     if (threadPress?.pointer !== event.pointerId) return;
     if (
       Math.hypot(event.clientX - threadPress.x, event.clientY - threadPress.y) >
-        10
+      10
     ) {
       cancelThreadPress();
     }
@@ -622,34 +624,41 @@ export default function App() {
     }
   };
   const destinations = [
-    { id: "settings", label: "Settings" },
-    { id: "resources:artifacts", label: "Generated files" },
-    { id: "resources:profiles", label: "Profiles & bots" },
-    { id: "resources:jobs", label: "Schedules" },
-    { id: "resources:skills", label: "Installed skills" },
-    { id: "resources:usage", label: "Usage" },
+    { id: "settings", label: "Settings", icon: "settings" },
+    { id: "resources:artifacts", label: "Generated files", icon: "folder" },
+    {
+      id: "resources:profiles",
+      label: "Profiles & bots",
+      icon: "settings-profiles",
+    },
+    { id: "resources:jobs", label: "Schedules", icon: "calendar" },
+    { id: "resources:skills", label: "Installed skills", icon: "puzzle" },
+    { id: "resources:usage", label: "Usage", icon: "energy-usage-window" },
   ];
   const essentialConversations = createMemo(() =>
-    chats().filter((c) => c.section === "essential")
-      .sort((a, b) => a.rank - b.rank)
+    chats()
+      .filter((c) => c.section === "essential")
+      .sort((a, b) => a.rank - b.rank),
   );
   const pinnedConversations = createMemo(() =>
-    chats().filter((c) => c.section === "pinned" && !c.folderId)
-      .sort((a, b) => a.rank - b.rank)
+    chats()
+      .filter((c) => c.section === "pinned" && !c.folderId)
+      .sort((a, b) => a.rank - b.rank),
   );
   const folderConversations = (folderId: string) =>
-    chats().filter((c) => c.folderId === folderId)
+    chats()
+      .filter((c) => c.folderId === folderId)
       .sort((a, b) => a.rank - b.rank);
   const recentConversations = createMemo(() =>
     chats()
       .filter((c) => c.section === "recent" && !c.backgroundSession)
-      .sort((a, b) => conversationActivity(b) - conversationActivity(a))
+      .sort((a, b) => conversationActivity(b) - conversationActivity(a)),
   );
   const sidebarConversations = () => [
     ...essentialConversations(),
     ...pinnedConversations(),
     ...(workspace()?.folders ?? []).flatMap((folder) =>
-      folderConversations(folder._id)
+      folderConversations(folder._id),
     ),
     ...recentConversations(),
   ];
@@ -667,6 +676,7 @@ export default function App() {
       id: item.key,
       label: item.title,
       group,
+      icon: "message-text",
       slot: slotFor(item.key),
       run: () => navigate(item.key),
     });
@@ -679,12 +689,14 @@ export default function App() {
         id: "new",
         label: "New conversation",
         group: "Commands",
+        icon: "plus",
         run: () => void newChat(currentProfile()),
       },
       {
         id: "sidebar",
         label: collapsed() ? "Expand sidebar" : "Collapse sidebar",
         group: "Commands",
+        icon: "sidebar-collapse",
         run: () => {
           toggleSidebar();
           setPalette(false);
@@ -707,12 +719,9 @@ export default function App() {
       ).values(),
     ];
     items.push(
-      ...results.slice(0, 50).map((item) =>
-        conversationItem(
-          item,
-          "Conversations",
-        )
-      ),
+      ...results
+        .slice(0, 50)
+        .map((item) => conversationItem(item, "Conversations")),
     );
     return items;
   };
@@ -735,10 +744,10 @@ export default function App() {
     return `${Math.floor(hours / 24)}d`;
   };
   const ageLabel = (c: Conversation) => {
-    const activity = c.section === "recent" &&
-        workspace()?.settings.archiveEnabled !== false
-      ? conversationArchiveActivity(c)
-      : conversationActivity(c);
+    const activity =
+      c.section === "recent" && workspace()?.settings.archiveEnabled !== false
+        ? conversationArchiveActivity(c)
+        : conversationActivity(c);
     return ageFrom(activity);
   };
   const ageTitle = (c: Conversation) => {
@@ -747,7 +756,8 @@ export default function App() {
       c.bot ||
       c.folderId ||
       workspace()?.settings.archiveEnabled === false
-    ) return undefined;
+    )
+      return undefined;
     if (c.pendingInput) {
       return "Automatic archive paused while input is pending";
     }
@@ -755,7 +765,8 @@ export default function App() {
     if (
       c.section === "recent" &&
       (c.unarchivedAt ?? 0) > conversationActivity(c)
-    ) return "Time since restoration; the archive clock restarted";
+    )
+      return "Time since restoration; the archive clock restarted";
     if (ageStatus(c) === "overdue") return "Due for automatic archive";
     if (ageStatus(c) === "warning") return "Automatic archive within one day";
     return undefined;
@@ -771,8 +782,11 @@ export default function App() {
       }}
     >
       <Show
-        when={editable && editing()?.kind === "conversation" &&
-          editing()?.id === c.key}
+        when={
+          editable &&
+          editing()?.kind === "conversation" &&
+          editing()?.id === c.key
+        }
         fallback={
           <button
             type="button"
@@ -936,7 +950,8 @@ export default function App() {
                     route === "threads"
                       ? (preferences.getItem("arura.lastConversation") ?? "")
                       : route,
-                  )}
+                  )
+                }
               >
                 <Icon name={icon} />
               </button>
@@ -1000,9 +1015,7 @@ export default function App() {
               </div>
             )}
           </For>
-          <For each={pinnedConversations()}>
-            {(c) => row(c)}
-          </For>
+          <For each={pinnedConversations()}>{(c) => row(c)}</For>
           <For each={workspace()?.folders ?? []}>
             {(folder) => (
               <details
@@ -1022,8 +1035,10 @@ export default function App() {
                 <summary>
                   <Icon name="folder" />
                   <Show
-                    when={editing()?.kind === "folder" &&
-                      editing()?.id === folder._id}
+                    when={
+                      editing()?.kind === "folder" &&
+                      editing()?.id === folder._id
+                    }
                     fallback={
                       <button
                         type="button"
@@ -1042,7 +1057,8 @@ export default function App() {
                       initial={folder.name}
                       label="Rename folder"
                       save={(name) =>
-                        saveRename("folder", folder._id, folder.name, name)}
+                        saveRename("folder", folder._id, folder.name, name)
+                      }
                       cancel={() => stopRename("folder", folder._id)}
                     />
                   </Show>
@@ -1064,8 +1080,9 @@ export default function App() {
                           kind: "folder",
                           id: folder._id,
                           direction: 1,
-                        })
-                      )}
+                        }),
+                      )
+                    }
                   />
                   <IconButton
                     icon="nav-arrow-down"
@@ -1077,8 +1094,9 @@ export default function App() {
                           kind: "folder",
                           id: folder._id,
                           direction: -1,
-                        })
-                      )}
+                        }),
+                      )
+                    }
                   />
                   <button
                     type="button"
@@ -1095,7 +1113,7 @@ export default function App() {
                           mutate("workspace.folder", {
                             id: folder._id,
                             remove: true,
-                          })
+                          }),
                         );
                       }
                     }}
@@ -1168,9 +1186,9 @@ export default function App() {
                         {(at) => (
                           <time
                             class="session-age"
-                            title={`Archived ${
-                              new Date(at()).toLocaleString()
-                            }`}
+                            title={`Archived ${new Date(
+                              at(),
+                            ).toLocaleString()}`}
                           >
                             {ageFrom(at())}
                           </time>
@@ -1185,8 +1203,9 @@ export default function App() {
                           mutate("workspace.move", {
                             key: c.key,
                             section: "recent",
-                          })
-                        )}
+                          }),
+                        )
+                      }
                     />
                     <IconButton
                       icon="more-horiz"
@@ -1214,7 +1233,8 @@ export default function App() {
         <div
           class="nav-scroll resource-sidebar-host"
           ref={(node) =>
-            mobile ? setMobileResourceHost(node) : setDesktopResourceHost(node)}
+            mobile ? setMobileResourceHost(node) : setDesktopResourceHost(node)
+          }
         />
       </Show>
       <footer class="nav-footer">
@@ -1360,8 +1380,9 @@ export default function App() {
                             if (
                               event.key !== "ContextMenu" &&
                               !(event.shiftKey && event.key === "F10")
-                            )
+                            ) {
                               return;
+                            }
                             event.preventDefault();
                             const bounds =
                               event.currentTarget.getBoundingClientRect();
@@ -1411,7 +1432,9 @@ export default function App() {
                     <IconButton
                       icon="archive"
                       class="mobile-archive-button"
-                      label={`${c().section === "archived" ? "Unarchive" : "Archive"} ${c().title}`}
+                      label={`${
+                        c().section === "archived" ? "Unarchive" : "Archive"
+                      } ${c().title}`}
                       disabled={
                         c().section !== "archived" &&
                         (c().running || c().pendingInput)
@@ -1456,11 +1479,13 @@ export default function App() {
                             when={view() === "resources:platforms"}
                             fallback={
                               <Show
-                                when={![
-                                  "resources:skills",
-                                  "resources:toolsets",
-                                  "resources:mcp",
-                                ].includes(view())}
+                                when={
+                                  ![
+                                    "resources:skills",
+                                    "resources:toolsets",
+                                    "resources:mcp",
+                                  ].includes(view())
+                                }
                                 fallback={
                                   <Capabilities
                                     section={view().slice(10)}
@@ -1562,10 +1587,12 @@ export default function App() {
                     type="button"
                     aria-label={label}
                     title={label}
-                    aria-pressed={(workspace()?.conversations.find(
-                      (item) => item.key === conversation().key,
-                    )?.essentialIcon ??
-                      (conversation().bot ? "bot" : "message-text")) === icon}
+                    aria-pressed={
+                      (workspace()?.conversations.find(
+                        (item) => item.key === conversation().key,
+                      )?.essentialIcon ??
+                        (conversation().bot ? "bot" : "message-text")) === icon
+                    }
                     onClick={() =>
                       void run(async () => {
                         await mutate("workspace.setEssentialIcon", {
@@ -1573,7 +1600,8 @@ export default function App() {
                           icon,
                         });
                         setIconPicker(undefined);
-                      })}
+                      })
+                    }
                   >
                     <Icon name={icon} />
                   </button>
@@ -1587,11 +1615,13 @@ export default function App() {
         )}
       </Show>
       <Show
-        when={menu() &&
+        when={
+          menu() &&
           (workspace()?.conversations.find(
             (item) => item.key === menu()?.key,
           ) ??
-            menu())}
+            menu())
+        }
       >
         {(c) => (
           <Dialog
@@ -1607,13 +1637,16 @@ export default function App() {
                   <>
                     <button
                       type="button"
-                      disabled={c().section !== "archived" &&
-                        (c().running || c().pendingInput)}
+                      disabled={
+                        c().section !== "archived" &&
+                        (c().running || c().pendingInput)
+                      }
                       onClick={() =>
                         void run(async () => {
                           await archiveConversation(c());
                           setMenu(undefined);
-                        })}
+                        })
+                      }
                     >
                       <Icon name="archive" />
                       {c().section === "archived" ? "Unarchive" : "Archive"}
@@ -1627,7 +1660,8 @@ export default function App() {
                             unread: !unread(c()),
                           });
                           setMenu(undefined);
-                        })}
+                        })
+                      }
                     >
                       <Icon name="eye" />
                       {unread(c()) ? "Mark as read" : "Mark as unread"}
@@ -1639,7 +1673,8 @@ export default function App() {
                           await navigator.clipboard.writeText(c().sourceId);
                           setMenu(undefined);
                           inform("Session ID copied");
-                        })}
+                        })
+                      }
                     >
                       <Icon name="page" />
                       Copy session ID
@@ -1670,12 +1705,12 @@ export default function App() {
                             void run(async () => {
                               await mutate("workspace.move", {
                                 key: c().key,
-                                section: c().section === section
-                                  ? "recent"
-                                  : section,
+                                section:
+                                  c().section === section ? "recent" : section,
                               });
                               setMenu(undefined);
-                            })}
+                            })
+                          }
                         >
                           <Icon
                             name={section === "essential" ? "star" : "pin"}
@@ -1698,11 +1733,9 @@ export default function App() {
                       </button>
                     </Show>
                     <a
-                      href={`/api/download?type=conversation&id=${
-                        encodeURIComponent(
-                          c().sourceId,
-                        )
-                      }&profile=${encodeURIComponent(c().profile)}`}
+                      href={`/api/download?type=conversation&id=${encodeURIComponent(
+                        c().sourceId,
+                      )}&profile=${encodeURIComponent(c().profile)}`}
                       download=""
                     >
                       <Icon name="download" />
@@ -1754,7 +1787,8 @@ export default function App() {
                             folderId: f._id,
                           });
                           setMenu(undefined);
-                        })}
+                        })
+                      }
                     >
                       <Icon name="folder" />
                       Move to {f.name}
@@ -1771,7 +1805,8 @@ export default function App() {
                           section: "pinned",
                         });
                         setMenu(undefined);
-                      })}
+                      })
+                    }
                   >
                     <Icon name="pin" />
                     Remove from folder
@@ -1786,7 +1821,8 @@ export default function App() {
                         conversationKey: c().key,
                       });
                       beginRename("folder", String(id));
-                    })}
+                    })
+                  }
                 >
                   <Icon name="plus" />
                   Create new folder

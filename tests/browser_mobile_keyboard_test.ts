@@ -26,7 +26,9 @@ Deno.test({
       await expect(navigation).toBeVisible();
       const composerEntry = await page.locator(".composer-entry").boundingBox();
       const navigationBox = await navigation.boundingBox();
-      if (!composerEntry || !navigationBox) throw new Error("Composer layout missing");
+      if (!composerEntry || !navigationBox) {
+        throw new Error("Composer layout missing");
+      }
       expect(navigationBox.y).toBeGreaterThanOrEqual(
         composerEntry.y + composerEntry.height - 1,
       );
@@ -57,9 +59,26 @@ Deno.test({
       ).toBeLessThanOrEqual(800);
       await page.keyboard.press("Meta+k");
       await expect(page.locator(".command-palette")).toBeVisible();
+      const palette = page.locator(".command-palette");
+      await expect(palette.locator(".palette-help")).toBeHidden();
+      const firstOption = await palette.getByRole("option").first()
+        .boundingBox();
+      if (!firstOption) throw new Error("Palette option missing");
+      expect(firstOption.height).toBeGreaterThanOrEqual(44);
+      await palette.getByRole("combobox").fill("settings");
+      await expect(palette.getByRole("option", { name: "Settings" }))
+        .toBeVisible();
+      await palette.getByRole("button", { name: "Clear search" }).tap();
+      await expect(palette.getByRole("combobox")).toHaveValue("");
+      await page.screenshot({
+        path: "/var/tmp/arura-command-palette-mobile.png",
+      });
       const normalResultsHeight = await page.locator(".palette-results")
-        .evaluate((element) => Math.round(element.getBoundingClientRect().height));
-      await page.keyboard.press("Escape");
+        .evaluate((element) =>
+          Math.round(element.getBoundingClientRect().height)
+        );
+      await palette.getByRole("button", { name: "Close search" }).tap();
+      await expect(palette).toHaveCount(0);
       await page.evaluate(() => {
         const viewport = globalThis.visualViewport;
         if (!viewport) throw new Error("VisualViewport unavailable");

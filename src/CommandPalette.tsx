@@ -1,10 +1,18 @@
-import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  on,
+  Show,
+} from "solid-js";
 import { Dialog, Icon } from "./ui.tsx";
 
 export type PaletteItem = {
   id: string;
   label: string;
   group: string;
+  icon?: string;
   slot?: number;
   run: () => void;
 };
@@ -17,21 +25,20 @@ export default function CommandPalette(props: {
   error: string;
   close: () => void;
 }) {
-  const [active, setActive] = createSignal(0);
+  const [activeId, setActiveId] = createSignal<string>();
   let chosen = false;
   const items = createMemo(() => props.items);
-  createEffect(() => {
-    props.query;
-    items();
-    setActive(0);
-  });
+  const active = createMemo(() =>
+    Math.max(0, items().findIndex((item) => item.id === activeId()))
+  );
+  createEffect(on(() => props.query, () => setActiveId(undefined)));
   const move = (next: number) => {
     const count = items().length;
     if (!count) return;
-    setActive((next + count) % count);
+    setActiveId(items()[(next + count) % count].id);
     globalThis.document
       .getElementById(`palette-option-${active()}`)
-      ?.scrollIntoView({ block: "nearest" });
+      ?.scrollIntoView?.({ block: "nearest" });
   };
   const choose = (item: PaletteItem | undefined) => {
     if (!item || chosen) return;
@@ -78,12 +85,38 @@ export default function CommandPalette(props: {
             if (event.key === "ArrowDown" || event.key === "ArrowUp") {
               event.preventDefault();
               move(active() + (event.key === "ArrowDown" ? 1 : -1));
+            } else if (event.key === "Home" || event.key === "End") {
+              event.preventDefault();
+              move(event.key === "Home" ? 0 : items().length - 1);
             } else if (event.key === "Enter") {
               event.preventDefault();
               choose(items()[active()]);
             }
           }}
         />
+        <Show when={props.query}>
+          <button
+            type="button"
+            class="palette-clear"
+            aria-label="Clear search"
+            onClick={() => {
+              props.search("");
+              globalThis.document.querySelector<HTMLInputElement>(
+                ".command-palette .palette-search input",
+              )?.focus();
+            }}
+          >
+            <span aria-hidden="true">×</span>
+          </button>
+        </Show>
+        <button
+          type="button"
+          class="palette-dismiss"
+          aria-label="Close search"
+          onClick={props.close}
+        >
+          <span aria-hidden="true">×</span>
+        </button>
       </div>
       <div
         class="palette-results"
@@ -111,9 +144,12 @@ export default function CommandPalette(props: {
                   : undefined}
                 aria-selected={index() === active()}
                 tabindex="-1"
-                onMouseMove={() => setActive(index())}
+                onMouseMove={() => setActiveId(item.id)}
                 onClick={() => choose(item)}
               >
+                <span class="palette-item-icon">
+                  <Icon name={item.icon ?? "message-text"} />
+                </span>
                 <span class="palette-item-text">
                   <span>{item.label}</span>
                 </span>
@@ -126,7 +162,7 @@ export default function CommandPalette(props: {
             </>
           )}
         </For>
-        <Show when={!items().length && !props.searching}>
+        <Show when={!items().length && !props.searching && !props.error}>
           <p class="palette-empty">
             No matches. Try a different name or phrase.
           </p>
@@ -142,6 +178,18 @@ export default function CommandPalette(props: {
           {props.error}
         </p>
       </Show>
+      <div class="palette-help" aria-hidden="true">
+        <span>
+          <kbd>↑</kbd>
+          <kbd>↓</kbd> Navigate
+        </span>
+        <span>
+          <kbd>↵</kbd> Open
+        </span>
+        <span>
+          <kbd>Esc</kbd> Close
+        </span>
+      </div>
     </Dialog>
   );
 }

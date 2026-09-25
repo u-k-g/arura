@@ -7,7 +7,8 @@ import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 
 Deno.test({
-  name: "interim replies render once, completed work remains visible, and live updates preserve mobile reading position",
+  name:
+    "interim replies render once, completed work remains visible, and live updates preserve mobile reading position",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -70,13 +71,13 @@ Deno.test({
             },
             ...(includeFinal
               ? [
-                  {
-                    id: "final",
-                    role: "assistant",
-                    text: "The longer top needs scissors.",
-                    createdAt: currentStartedAt + 180,
-                  },
-                ]
+                {
+                  id: "final",
+                  role: "assistant",
+                  text: "The longer top needs scissors.",
+                  createdAt: currentStartedAt + 180,
+                },
+              ]
               : []),
           ],
           revision: crypto.randomUUID(),
@@ -112,7 +113,9 @@ Deno.test({
       await expect(page.locator(".transcript")).toBeVisible();
       const original = await (
         await fetch(
-          `${requireValue(Deno.env.get("HERMES_URL"), "Hermes URL")}/api/sessions/fixture-chat/messages`,
+          `${
+            requireValue(Deno.env.get("HERMES_URL"), "Hermes URL")
+          }/api/sessions/fixture-chat/messages`,
         )
       ).json();
       originalMessages = normalizeMessages(original.messages);
@@ -154,8 +157,7 @@ Deno.test({
         );
         const target = element.querySelector('[data-message-id="prompt-12"]');
         if (!target) throw new Error("Missing reading anchor");
-        element.scrollTop +=
-          target.getBoundingClientRect().top -
+        element.scrollTop += target.getBoundingClientRect().top -
           element.getBoundingClientRect().top -
           30;
       });

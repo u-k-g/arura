@@ -20,8 +20,9 @@ async function run(args: string[]) {
     stdout: "inherit",
     stderr: "inherit",
   }).spawn().status;
-  if (!status.success)
+  if (!status.success) {
     throw new Error(`Test command failed: ${args.join(" ")}`);
+  }
 }
 
 if (!Deno.args.length) await run(["test", "-A", ...unit]);

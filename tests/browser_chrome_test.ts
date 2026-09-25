@@ -56,8 +56,10 @@ Deno.test({
       });
       await expect(palette).toBeVisible();
       await expect(palette.locator(".dialog-inner > header")).toHaveCount(0);
-      await expect(palette.locator(".icon")).toHaveCount(1);
       await expect(palette.locator(".palette-search .icon")).toBeVisible();
+      await expect(palette.locator(".palette-item-icon").first())
+        .toBeVisible();
+      await expect(palette.locator(".palette-help")).toContainText("Navigate");
       await expect(palette.getByRole("button", { name: "Close" }))
         .toHaveCount(0);
       const paletteBox = requireValue(await palette.boundingBox(), "palette");
@@ -65,12 +67,11 @@ Deno.test({
         await palette.locator(".palette-search").boundingBox(),
         "palette search",
       );
-      expect(searchBox.y - paletteBox.y).toBeLessThan(12);
+      expect(searchBox.y - paletteBox.y).toBeLessThan(2);
       const firstOption = palette.getByRole("option").first();
       expect(
         requireValue(await firstOption.boundingBox(), "first option").height,
-      )
-        .toBeLessThanOrEqual(40);
+      ).toBeGreaterThanOrEqual(42);
       await expect(palette.locator(".palette-item-text small"))
         .toHaveCount(0);
       await page.screenshot({ path: "/var/tmp/arura-command-palette.png" });
@@ -142,7 +143,9 @@ Deno.test({
       await page.keyboard.press("Escape");
       await page.setViewportSize({ width: 390, height: 844 });
       await page.getByRole("button", { name: "Open conversations" }).click();
-      await page.locator(".navigation-sheet .thread-row.selected .thread-select")
+      await page.locator(
+        ".navigation-sheet .thread-row.selected .thread-select",
+      )
         .click({ button: "right" });
       await expect(menu).toBeVisible();
       await expect(

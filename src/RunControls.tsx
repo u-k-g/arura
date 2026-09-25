@@ -186,7 +186,8 @@ export default function RunControls(props: {
         ? `/loop ${interval()} ${prompt().trim()}`
         : `/heartbeat every ${interval()} ${prompt().trim()}`;
       const key = props.conversation || String(
-        (await command("create", "", { profile: props.profile ?? "default" })).key,
+        (await command("create", "", { profile: props.profile ?? "default" }))
+          .key,
       );
       await command("send", key, { text });
       if (!props.conversation) props.navigate(key);
