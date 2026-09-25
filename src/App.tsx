@@ -1231,7 +1231,7 @@ export default function App() {
                       </Show>
                     </button>
                     <IconButton
-                      icon="u-turn-arrow-right"
+                      icon="u-turn-arrow-left"
                       class="unarchive-button"
                       label={`Unarchive ${c.title}`}
                       onClick={() =>
@@ -1462,7 +1462,7 @@ export default function App() {
                     <IconButton
                       icon={
                         c().section === "archived"
-                          ? "u-turn-arrow-right"
+                          ? "u-turn-arrow-left"
                           : "archive"
                       }
                       class={`mobile-archive-button ${
@@ -1688,7 +1688,7 @@ export default function App() {
                       <Icon
                         name={
                           c().section === "archived"
-                            ? "u-turn-arrow-right"
+                            ? "u-turn-arrow-left"
                             : "archive"
                         }
                       />
