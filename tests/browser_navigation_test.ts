@@ -2,8 +2,7 @@ import { requireValue } from "./require_value.ts";
 import { openSettings, signIn } from "./sign_in.ts";
 import { chromium, expect, type Page } from "@playwright/test";
 Deno.test({
-  name:
-    "conversation rename, context, independent views and deletion work across devices",
+  name: "conversation rename, context, independent views and deletion work across devices",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -28,7 +27,7 @@ Deno.test({
         .click();
       await expect
         .poll(() =>
-          page.evaluate(() => localStorage.getItem("arura.view") ?? "")
+          page.evaluate(() => localStorage.getItem("arura.view") ?? ""),
         )
         .toBe("");
       await expect(
@@ -83,6 +82,9 @@ Deno.test({
       });
       await expect(renameInput).toBeFocused();
       await renameInput.fill(title);
+      await a.waitForTimeout(6000);
+      await expect(renameInput).toBeFocused();
+      await expect(renameInput).toHaveValue(title);
       await renameInput.press("Enter");
       await renameInput.press("Enter");
       await expect(renameInput).toHaveValue(title);
@@ -96,11 +98,11 @@ Deno.test({
       await expect(doubleClickRename).toBeFocused();
       title += " revised";
       await doubleClickRename.fill(title);
-      await doubleClickRename.press("Enter");
+      await b.locator(".sidebar-titlebar").click();
+      await expect(doubleClickRename).toHaveCount(0);
       await expect(
         a.getByRole("button", { name: title, exact: true }),
       ).toBeVisible();
-      await b.getByRole("button", { name: title, exact: true }).click();
       const other = await newChat(a);
       expect(other).not.toBe(original);
       expect(await b.evaluate(() => localStorage.getItem("arura.view"))).toBe(
@@ -190,16 +192,22 @@ Deno.test({
       ).toHaveCount(0);
       await a.getByRole("button", { name: "Archive", exact: true }).click();
       await a.getByRole("button", { name: "Archived", exact: true }).click();
-      await a.locator(".archive-list").getByRole("button", {
-        name: `Actions for ${title}`,
-        exact: true,
-      }).click();
+      await a
+        .locator(".archive-list")
+        .getByRole("button", {
+          name: title,
+          exact: true,
+        })
+        .click({ button: "right" });
       await a
         .getByRole("button", { name: "Delete conversation", exact: true })
         .click();
-      await a.getByRole("dialog", {
-        name: "Permanently delete this conversation?",
-      }).getByRole("button", { name: "Confirm", exact: true }).click();
+      await a
+        .getByRole("dialog", {
+          name: "Permanently delete this conversation?",
+        })
+        .getByRole("button", { name: "Confirm", exact: true })
+        .click();
       await expect(
         b.getByRole("button", { name: title, exact: true }),
       ).toHaveCount(0);

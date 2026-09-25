@@ -2,8 +2,7 @@ import { requireValue } from "./require_value.ts";
 import { signIn } from "./sign_in.ts";
 import { chromium, expect } from "@playwright/test";
 Deno.test({
-  name:
-    "Essentials icons sync, fill the sidebar, and toggle placement with top-bar archive",
+  name: "Essentials icons sync, fill the sidebar, and toggle placement with top-bar archive",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -13,12 +12,10 @@ Deno.test({
     const a = await browser.newPage({ viewport: { width: 1280, height: 800 } });
     const b = await browser.newPage({ viewport: { width: 1100, height: 800 } });
     try {
-      for (
-        const [page, name] of [
-          [a, "Essentials desktop"],
-          [b, "Essentials second device"],
-        ] as const
-      ) {
+      for (const [page, name] of [
+        [a, "Essentials desktop"],
+        [b, "Essentials second device"],
+      ] as const) {
         await page.goto(
           requireValue(
             Deno.env.get("ARURA_TEST_URL"),
@@ -74,8 +71,10 @@ Deno.test({
         background: getComputedStyle(button).backgroundColor,
         border: getComputedStyle(button).borderTopColor,
       }));
-      await a.getByRole("button", { name: "New conversation", exact: true })
-        .first().click();
+      await a
+        .getByRole("button", { name: "New conversation", exact: true })
+        .first()
+        .click();
       const idleStyle = await tile.evaluate((button) => ({
         background: getComputedStyle(button).backgroundColor,
         border: getComputedStyle(button).borderTopColor,
@@ -88,19 +87,19 @@ Deno.test({
       await tile.click({ button: "right" });
       await a.getByRole("button", { name: "Mark as unread" }).click();
       await expect(tile).toHaveClass(/unread/);
-      const unreadIconColor = await tile.locator(".icon").evaluate((icon) =>
-        getComputedStyle(icon).color
-      );
-      const warningColor = await a.locator(".essentials").evaluate(
-        (element) => {
+      const unreadIconColor = await tile
+        .locator(".icon")
+        .evaluate((icon) => getComputedStyle(icon).color);
+      const warningColor = await a
+        .locator(".essentials")
+        .evaluate((element) => {
           const sample = globalThis.document.createElement("span");
           element.append(sample);
           sample.style.color = "var(--warning)";
           const color = getComputedStyle(sample).color;
           sample.remove();
           return color;
-        },
-      );
+        });
       expect(unreadIconColor).toBe(warningColor);
       await tile.click({ button: "right" });
       await a.getByRole("button", { name: "Mark as read" }).click();
@@ -137,11 +136,32 @@ Deno.test({
         path: `${Deno.env.get("TMPDIR")}/essentials-desktop.png`,
       });
       await tile.click({ button: "right" });
-      await a
-        .getByRole("button", { name: "Archive", exact: true })
-        .click();
+      await a.getByRole("button", { name: "Archive", exact: true }).click();
       await expect(tile).toHaveCount(0);
       await a.getByRole("button", { name: "Archived", exact: true }).click();
+      const archivedRow = a.locator(".archive-list .thread-row").first();
+      await expect(archivedRow.locator(".row-menu-button")).toHaveCount(0);
+      await a.mouse.move(900, 700);
+      const restingAge = await archivedRow.evaluate((row) => ({
+        ageRight: row.querySelector(".session-age")?.getBoundingClientRect()
+          .right,
+        rowRight: row.getBoundingClientRect().right,
+      }));
+      expect(restingAge.rowRight - (restingAge.ageRight ?? 0)).toBeLessThan(12);
+      await archivedRow.hover();
+      const hovered = await archivedRow.evaluate((row) => {
+        const age = row.querySelector(".session-age");
+        const unarchive = row.querySelector(".unarchive-button");
+        if (!age || !unarchive)
+          throw new Error("Archived row controls missing");
+        return {
+          ageHidden: getComputedStyle(age).visibility === "hidden",
+          unarchiveRight: unarchive.getBoundingClientRect().right,
+          rowRight: row.getBoundingClientRect().right,
+        };
+      });
+      expect(hovered.ageHidden).toBe(true);
+      expect(hovered.rowRight - hovered.unarchiveRight).toBeLessThan(3);
       await a
         .locator(".archive-list")
         .getByRole("button", { name: "Fixture conversation", exact: true })
@@ -160,16 +180,19 @@ Deno.test({
       await expect(folderName).toHaveValue("Untitled");
       await folderName.fill("Saved");
       await folderName.press("Enter");
-      await expect(a.locator(".folder").filter({ hasText: "Saved" }))
-        .toContainText("Fixture conversation");
+      await expect(
+        a.locator(".folder").filter({ hasText: "Saved" }),
+      ).toContainText("Fixture conversation");
       await a.getByRole("button", { name: "Saved", exact: true }).dblclick();
       await expect(folderName).toBeFocused();
       await folderName.fill("Library");
       await folderName.press("Enter");
-      await expect(a.getByRole("button", { name: "Library", exact: true }))
-        .toBeVisible();
-      await expect(a.getByRole("button", { name: "New folder" }))
-        .toHaveCount(0);
+      await expect(
+        a.getByRole("button", { name: "Library", exact: true }),
+      ).toBeVisible();
+      await expect(a.getByRole("button", { name: "New folder" })).toHaveCount(
+        0,
+      );
       await actions();
       await a.getByRole("button", { name: "Move to folder" }).click();
       await a.getByRole("button", { name: "Remove from folder" }).click();

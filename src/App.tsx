@@ -71,13 +71,23 @@ function InlineRename(props: {
       saving = false;
     });
   };
-  onMount(() =>
+  onMount(() => {
     globalThis.queueMicrotask(() => {
       input.scrollIntoView({ block: "nearest" });
       input.focus();
       input.select();
-    }),
-  );
+    });
+    const outside = (event: PointerEvent) => {
+      if (event.target && !input.contains(event.target as Node)) {
+        save();
+        props.cancel();
+      }
+    };
+    globalThis.addEventListener("pointerdown", outside, true);
+    onCleanup(() =>
+      globalThis.removeEventListener("pointerdown", outside, true),
+    );
+  });
   return (
     <input
       ref={input}
@@ -100,6 +110,7 @@ function InlineRename(props: {
       }}
       onBlur={() => {
         save();
+        props.cancel();
       }}
     />
   );
@@ -771,89 +782,98 @@ export default function App() {
     if (ageStatus(c) === "warning") return "Automatic archive within one day";
     return undefined;
   };
-  const row = (c: Conversation, editable = true) => (
-    <div
-      class="thread-row"
-      classList={{
-        selected: view() === c.key,
-        unread: Boolean(unread(c)),
-        running: Boolean(c.running),
-        draft: Boolean(draftFor(c.key, c.profile)),
-      }}
-    >
-      <Show
-        when={
-          editable &&
-          editing()?.kind === "conversation" &&
-          editing()?.id === c.key
-        }
-        fallback={
-          <button
-            type="button"
-            class="thread-select"
-            onContextMenu={(event) => threadContextMenu(c, event)}
-            onPointerDown={(event) => startThreadPress(c, event)}
-            onPointerMove={moveThreadPress}
-            onPointerUp={finishThreadPress}
-            onPointerCancel={cancelThreadPress}
-            onPointerLeave={cancelThreadPress}
-            aria-current={view() === c.key ? "page" : undefined}
-            title={c.title}
-            aria-label={c.title}
-            onClick={() => selectThread(c)}
-            onDblClick={() => {
-              if (editable && !c.bot) beginRename("conversation", c.key);
-            }}
-          >
-            <span class="session-dot" />
-            <span>{c.title}</span>
-            <Show
-              when={draftFor(c.key, c.profile)}
-              fallback={
-                <time
-                  class="session-age"
-                  classList={{
-                    "archive-warning": ageStatus(c) === "warning",
-                    "archive-overdue": ageStatus(c) === "overdue",
-                  }}
-                  title={ageTitle(c)}
-                >
-                  {ageLabel(c)}
-                </time>
-              }
-            >
-              <i class="draft-indicator" title="Draft saved">
-                <Icon name="edit-pencil" />
-              </i>
-            </Show>
-          </button>
-        }
+  const row = (key: string, editable = true) => {
+    const initial = chats().find((item) => item.key === key);
+    if (!initial) return null;
+    const c = createMemo(
+      () => chats().find((item) => item.key === key) ?? initial,
+    );
+    return (
+      <div
+        class="thread-row"
+        classList={{
+          selected: view() === c().key,
+          unread: Boolean(unread(c())),
+          running: Boolean(c().running),
+          draft: Boolean(draftFor(c().key, c().profile)),
+        }}
       >
-        <div class="thread-select thread-rename">
-          <span class="session-dot" />
-          <InlineRename
-            initial={c.title}
-            label="Rename conversation"
-            save={(name) => saveRename("conversation", c.key, c.title, name)}
-            cancel={() => stopRename("conversation", c.key)}
-          />
-        </div>
-      </Show>
-      <IconButton
-        icon="archive"
-        class="archive-button"
-        label={`Archive ${c.title}`}
-        disabled={c.running || c.pendingInput}
-        onClick={() => void run(() => archiveConversation(c))}
-      />
-      <IconButton
-        icon="more-horiz"
-        class="row-menu-button"
-        label={`Actions for ${c.title}`}
-        onClick={(event) => openMenu(c, event)}
-      />
-    </div>
-  );
+        <Show
+          when={
+            editable &&
+            editing()?.kind === "conversation" &&
+            editing()?.id === c().key
+          }
+          fallback={
+            <button
+              type="button"
+              class="thread-select"
+              onContextMenu={(event) => threadContextMenu(c(), event)}
+              onPointerDown={(event) => startThreadPress(c(), event)}
+              onPointerMove={moveThreadPress}
+              onPointerUp={finishThreadPress}
+              onPointerCancel={cancelThreadPress}
+              onPointerLeave={cancelThreadPress}
+              aria-current={view() === c().key ? "page" : undefined}
+              title={c().title}
+              aria-label={c().title}
+              onClick={() => selectThread(c())}
+              onDblClick={() => {
+                if (editable && !c().bot) beginRename("conversation", c().key);
+              }}
+            >
+              <span class="session-dot" />
+              <span>{c().title}</span>
+              <Show
+                when={draftFor(c().key, c().profile)}
+                fallback={
+                  <time
+                    class="session-age"
+                    classList={{
+                      "archive-warning": ageStatus(c()) === "warning",
+                      "archive-overdue": ageStatus(c()) === "overdue",
+                    }}
+                    title={ageTitle(c())}
+                  >
+                    {ageLabel(c())}
+                  </time>
+                }
+              >
+                <i class="draft-indicator" title="Draft saved">
+                  <Icon name="edit-pencil" />
+                </i>
+              </Show>
+            </button>
+          }
+        >
+          <div class="thread-select thread-rename">
+            <span class="session-dot" />
+            <InlineRename
+              initial={c().title}
+              label="Rename conversation"
+              save={(name) =>
+                saveRename("conversation", c().key, c().title, name)
+              }
+              cancel={() => stopRename("conversation", c().key)}
+            />
+          </div>
+        </Show>
+        <IconButton
+          icon="archive"
+          class="archive-button"
+          label={`Archive ${c().title}`}
+          disabled={c().running || c().pendingInput}
+          onClick={() => void run(() => archiveConversation(c()))}
+        />
+        <IconButton
+          icon="more-horiz"
+          class="row-menu-button"
+          label={`Actions for ${c().title}`}
+          onClick={(event) => openMenu(c(), event)}
+        />
+      </div>
+    );
+  };
   const conversationActions = () => (
     <IconButton
       icon="plus"
@@ -1015,120 +1035,135 @@ export default function App() {
               </div>
             )}
           </For>
-          <For each={pinnedConversations()}>{(c) => row(c)}</For>
-          <For each={workspace()?.folders ?? []}>
-            {(folder) => (
-              <details
-                class="folder"
-                open={!closedFolders()[folder._id]}
-                onToggle={(event) => {
-                  const closed = !event.currentTarget.open;
-                  if (Boolean(closedFolders()[folder._id]) === closed) return;
-                  const next = { ...closedFolders(), [folder._id]: closed };
-                  setClosedFolders(next);
-                  preferences.setItem(
-                    "arura.closedFolders",
-                    JSON.stringify(next),
-                  );
-                }}
-              >
-                <summary>
-                  <Icon name="folder" />
-                  <Show
-                    when={
-                      editing()?.kind === "folder" &&
-                      editing()?.id === folder._id
-                    }
-                    fallback={
-                      <button
-                        type="button"
-                        class="folder-name"
-                        onDblClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          beginRename("folder", folder._id);
-                        }}
-                      >
-                        {folder.name}
-                      </button>
-                    }
-                  >
-                    <InlineRename
-                      initial={folder.name}
-                      label="Rename folder"
-                      save={(name) =>
-                        saveRename("folder", folder._id, folder.name, name)
+          <For each={pinnedConversations().map((c) => c.key)}>
+            {(key) => row(key)}
+          </For>
+          <For each={(workspace()?.folders ?? []).map((folder) => folder._id)}>
+            {(folderId) => {
+              const initial = workspace()?.folders.find(
+                (item) => item._id === folderId,
+              );
+              if (!initial) return null;
+              const folder = createMemo(
+                () =>
+                  workspace()?.folders.find((item) => item._id === folderId) ??
+                  initial,
+              );
+              return (
+                <details
+                  class="folder"
+                  open={!closedFolders()[folderId]}
+                  onToggle={(event) => {
+                    const closed = !event.currentTarget.open;
+                    if (Boolean(closedFolders()[folderId]) === closed) return;
+                    const next = { ...closedFolders(), [folderId]: closed };
+                    setClosedFolders(next);
+                    preferences.setItem(
+                      "arura.closedFolders",
+                      JSON.stringify(next),
+                    );
+                  }}
+                >
+                  <summary>
+                    <Icon name="folder" />
+                    <Show
+                      when={
+                        editing()?.kind === "folder" &&
+                        editing()?.id === folderId
                       }
-                      cancel={() => stopRename("folder", folder._id)}
+                      fallback={
+                        <button
+                          type="button"
+                          class="folder-name"
+                          onDblClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            beginRename("folder", folderId);
+                          }}
+                        >
+                          {folder().name}
+                        </button>
+                      }
+                    >
+                      <InlineRename
+                        initial={folder().name}
+                        label="Rename folder"
+                        save={(name) =>
+                          saveRename("folder", folderId, folder().name, name)
+                        }
+                        cancel={() => stopRename("folder", folderId)}
+                      />
+                    </Show>
+                    <IconButton
+                      icon="edit-pencil"
+                      label={`Rename folder ${folder().name}`}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        beginRename("folder", folderId);
+                      }}
                     />
-                  </Show>
-                  <IconButton
-                    icon="edit-pencil"
-                    label={`Rename folder ${folder.name}`}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      beginRename("folder", folder._id);
-                    }}
-                  />
-                  <IconButton
-                    icon="nav-arrow-down"
-                    label={`Move folder ${folder.name} down`}
-                    onClick={() =>
-                      void run(() =>
-                        mutate("workspace.reorder", {
-                          kind: "folder",
-                          id: folder._id,
-                          direction: 1,
-                        }),
-                      )
-                    }
-                  />
-                  <IconButton
-                    icon="nav-arrow-down"
-                    class="rotate-icon"
-                    label={`Move folder ${folder.name} up`}
-                    onClick={() =>
-                      void run(() =>
-                        mutate("workspace.reorder", {
-                          kind: "folder",
-                          id: folder._id,
-                          direction: -1,
-                        }),
-                      )
-                    }
-                  />
-                  <button
-                    type="button"
-                    class="folder-delete"
-                    aria-label={`Delete folder ${folder.name}`}
-                    onClick={async (e) => {
-                      e.preventDefault();
-                      if (
-                        await confirmAction(
-                          "Remove this folder? Its conversations stay pinned.",
-                        )
-                      ) {
+                    <IconButton
+                      icon="nav-arrow-down"
+                      label={`Move folder ${folder().name} down`}
+                      onClick={() =>
                         void run(() =>
-                          mutate("workspace.folder", {
-                            id: folder._id,
-                            remove: true,
+                          mutate("workspace.reorder", {
+                            kind: "folder",
+                            id: folderId,
+                            direction: 1,
                           }),
-                        );
+                        )
                       }
-                    }}
-                  >
-                    ×
-                  </button>
-                </summary>
-                <For each={folderConversations(folder._id)}>
-                  {(c) => row(c)}
-                </For>
-              </details>
-            )}
+                    />
+                    <IconButton
+                      icon="nav-arrow-down"
+                      class="rotate-icon"
+                      label={`Move folder ${folder().name} up`}
+                      onClick={() =>
+                        void run(() =>
+                          mutate("workspace.reorder", {
+                            kind: "folder",
+                            id: folderId,
+                            direction: -1,
+                          }),
+                        )
+                      }
+                    />
+                    <button
+                      type="button"
+                      class="folder-delete"
+                      aria-label={`Delete folder ${folder().name}`}
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        if (
+                          await confirmAction(
+                            "Remove this folder? Its conversations stay pinned.",
+                          )
+                        ) {
+                          void run(() =>
+                            mutate("workspace.folder", {
+                              id: folderId,
+                              remove: true,
+                            }),
+                          );
+                        }
+                      }}
+                    >
+                      ×
+                    </button>
+                  </summary>
+                  <For each={folderConversations(folderId).map((c) => c.key)}>
+                    {(key) => row(key)}
+                  </For>
+                </details>
+              );
+            }}
           </For>
           <div class="pinned-divider" aria-hidden="true" />
-          <For each={recentConversations()}>{(c) => row(c)}</For>
+          <For each={recentConversations().map((c) => c.key)}>
+            {(key) => row(key)}
+          </For>
           <Show when={workspace()?.recentHasMore}>
             <button
               type="button"
@@ -1196,7 +1231,8 @@ export default function App() {
                       </Show>
                     </button>
                     <IconButton
-                      icon="refresh"
+                      icon="arrow-left"
+                      class="unarchive-button"
                       label={`Unarchive ${c.title}`}
                       onClick={() =>
                         void run(() =>
@@ -1206,12 +1242,6 @@ export default function App() {
                           }),
                         )
                       }
-                    />
-                    <IconButton
-                      icon="more-horiz"
-                      class="row-menu-button"
-                      label={`Actions for ${c.title}`}
-                      onClick={(event) => openMenu(c, event)}
                     />
                   </div>
                 )}
@@ -1430,7 +1460,9 @@ export default function App() {
                       </div>
                     </Show>
                     <IconButton
-                      icon="archive"
+                      icon={
+                        c().section === "archived" ? "arrow-left" : "archive"
+                      }
                       class="mobile-archive-button"
                       label={`${
                         c().section === "archived" ? "Unarchive" : "Archive"
@@ -1648,7 +1680,11 @@ export default function App() {
                         })
                       }
                     >
-                      <Icon name="archive" />
+                      <Icon
+                        name={
+                          c().section === "archived" ? "arrow-left" : "archive"
+                        }
+                      />
                       {c().section === "archived" ? "Unarchive" : "Archive"}
                     </button>
                     <button

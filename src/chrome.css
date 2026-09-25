@@ -824,6 +824,12 @@ dialog.conversation-menu {
   .navigation-sheet .thread-row > .icon-button[aria-label^="Unarchive"] {
     display: inline-flex;
   }
+  .navigation-sheet .archive-list .session-age {
+    visibility: hidden;
+  }
+  .navigation-sheet .archive-list .thread-select {
+    padding-right: 44px;
+  }
 }
 .conversation-menu .action-list .icon {
   width: 13px;
@@ -920,6 +926,21 @@ dialog.conversation-menu {
 .archive-list .thread-select {
   color: var(--muted);
 }
+.archive-list .thread-row {
+  position: relative;
+}
+.archive-list .thread-row > .icon-button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.archive-list .thread-row > .unarchive-button {
+  right: 0;
+}
+.archive-list .thread-row:hover .session-age,
+.archive-list .thread-row:focus-within .session-age {
+  visibility: hidden;
+}
 .navigation .thread-row > .archive-button .icon,
 .topbar .thread-row > .archive-button .icon {
   width: 12px;
@@ -929,6 +950,15 @@ dialog.conversation-menu {
 .thread-row.draft .thread-select .icon,
 .thread-row.draft .draft-indicator {
   color: var(--warning);
+}
+.navigation .thread-row:has(.thread-rename) > .icon-button {
+  display: none;
+}
+.navigation .thread-row .thread-rename {
+  margin: 2px 4px;
+  padding: 1px 7px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
 }
 .nav-scroll .thread-row,
 .topbar > .thread-row {

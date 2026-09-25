@@ -389,6 +389,14 @@ small {
   color: var(--ink);
   font: inherit;
 }
+.thread-rename .inline-rename {
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  outline: none;
+}
 .thread-row > .icon-button {
   opacity: 0;
   padding: 4px;
