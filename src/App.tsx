@@ -1231,7 +1231,7 @@ export default function App() {
                       </Show>
                     </button>
                     <IconButton
-                      icon="arrow-left"
+                      icon="u-turn-arrow-right"
                       class="unarchive-button"
                       label={`Unarchive ${c.title}`}
                       onClick={() =>
@@ -1461,9 +1461,13 @@ export default function App() {
                     </Show>
                     <IconButton
                       icon={
-                        c().section === "archived" ? "arrow-left" : "archive"
+                        c().section === "archived"
+                          ? "u-turn-arrow-right"
+                          : "archive"
                       }
-                      class="mobile-archive-button"
+                      class={`mobile-archive-button ${
+                        c().section === "archived" ? "unarchive-icon" : ""
+                      }`}
                       label={`${
                         c().section === "archived" ? "Unarchive" : "Archive"
                       } ${c().title}`}
@@ -1669,6 +1673,7 @@ export default function App() {
                   <>
                     <button
                       type="button"
+                      class={c().section === "archived" ? "unarchive-icon" : ""}
                       disabled={
                         c().section !== "archived" &&
                         (c().running || c().pendingInput)
@@ -1682,7 +1687,9 @@ export default function App() {
                     >
                       <Icon
                         name={
-                          c().section === "archived" ? "arrow-left" : "archive"
+                          c().section === "archived"
+                            ? "u-turn-arrow-right"
+                            : "archive"
                         }
                       />
                       {c().section === "archived" ? "Unarchive" : "Archive"}

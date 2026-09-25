@@ -937,6 +937,10 @@ dialog.conversation-menu {
 .archive-list .thread-row > .unarchive-button {
   right: 0;
 }
+.unarchive-button .icon,
+.unarchive-icon .icon {
+  transform: rotate(90deg);
+}
 .archive-list .thread-row:hover .session-age,
 .archive-list .thread-row:focus-within .session-age {
   visibility: hidden;

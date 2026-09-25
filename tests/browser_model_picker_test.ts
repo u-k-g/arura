@@ -259,6 +259,9 @@ Deno.test({
       await expect(effort).toBeDisabled();
       await expect(effort.locator("option:checked"))
         .toHaveText("Not reported");
+      await page.reload();
+      await expect(button).toContainText("fixture-unreported");
+      await expect(button).not.toContainText(/high|Off|Not reported/);
     } finally {
       await browser.close();
     }

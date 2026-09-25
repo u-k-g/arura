@@ -248,7 +248,6 @@ export default function Chat(props: {
         entry.capabilities,
       )
       : reasoningLevels(provider ?? "", name);
-    if (!models().length && levels === undefined) return effort;
     return levels?.includes(effort) ? effort : "";
   });
   createEffect(() => {
