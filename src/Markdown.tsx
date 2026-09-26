@@ -28,6 +28,23 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
 
 export function splitSourcesSection(text: string) {
   const tokens = marked.lexer(text);
+  const last = tokens.findLastIndex((token) => token.type !== "space");
+  const inline = tokens[last];
+  if (inline?.type === "paragraph") {
+    const match = inline.raw
+      .trim()
+      .match(/^(?:\*\*|__)?Sources:?(?:\*\*|__)?\s+(.+)$/is);
+    if (match && /https?:\/\/|\[[0-9]+\]/i.test(match[1])) {
+      return {
+        answer: tokens
+          .slice(0, last)
+          .map((token) => token.raw)
+          .join("")
+          .trimEnd(),
+        sources: match[1].trim(),
+      };
+    }
+  }
   const index = tokens.findLastIndex(
     (token) =>
       (token.type === "paragraph" || token.type === "heading") &&

@@ -1999,6 +1999,83 @@ progress {
   border-bottom: 1px solid var(--line);
   padding-bottom: 12px;
 }
+.work-summary-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.work-summary-row > .work-summary {
+  flex: 0 1 auto;
+  margin: 0;
+  border: 0;
+}
+.output-stats-button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.output-stats-button:hover,
+.output-stats-button:focus-visible {
+  background: var(--hover);
+  color: var(--text);
+}
+.output-stats-button .icon {
+  width: 16px;
+  height: 16px;
+}
+.output-stats-dialog .dialog-inner {
+  width: min(520px, calc(100vw - 24px));
+}
+.output-stats-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 14px 0 20px;
+}
+.output-stats-metrics > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.output-stats-metrics small,
+.output-stats-note {
+  color: var(--muted);
+}
+.output-stats-metrics strong {
+  font-size: 20px;
+  font-weight: 500;
+}
+.output-stats-dialog h3 {
+  font-size: 13px;
+  font-weight: 500;
+}
+.output-stats-timeline {
+  list-style: none;
+  margin: 8px 0 16px;
+  padding: 0;
+  max-height: 50vh;
+  overflow: auto;
+}
+.output-stats-timeline li {
+  display: flex;
+  gap: 16px;
+  padding: 7px 0;
+  border-top: 1px solid var(--line);
+}
+.output-stats-timeline time {
+  min-width: 48px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 
 .tool-payload pre {
   max-height: 280px;

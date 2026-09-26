@@ -136,6 +136,16 @@
 .nav-footer button {
   flex: initial;
   flex-direction: row;
+  border-radius: 5px;
+}
+.nav-footer button:hover,
+.nav-footer button:focus-visible {
+  background: var(--hover);
+  color: var(--ink);
+}
+.nav-footer button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 .sidebar-titlebar .gateway-status {
   justify-content: center;

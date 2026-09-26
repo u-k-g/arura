@@ -2,8 +2,7 @@ import { chromium, expect } from "@playwright/test";
 import { signIn } from "./sign_in.ts";
 import { requireValue } from "./require_value.ts";
 Deno.test({
-  name:
-    "work summary sits between its prompt and answer without duplicate tool rows",
+  name: "work summary sits between its prompt and answer without duplicate tool rows",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -31,6 +30,15 @@ Deno.test({
       const summary = page.locator(".history-work").last();
       await expect(summary).toBeVisible();
       await expect(summary.locator(".past-tool")).toHaveCount(0);
+      await summary
+        .locator("..")
+        .getByRole("button", { name: "Output stats" })
+        .click();
+      const stats = page.getByRole("dialog", { name: "Output stats" });
+      await expect(stats).toBeVisible();
+      await expect(stats).toContainText("Time to first output");
+      await expect(stats).toContainText("Timeline");
+      await stats.getByRole("button", { name: "Close" }).click();
       expect(
         requireValue(await summary.boundingBox(), "summary bounds").y,
       ).toBeLessThan(
@@ -46,6 +54,26 @@ Deno.test({
       await expect(page.locator(".live-message .work-summary")).toHaveCount(0);
       await summary.locator(":scope > summary").click();
       await expect(summary.locator(".past-tool")).toHaveCount(0);
+      await page
+        .getByLabel("Message Hermes", { exact: true })
+        .fill("Follow-up work");
+      await page
+        .getByRole("button", { name: "Send message", exact: true })
+        .click();
+      await expect(
+        page
+          .locator(".markdown")
+          .filter({ hasText: "Received: Follow-up work" }),
+      ).toBeVisible();
+      const earlier = page.locator(".transcript-group").filter({
+        has: page.locator(".message.user").filter({
+          hasText: "Work layout check",
+        }),
+      });
+      await earlier.getByRole("button", { name: "Output stats" }).click();
+      await expect(stats).toContainText("First output");
+      await expect(stats).toContainText("returned");
+      await stats.getByRole("button", { name: "Close" }).click();
       await page.screenshot({ path: "/var/tmp/arura-work-layout.png" });
       await page
         .getByRole("button", { name: "Cron jobs", exact: true })

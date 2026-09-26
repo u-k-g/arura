@@ -57,11 +57,69 @@ export function watchForUpdates() {
 export async function reloadUpdatedApp() {
   if ("serviceWorker" in globalThis.navigator) {
     try {
-      const registration = await globalThis.navigator.serviceWorker
-        .getRegistration();
+      const registration =
+        await globalThis.navigator.serviceWorker.getRegistration();
       if (registration) {
+        let changed = false;
+        const onChange = () => {
+          changed = true;
+        };
+        globalThis.navigator.serviceWorker.addEventListener(
+          "controllerchange",
+          onChange,
+        );
         await registration.update();
-        registration.waiting?.postMessage({ type: "SKIP_WAITING" });
+        const installing = registration.installing;
+        if (
+          installing &&
+          installing.state !== "installed" &&
+          installing.state !== "activated"
+        ) {
+          await new Promise<void>((resolve) => {
+            const done = () => {
+              if (
+                ["installed", "activated", "redundant"].includes(
+                  installing.state,
+                )
+              ) {
+                installing.removeEventListener("statechange", done);
+                resolve();
+              }
+            };
+            installing.addEventListener("statechange", done);
+            done();
+          });
+        }
+        const waiting = registration.waiting;
+        if ((waiting || installing) && !changed) {
+          const controlled = new Promise<boolean>((resolve) => {
+            const done = () => {
+              globalThis.navigator.serviceWorker.removeEventListener(
+                "controllerchange",
+                done,
+              );
+              resolve(true);
+            };
+            globalThis.navigator.serviceWorker.addEventListener(
+              "controllerchange",
+              done,
+              { once: true },
+            );
+            globalThis.setTimeout(() => {
+              globalThis.navigator.serviceWorker.removeEventListener(
+                "controllerchange",
+                done,
+              );
+              resolve(false);
+            }, 8000);
+          });
+          waiting?.postMessage({ type: "SKIP_WAITING" });
+          if (!(await controlled)) await registration.unregister();
+        }
+        globalThis.navigator.serviceWorker.removeEventListener(
+          "controllerchange",
+          onChange,
+        );
       }
     } catch {
       // The page reload still checks the network for the new build.

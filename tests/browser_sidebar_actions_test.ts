@@ -36,23 +36,46 @@ Deno.test({
       expect(requireValue(artifactsBox, "artifacts box").x).toBeLessThan(
         requireValue(newChatBox, "new chat box").x,
       );
+      for (const name of ["Artifacts", "New conversation"]) {
+        const button = footer.getByRole("button", { name, exact: true });
+        const resting = await button.evaluate((element) =>
+          getComputedStyle(element).backgroundColor
+        );
+        await button.hover();
+        expect(
+          await button.evaluate((element) =>
+            getComputedStyle(element).backgroundColor
+          ),
+        ).not.toBe(resting);
+        await page.mouse.move(800, 400);
+      }
       await expect(
         page.locator(".thread-row.selected").getByRole("button", {
           name: "Archive Fixture conversation",
           exact: true,
         }),
       ).toBeVisible();
-      await page
-        .getByRole("button", { name: "Collapse sidebar", exact: true })
-        .click();
+      await page.keyboard.press("Meta+b");
       await expect(
         page
           .locator(".collapsed-controls")
           .getByRole("button", { name: "New conversation", exact: true }),
       ).toBeVisible();
+      await page.keyboard.press("Control+b");
+      await expect(
+        page.getByRole("button", { name: "Collapse sidebar", exact: true }),
+      ).toBeVisible();
+      await page
+        .getByRole("button", { name: "Collapse sidebar", exact: true })
+        .click();
       await page
         .getByRole("button", { name: "Expand sidebar", exact: true })
         .click();
+      await expect(
+        page.getByRole("navigation", { name: "Main navigation" })
+          .getByRole("button", { name: "Cron jobs" })
+          .locator('path[d^="M21.6669 16.6667"]'),
+      ).toHaveCount(1);
       await expect(
         page.getByRole("button", { name: "Settings", exact: true }),
       ).toHaveCount(1);
@@ -151,6 +174,14 @@ Deno.test({
       expect(created.ok()).toBe(true);
       await page.getByRole("navigation", { name: "Main navigation" })
         .getByRole("button", { name: "Settings", exact: true }).click();
+      await page.keyboard.press("Meta+b");
+      await expect(
+        page.getByRole("button", { name: "Expand sidebar", exact: true }),
+      ).toBeVisible();
+      await page.keyboard.press("Meta+b");
+      await expect(
+        page.getByRole("navigation", { name: "Settings sections" }),
+      ).toBeVisible();
       await page.getByRole("button", { name: "Conversations & archive" })
         .click();
       await page.getByLabel("Default profile").selectOption("sidebar-profile");

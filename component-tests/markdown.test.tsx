@@ -30,3 +30,17 @@ test("numbered sources fold, while ordinary and unfinished text stays visible", 
     splitSourcesSection("Sources:\n- a\n\nFinal thought."),
   ).toBeUndefined();
 });
+
+test("single-line source citations fold without changing the link", () => {
+  const answer =
+    "A useful answer.\n\nSources: [109] https://www.youtube.com/watch?v=example";
+  expect(splitSourcesSection(answer)).toMatchObject({
+    answer: "A useful answer.",
+    sources: "[109] https://www.youtube.com/watch?v=example",
+  });
+  render(() => <AnswerMarkdown text={answer} />);
+  expect(screen.getByText("Sources").closest("details")?.open).toBe(false);
+  expect(screen.getByRole("link").getAttribute("href")).toBe(
+    "https://www.youtube.com/watch?v=example",
+  );
+});

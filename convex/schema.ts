@@ -136,6 +136,13 @@ export default defineSchema({
     "conversation",
     ["conversation"],
   ),
+  turnStats: defineTable({
+    conversation: v.string(),
+    startedAt: v.number(),
+    answerId: v.optional(v.string()),
+    answerText: v.string(),
+    data: v.any(),
+  }).index("conversation", ["conversation", "startedAt"]),
   commands: defineTable({
     id: v.string(),
     device: v.string(),

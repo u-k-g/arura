@@ -12,6 +12,7 @@ import {
   createSignal,
   For,
   lazy,
+  on,
   onCleanup,
   onMount,
   Show,
@@ -178,12 +179,12 @@ export default function App() {
     : savedView;
   if (initialView !== savedView) preferences.setItem("arura.view", initialView);
   const [view, setView] = createSignal(initialView);
-  createEffect(() => {
-    if (inSettings(view()) && collapsed()) {
+  createEffect(on(() => inSettings(view()), (settings, wasSettings) => {
+    if (settings && !wasSettings && collapsed()) {
       setCollapsed(false);
       preferences.setItem("arura.sidebarCollapsed", "false");
     }
-  });
+  }));
   const [sheet, setSheet] = createSignal(false),
     [search, setSearch] = createSignal(""),
     [palette, setPalette] = createSignal(false);
@@ -219,22 +220,26 @@ export default function App() {
     { key: string; title: string; profile: string }[]
   >([]);
   onMount(() => {
-    const openPalette = (event: KeyboardEvent) => {
+    const handleShortcut = (event: KeyboardEvent) => {
       if (
-        event.metaKey &&
-        !event.ctrlKey &&
-        !event.altKey &&
-        !event.shiftKey &&
-        !event.isComposing &&
-        event.key.toLowerCase() === "k" &&
-        authorized()
-      ) {
+        !authorized() || event.altKey || event.shiftKey || event.isComposing ||
+        event.repeat
+      ) return;
+      const key = event.key.toLowerCase();
+      if (key === "k" && event.metaKey && !event.ctrlKey) {
         event.preventDefault();
         setPalette(true);
+      } else if (
+        key === "b" &&
+        (event.metaKey !== event.ctrlKey) &&
+        !narrow()
+      ) {
+        event.preventDefault();
+        toggleSidebar();
       }
     };
-    globalThis.addEventListener("keydown", openPalette);
-    onCleanup(() => globalThis.removeEventListener("keydown", openPalette));
+    globalThis.addEventListener("keydown", handleShortcut);
+    onCleanup(() => globalThis.removeEventListener("keydown", handleShortcut));
   });
   const [searching, setSearching] = createSignal(false);
   const [searchError, setSearchError] = createSignal("");
@@ -931,7 +936,7 @@ export default function App() {
           </div>
         </Show>
         <IconButton
-          icon={c().bot ? "bot" : "archive"}
+          icon={c().bot ? "comp-align-bottom-solid" : "archive"}
           class="archive-button"
           label={c().bot ? `Edit bot ${c().title}` : `Archive ${c().title}`}
           disabled={!c().bot && (c().running || c().pendingInput)}
@@ -1069,7 +1074,7 @@ export default function App() {
           each={[
             ["threads", "Threads", "message-text"],
             ["resources:profiles", "Bots", "comp-align-bottom-solid"],
-            ["resources:jobs", "Cron jobs", "timer"],
+            ["resources:jobs", "Cron jobs", "calendar-rotate"],
             ["settings", "Settings", "settings"],
           ]}
         >
@@ -1583,7 +1588,7 @@ export default function App() {
                     </Show>
                     <IconButton
                       icon={c().bot
-                        ? "bot"
+                        ? "comp-align-bottom-solid"
                         : c().section === "archived"
                         ? "u-turn-arrow-right"
                         : "archive"}

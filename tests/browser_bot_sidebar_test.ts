@@ -36,6 +36,11 @@ Deno.test({
           has: page.getByRole("button", { name: "sidebar-bot", exact: true }),
         });
       await expect(row).toBeVisible();
+      const botsIcon = await page.getByRole("navigation", {
+        name: "Main navigation",
+      }).getByRole("button", { name: "Bots" }).locator(".icon").innerHTML();
+      expect(await row.locator(".archive-button .icon").innerHTML())
+        .toBe(botsIcon);
       await expect(row.getByRole("button", { name: "Archive sidebar-bot" }))
         .toHaveCount(0);
       const roster = await (await page.request.get(
