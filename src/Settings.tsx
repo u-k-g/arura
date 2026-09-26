@@ -93,13 +93,26 @@ export default function Settings(props: {
     >([]),
     [cache, setCache] = createSignal(caching()),
     [storage, setStorage] = createSignal<StorageEstimate>({}),
-    [actions, setActions] = createSignal<{ id: string; label: string }[]>([]);
+    [actions, setActions] = createSignal<{ id: string; label: string }[]>([]),
+    [profiles, setProfiles] = createSignal<
+      { name: string; display_name?: string }[]
+    >([]);
   const appInstall = useAppInstall();
   createEffect(() => {
     if (props.section === "devices") {
       const stop = subscribe("devices", "list", {}, setDevices);
       onCleanup(stop);
     }
+  });
+  createEffect(() => {
+    if (props.section !== "navigation") return;
+    let disposed = false;
+    void resource("profileRoster").then((result) => {
+      if (!disposed) setProfiles(result.profiles ?? []);
+    }).catch((error) => inform((error as Error).message));
+    onCleanup(() => {
+      disposed = true;
+    });
   });
   createEffect(() => {
     if (props.section === "storage") void storageInfo().then(setStorage);
@@ -303,6 +316,47 @@ export default function Settings(props: {
           </button>
         </Show>
         <Show when={props.section === "navigation"}>
+          <Field
+            label="Default profile"
+            hint="Used for new conversations. Bot conversations keep their own profile."
+          >
+            <select
+              aria-label="Default profile"
+              value={String(workspace()?.settings.defaultProfile ?? "default")}
+              onChange={(event) => {
+                const profile = event.currentTarget.value;
+                void run(() => mutate("workspace.defaultProfile", { profile }));
+              }}
+            >
+              <Show
+                when={profiles().length && !profiles().some((profile) =>
+                  profile.name ===
+                    String(workspace()?.settings.defaultProfile ?? "default")
+                )}
+              >
+                <option
+                  value={String(
+                    workspace()?.settings.defaultProfile ?? "default",
+                  )}
+                >
+                  {String(workspace()?.settings.defaultProfile ?? "default")}
+                </option>
+              </Show>
+              <For
+                each={profiles().length ? profiles() : [{
+                  name: String(
+                    workspace()?.settings.defaultProfile ?? "default",
+                  ),
+                }]}
+              >
+                {(profile) => (
+                  <option value={profile.name}>
+                    {profile.display_name || profile.name}
+                  </option>
+                )}
+              </For>
+            </select>
+          </Field>
           <Field label="Automatically archive inactive conversations">
             <input
               type="checkbox"

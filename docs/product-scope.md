@@ -150,12 +150,15 @@ grace period.
 - Scheduled jobs show all profiles together, with blueprints in the job list,
   compact timestamps and prompt previews, and primary actions above the details.
 - Settings has one gear button in the sidebar footer, not the top bar. The
-  sidebar header profile selector chooses the profile for new chats. Archive is
+  default profile setting chooses the profile for new chats. Archive is
   available in both the top bar and each chat's context menu. Archiving or
-  deleting the open chat returns to a blank new-chat screen in that profile.
+  deleting the open chat returns to a blank new-chat screen in the default
+  profile.
 - Bot conversations display their bot's name rather than "Bot Chat". Preserve
   Hermes's canonical session title internally so bot discovery remains
-  compatible.
+  compatible. Bot conversations cannot be archived. Each bot can be shown or
+  hidden in Threads from Profiles & bots. Its sidebar action opens that bot's
+  settings while the age label remains visible.
 - The model picker opens as a compact popover anchored to its composer button,
   with a left rail containing only providers and Starred (no All models),
   opening on Starred, with a searchable model list, per-model stars synchronized
@@ -171,6 +174,9 @@ grace period.
   pinned or Essential entries, folder contents, bot chats, active runs, and
   pending input are exempt. Bot chats never autoarchive, regardless of
   inactivity. Restoring an entry restarts this clock.
+- Settings → Conversations & archive selects the shared default profile for new
+  conversations. Bot conversations keep their own profiles; the sidebar has no
+  profile picker.
 - **Archived:** at the bottom; collapsed initially; newest ten archived entries,
   “Show 10 more,” and an Unarchive action on each. Unarchive returns an entry to
   ordinary unpinned navigation and restarts its inactivity window.
@@ -215,10 +221,9 @@ untitled icon grid with a searchable icon library; Pinned has no heading and
 ends with a separator above ordinary threads. Archived is a muted expandable
 section anchored above the footer. Search sits at the top right. The sidebar
 footer has Artifacts and Settings on the left and New conversation on the right.
-The header holds the profile selector and a dot-only gateway status control.
-Create a folder from a chat's Move to folder menu; it starts as Untitled,
-contains that chat, and opens inline rename. Chat and folder names can be
-renamed in place by double-clicking or using their existing Rename controls.
-Delete appears only for archived chats. The duplicate global conversation menu
-is removed; thread context menus remain. On mobile the top bar shows the open
-thread with its context-menu action.
+The header holds the gateway status control. Create a folder from a chat's Move
+to folder menu; it starts as Untitled, contains that chat, and opens inline
+rename. Chat and folder names can be renamed in place by double-clicking or
+using their existing Rename controls. Delete appears only for archived chats.
+The duplicate global conversation menu is removed; thread context menus remain.
+On mobile the top bar shows the open thread with its context-menu action.

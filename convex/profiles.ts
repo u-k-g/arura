@@ -36,6 +36,24 @@ export const finishRename = mutation({
     if (old) await ctx.db.delete(old._id);
   },
 });
+export const removed = mutation({
+  args: { name: v.string() },
+  handler: async (ctx, { name }) => {
+    await adapter(ctx);
+    const chosen = await ctx.db.query("settings")
+      .withIndex("key", (q) => q.eq("key", "defaultProfile")).unique();
+    if (chosen?.value === name) {
+      await ctx.db.patch(chosen._id, { value: "default" });
+    }
+    const hidden = await ctx.db.query("settings")
+      .withIndex("key", (q) => q.eq("key", "hiddenBotProfiles")).unique();
+    if (hidden && Array.isArray(hidden.value)) {
+      await ctx.db.patch(hidden._id, {
+        value: hidden.value.filter((profile: string) => profile !== name),
+      });
+    }
+  },
+});
 
 // Called only after Hermes confirms the canonical new profile name. A clone
 // never enters this path: identical source IDs do not establish identity.
@@ -44,6 +62,25 @@ export const renamed = mutation({
   handler: async (ctx, { from, to, sourceIds }) => {
     await adapter(ctx);
     if (from === to) return;
+    const defaultProfile = await ctx.db.query("settings")
+      .withIndex("key", (q) => q.eq("key", "defaultProfile")).unique();
+    if (defaultProfile?.value === from) {
+      await ctx.db.patch(defaultProfile._id, { value: to });
+    }
+    const hiddenBots = await ctx.db.query("settings")
+      .withIndex("key", (q) => q.eq("key", "hiddenBotProfiles")).unique();
+    if (
+      hiddenBots && Array.isArray(hiddenBots.value) &&
+      hiddenBots.value.includes(from)
+    ) {
+      await ctx.db.patch(hiddenBots._id, {
+        value: [
+          ...new Set(
+            hiddenBots.value.map((name: string) => name === from ? to : name),
+          ),
+        ],
+      });
+    }
     const blankDraft = await ctx.db
       .query("drafts")
       .withIndex("profile", (q) => q.eq("profile", from).eq("key", ""))

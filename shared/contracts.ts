@@ -14,6 +14,8 @@ export type Workspace = {
     hiddenModels?: string[];
     modelFavorites?: string[];
     modelEfforts?: Record<string, string>;
+    defaultProfile?: string;
+    hiddenBotProfiles?: string[];
     dismissedErrors?: string[];
     chatModel?: {
       value: string;

@@ -323,6 +323,9 @@ export const move = mutation({
     if (args.folderId && args.section !== "pinned") {
       throw new Error("Folders belong in Pinned");
     }
+    if (args.section === "archived" && c.bot) {
+      throw new Error("Bot conversations cannot be archived");
+    }
     if (args.section === "archived" && (c.running || c.pendingInput)) {
       throw new Error("Finish the active work before archiving");
     }
@@ -522,6 +525,36 @@ export const setting = mutation({
     else await ctx.db.insert("settings", args);
   },
 });
+export const defaultProfile = mutation({
+  args: { profile: v.string() },
+  handler: async (ctx, { profile }) => {
+    await device(ctx);
+    if (!profile || profile.length > 128) throw new Error("Invalid profile");
+    const old = await ctx.db.query("settings")
+      .withIndex("key", (q) => q.eq("key", "defaultProfile")).unique();
+    if (old) await ctx.db.patch(old._id, { value: profile });
+    else {await ctx.db.insert("settings", {
+        key: "defaultProfile",
+        value: profile,
+      });}
+  },
+});
+export const botVisibility = mutation({
+  args: { profile: v.string(), visible: v.boolean() },
+  handler: async (ctx, { profile, visible }) => {
+    await device(ctx);
+    if (!profile || profile.length > 128) throw new Error("Invalid profile");
+    const key = "hiddenBotProfiles";
+    const old = await ctx.db.query("settings")
+      .withIndex("key", (q) => q.eq("key", key)).unique();
+    const hidden = new Set<string>(Array.isArray(old?.value) ? old.value : []);
+    if (visible) hidden.delete(profile);
+    else hidden.add(profile);
+    const value = [...hidden];
+    if (old) await ctx.db.patch(old._id, { value });
+    else await ctx.db.insert("settings", { key, value });
+  },
+});
 export const modelVisibility = mutation({
   args: { model: v.string(), hidden: v.boolean() },
   handler: async (ctx, args) => {
@@ -701,6 +734,10 @@ export const ingest = mutation({
         deleted: false,
       };
       const organization = incomingOrganization(old, input, Date.now());
+      if (data.bot && (organization.section ?? old?.section) === "archived") {
+        organization.section = "recent";
+        organization.archivedAt = undefined;
+      }
       if (old) await ctx.db.patch(old._id, { ...data, ...organization });
       else {
         await ctx.db.insert("conversations", {

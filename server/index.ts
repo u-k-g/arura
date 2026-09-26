@@ -1380,6 +1380,9 @@ async function handle(request: Request, ip: string): Promise<Response> {
         await migrateProfile(params.id, result.name, await hermes.list());
         await reconcile();
       }
+      if (op === "deleteProfile" && result.ok) {
+        await convex.mutation(anyApi.profiles.removed, { name: params.id });
+      }
       if (["createProfile", "deleteProfile", "saveConfig"].includes(op)) {
         await reconcile();
       }

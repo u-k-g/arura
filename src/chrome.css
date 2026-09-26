@@ -750,13 +750,6 @@ dialog.conversation-menu {
   margin-left: 8px;
 }
 
-.sidebar-titlebar .profile-name {
-  flex: 1;
-  min-width: 0;
-  justify-content: flex-start;
-  border: 0;
-  padding: 4px 6px;
-}
 .nav-search {
   display: flex;
   align-items: center;

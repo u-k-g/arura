@@ -65,6 +65,7 @@ import {
 import { Portal } from "solid-js/web";
 import {
   inform,
+  mutate,
   resource,
   revision,
   scheduleDraft,
@@ -526,6 +527,7 @@ function Editor(props: {
 }
 export default function Resources(props: {
   name: string;
+  focusProfile?: string;
   navigate: (view: string) => void;
   newChat: (profile?: string) => Promise<void>;
   sidebarMount?: () => HTMLElement | undefined;
@@ -806,6 +808,11 @@ export default function Resources(props: {
       "memory",
     ].includes(props.name);
   const [selectedId, setSelectedId] = createSignal("");
+  createEffect(() => {
+    if (props.name === "profiles" && props.focusProfile) {
+      setSelectedId(props.focusProfile);
+    }
+  });
   const [picker, setPicker] = createSignal(false);
   const rowId = (item: ResourceRow) =>
     String(item.id ?? item.name ?? item.key ?? "");
@@ -1674,6 +1681,27 @@ export default function Resources(props: {
                         </div>
                       </Show>
                     </div>
+                    <Show when={props.name === "profiles" && item.name}>
+                      <Field
+                        label="Show bot in Threads"
+                        hint="Bot conversations stay available here and are never archived automatically."
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!(workspace()?.settings.hiddenBotProfiles ??
+                            []).includes(item.name ?? "")}
+                          onChange={(event) => {
+                            const visible = event.currentTarget.checked;
+                            void run(() =>
+                              mutate("workspace.botVisibility", {
+                                profile: item.name ?? "",
+                                visible,
+                              })
+                            );
+                          }}
+                        />
+                      </Field>
+                    </Show>
                     <Show when={props.name === "jobs"}>
                       <dl class="job-metadata">
                         <div>

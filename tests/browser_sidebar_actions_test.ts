@@ -3,8 +3,7 @@ import { signIn } from "./sign_in.ts";
 import { requireValue } from "./require_value.ts";
 
 Deno.test({
-  name:
-    "sidebar settings, artifacts, profile selection, and archive navigation",
+  name: "sidebar settings, artifacts, default profile, and archive navigation",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -31,16 +30,10 @@ Deno.test({
       const artifactsBox = await footer.getByRole("button", {
         name: "Artifacts",
       }).boundingBox();
-      const settingsBox = await footer.getByRole("button", {
-        name: "Settings",
-      }).boundingBox();
       const newChatBox = await footer.getByRole("button", {
         name: "New conversation",
       }).boundingBox();
       expect(requireValue(artifactsBox, "artifacts box").x).toBeLessThan(
-        requireValue(settingsBox, "settings box").x,
-      );
-      expect(requireValue(settingsBox, "settings box").x).toBeLessThan(
         requireValue(newChatBox, "new chat box").x,
       );
       await expect(
@@ -64,17 +57,12 @@ Deno.test({
         page.getByRole("button", { name: "Settings", exact: true }),
       ).toHaveCount(1);
       await expect(
-        page
-          .locator(".nav-footer")
+        page.getByRole("navigation", { name: "Main navigation" })
           .getByRole("button", { name: "Settings", exact: true }),
       ).toBeVisible();
-      await expect(page.getByLabel("Select profile")).toContainText("default");
-      await expect(
-        page.locator(".sidebar-titlebar").getByLabel("Select profile"),
-      ).toBeVisible();
-      await expect(
-        page.locator(".nav-footer").getByLabel("Select profile"),
-      ).toHaveCount(0);
+      await expect(page.getByLabel("Select profile")).toHaveCount(0);
+      await expect(page.locator(".sidebar-titlebar .profile-name"))
+        .toHaveCount(0);
       const gateway = page
         .locator(".sidebar-titlebar")
         .getByRole("button", { name: /^Gateway (connected|disconnected)$/ });
@@ -161,25 +149,14 @@ Deno.test({
         },
       );
       expect(created.ok()).toBe(true);
-      await page.getByLabel("Select profile").click();
-      const profileTrigger = await page.getByLabel("Select profile")
-        .boundingBox();
-      const profilePanel = await page
-        .getByRole("dialog", { name: "Switch profile" })
-        .boundingBox();
-      expect(profilePanel?.y).toBeGreaterThanOrEqual(
-        (profileTrigger?.y ?? 0) + (profileTrigger?.height ?? 0),
-      );
-      await expect(
-        page
-          .getByRole("dialog", { name: "Switch profile" })
-          .getByRole("button", { name: "sidebar-profile", exact: true }),
-      ).toBeVisible();
-      await page.screenshot({ path: "/var/tmp/arura-profile-picker.png" });
-      await page
-        .getByRole("dialog", { name: "Switch profile" })
-        .getByRole("button", { name: "sidebar-profile", exact: true })
+      await page.getByRole("navigation", { name: "Main navigation" })
+        .getByRole("button", { name: "Settings", exact: true }).click();
+      await page.getByRole("button", { name: "Conversations & archive" })
         .click();
+      await page.getByLabel("Default profile").selectOption("sidebar-profile");
+      await expect(page.getByLabel("Default profile"))
+        .toHaveValue("sidebar-profile");
+      await page.getByRole("button", { name: "Threads", exact: true }).click();
       await page
         .getByRole("button", { name: "New conversation", exact: true })
         .click();
@@ -211,12 +188,10 @@ Deno.test({
       ).toHaveCount(0);
       await page.getByRole("button", { name: "Archive", exact: true }).click();
       await page.getByRole("button", { name: "Archived", exact: true }).click();
-      await page.locator(".archive-list .thread-row").first()
-        .locator(".row-menu-button").click();
-      await page
-        .getByRole("button", { name: "Delete conversation", exact: true })
-        .click();
-      await page.getByRole("button", { name: "Confirm", exact: true }).click();
+      await expect(page.locator(".archive-list .row-menu-button"))
+        .toHaveCount(0);
+      await expect(page.locator(".archive-list .unarchive-button").first())
+        .toBeVisible();
       await expect
         .poll(() => page.evaluate(() => localStorage.getItem("arura.view")))
         .toBe("");
@@ -226,10 +201,8 @@ Deno.test({
         .click();
       const sheet = page.getByRole("dialog", { name: "Conversations" });
       await expect(sheet.locator(".sidebar-titlebar")).toBeVisible();
-      await sheet.getByRole("button", { name: "Select profile" }).click();
-      await expect(
-        page.getByRole("dialog", { name: "Switch profile" }),
-      ).toBeVisible();
+      await expect(sheet.getByRole("button", { name: "Select profile" }))
+        .toHaveCount(0);
     } finally {
       await browser.close();
     }

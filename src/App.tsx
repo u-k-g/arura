@@ -1,4 +1,3 @@
-import ProfilePicker from "./ProfilePicker.tsx";
 import SettingsFrame, {
   inSettings,
   SettingsNavigation,
@@ -466,6 +465,11 @@ export default function App() {
     setSearch("");
   };
   const chats = () => (workspace()?.conversations ?? []) as Conversation[];
+  const hiddenBotProfiles = () => workspace()?.settings.hiddenBotProfiles ?? [];
+  const visibleInThreads = (c: Conversation) =>
+    !c.bot || !hiddenBotProfiles().includes(c.profile);
+  const defaultProfile = () =>
+    workspace()?.settings.defaultProfile || "default";
   const draftFor = (key: string, profile: string) =>
     workspace()?.drafts?.find(
       (item) => item.key === key && item.profile === profile,
@@ -526,20 +530,13 @@ export default function App() {
       }
     });
   });
-  const [chosenProfile, setChosenProfile] = createSignal(
-    preferences.getItem("arura.profile") || "default",
-  );
-  const currentProfile = () => selected()?.profile ?? chosenProfile();
+  const [chosenProfile, setChosenProfile] = createSignal(defaultProfile());
   createEffect(() => {
     const profile = selected()?.profile;
-    if (profile) {
-      setChosenProfile(profile);
-      preferences.setItem("arura.profile", profile);
-    }
+    if (profile) setChosenProfile(profile);
   });
-  function newChat(profile = currentProfile()) {
+  function newChat(profile = defaultProfile()) {
     setChosenProfile(profile);
-    preferences.setItem("arura.profile", profile);
     void draft("", "");
     void draftAttachments("", []);
     saveDraft(profile, "", "");
@@ -548,10 +545,11 @@ export default function App() {
     return Promise.resolve();
   }
   async function archiveConversation(conversation: Conversation) {
+    if (conversation.bot && conversation.section !== "archived") return;
     const section = conversation.section === "archived" ? "recent" : "archived";
     await mutate("workspace.move", { key: conversation.key, section });
     if (section === "archived" && view() === conversation.key) {
-      setChosenProfile(conversation.profile);
+      setChosenProfile(defaultProfile());
       navigate("");
     }
   }
@@ -691,21 +689,25 @@ export default function App() {
   ];
   const essentialConversations = createMemo(() =>
     chats()
-      .filter((c) => c.section === "essential")
+      .filter((c) => visibleInThreads(c) && c.section === "essential")
       .sort((a, b) => a.rank - b.rank)
   );
   const pinnedConversations = createMemo(() =>
     chats()
-      .filter((c) => c.section === "pinned" && !c.folderId)
+      .filter((c) =>
+        visibleInThreads(c) && c.section === "pinned" && !c.folderId
+      )
       .sort((a, b) => a.rank - b.rank)
   );
   const folderConversations = (folderId: string) =>
     chats()
-      .filter((c) => c.folderId === folderId)
+      .filter((c) => visibleInThreads(c) && c.folderId === folderId)
       .sort((a, b) => a.rank - b.rank);
   const recentConversations = createMemo(() =>
     chats()
-      .filter((c) => c.section === "recent" && !c.backgroundSession)
+      .filter((c) =>
+        visibleInThreads(c) && c.section === "recent" && !c.backgroundSession
+      )
       .sort((a, b) => conversationActivity(b) - conversationActivity(a))
   );
   const sidebarConversations = () => [
@@ -744,7 +746,7 @@ export default function App() {
         label: "New conversation",
         group: "Commands",
         icon: "plus",
-        run: () => void newChat(currentProfile()),
+        run: () => void newChat(),
       },
       {
         id: "sidebar",
@@ -901,11 +903,16 @@ export default function App() {
           </div>
         </Show>
         <IconButton
-          icon="archive"
+          icon={c().bot ? "bot" : "archive"}
           class="archive-button"
-          label={`Archive ${c().title}`}
-          disabled={c().running || c().pendingInput}
-          onClick={() => void run(() => archiveConversation(c()))}
+          label={c().bot ? `Edit bot ${c().title}` : `Archive ${c().title}`}
+          disabled={!c().bot && (c().running || c().pendingInput)}
+          onClick={() =>
+            c().bot
+              ? navigate(
+                `resources:profiles?name=${encodeURIComponent(c().profile)}`,
+              )
+              : void run(() => archiveConversation(c()))}
         />
         <IconButton
           icon="more-horiz"
@@ -920,7 +927,7 @@ export default function App() {
     <IconButton
       icon="plus"
       label="New conversation"
-      onClick={() => void newChat(currentProfile())}
+      onClick={() => void newChat()}
     />
   );
   const navigationActions = () => (
@@ -940,7 +947,7 @@ export default function App() {
   const mobileChatActions = {
     openNavigation: () => setSheet(true),
     openPalette: () => setPalette(true),
-    newChat: () => void newChat(currentProfile()),
+    newChat: () => void newChat(),
   };
   const gatewayOnline = () => connected() && !!workspace()?.connection?.online;
   const gatewayStatus = () => (
@@ -968,25 +975,6 @@ export default function App() {
           onClick={toggleSidebar}
         />
         {gatewayStatus()}
-        <ProfilePicker
-          current={currentProfile()}
-          manage={() => navigate("resources:profiles")}
-          choose={(profile) => {
-            setChosenProfile(profile);
-            preferences.setItem("arura.profile", profile);
-            const latest = chats()
-              .filter(
-                (c) =>
-                  c.profile === profile &&
-                  c.section !== "archived" &&
-                  !c.backgroundSession,
-              )
-              .sort(
-                (a, b) => conversationActivity(b) - conversationActivity(a),
-              )[0];
-            navigate(latest?.key ?? "");
-          }}
-        />
         {navigationActions()}
       </header>
       <nav class="sidebar-sections" aria-label="Main navigation">
@@ -1069,7 +1057,6 @@ export default function App() {
                   aria-label={`Draft: ${draftPreview(d.text)}`}
                   onClick={() => {
                     setChosenProfile(d.profile);
-                    preferences.setItem("arura.profile", d.profile);
                     navigate("");
                   }}
                 >
@@ -1507,18 +1494,31 @@ export default function App() {
                       </div>
                     </Show>
                     <IconButton
-                      icon={c().section === "archived"
+                      icon={c().bot
+                        ? "bot"
+                        : c().section === "archived"
                         ? "u-turn-arrow-right"
                         : "archive"}
                       class={`mobile-archive-button ${
                         c().section === "archived" ? "unarchive-icon" : ""
                       }`}
                       label={`${
-                        c().section === "archived" ? "Unarchive" : "Archive"
+                        c().bot && c().section !== "archived"
+                          ? "Edit bot"
+                          : c().section === "archived"
+                          ? "Unarchive"
+                          : "Archive"
                       } ${c().title}`}
-                      disabled={c().section !== "archived" &&
+                      disabled={!c().bot && c().section !== "archived" &&
                         (c().running || c().pendingInput)}
-                      onClick={() => void run(() => archiveConversation(c()))}
+                      onClick={() =>
+                        c().bot && c().section !== "archived"
+                          ? navigate(
+                            `resources:profiles?name=${
+                              encodeURIComponent(c().profile)
+                            }`,
+                          )
+                          : void run(() => archiveConversation(c()))}
                     />
                   </>
                 )}
@@ -1572,6 +1572,12 @@ export default function App() {
                               >
                                 <Resources
                                   name={view().slice(10).split("?")[0]}
+                                  focusProfile={view().startsWith(
+                                      "resources:profiles?",
+                                    )
+                                    ? new URLSearchParams(view().split("?")[1])
+                                      .get("name") ?? undefined
+                                    : undefined}
                                   navigate={navigate}
                                   sidebarMount={resourceSidebarMount}
                                   closeSidebar={() => setSheet(false)}
@@ -1707,24 +1713,58 @@ export default function App() {
                 when={folderPicker()}
                 fallback={
                   <>
-                    <button
-                      type="button"
-                      class={c().section === "archived" ? "unarchive-icon" : ""}
-                      disabled={c().section !== "archived" &&
-                        (c().running || c().pendingInput)}
-                      onClick={() =>
-                        void run(async () => {
-                          await archiveConversation(c());
+                    <Show when={!c().bot || c().section === "archived"}>
+                      <button
+                        type="button"
+                        class={c().section === "archived"
+                          ? "unarchive-icon"
+                          : ""}
+                        disabled={c().section !== "archived" &&
+                          (c().running || c().pendingInput)}
+                        onClick={() =>
+                          void run(async () => {
+                            await archiveConversation(c());
+                            setMenu(undefined);
+                          })}
+                      >
+                        <Icon
+                          name={c().section === "archived"
+                            ? "u-turn-arrow-right"
+                            : "archive"}
+                        />
+                        {c().section === "archived" ? "Unarchive" : "Archive"}
+                      </button>
+                    </Show>
+                    <Show when={c().bot}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigate(
+                            `resources:profiles?name=${
+                              encodeURIComponent(c().profile)
+                            }`,
+                          );
                           setMenu(undefined);
-                        })}
-                    >
-                      <Icon
-                        name={c().section === "archived"
-                          ? "u-turn-arrow-right"
-                          : "archive"}
-                      />
-                      {c().section === "archived" ? "Unarchive" : "Archive"}
-                    </button>
+                        }}
+                      >
+                        <Icon name="bot" />
+                        Edit bot
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          void run(async () => {
+                            await mutate("workspace.botVisibility", {
+                              profile: c().profile,
+                              visible: false,
+                            });
+                            setMenu(undefined);
+                          })}
+                      >
+                        <Icon name="eye" />
+                        Hide from Threads
+                      </button>
+                    </Show>
                     <button
                       type="button"
                       onClick={() =>
@@ -1829,7 +1869,7 @@ export default function App() {
                             await run(async () => {
                               await command("delete", conversation.key, {});
                               if (view() === conversation.key) {
-                                setChosenProfile(conversation.profile);
+                                setChosenProfile(defaultProfile());
                                 navigate("");
                               }
                             });
