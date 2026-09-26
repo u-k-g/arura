@@ -40,11 +40,14 @@ if (visualViewport) {
   updateViewport();
 }
 
-if (import.meta.env.PROD && "serviceWorker" in navigator) {
-  void navigator.serviceWorker.register("/sw.js");
+if (import.meta.env.PROD && "serviceWorker" in globalThis.navigator) {
+  void globalThis.navigator.serviceWorker.register("/sw.js").catch(() => {});
   globalThis.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      void navigator.serviceWorker.getRegistration().then((r) => r?.update());
+    if (globalThis.document.visibilityState === "visible") {
+      void globalThis.navigator.serviceWorker
+        .getRegistration()
+        .then((r) => r?.update())
+        .catch(() => {});
     }
   });
 }

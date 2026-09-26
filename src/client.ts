@@ -2,7 +2,7 @@ import type { ConversationPage, Doc, Workspace } from "../shared/contracts.ts";
 import { createSignal } from "solid-js";
 import { ConvexClient } from "convex/browser";
 import { anyApi } from "convex/server";
-import { clearCache, loadCache, preferences, saveCache } from "./cache.ts";
+import { clearCache, loadCache, saveCache } from "./cache.ts";
 export const [workspace, setWorkspace] = createSignal<Workspace | null>(null);
 export const [authorized, setAuthorized] = createSignal(false);
 export const [connected, setConnected] = createSignal(false);
@@ -75,17 +75,8 @@ export async function start() {
     const config = (await request("/api/bootstrap")) as {
       convexUrl: string;
       name: string;
-      build?: string;
     };
     if (generation !== sessionGeneration) return;
-    const build = config.build ?? "dev";
-    const previous = preferences.getItem("arura.build");
-    if (previous && previous !== build) {
-      preferences.setItem("arura.build", build);
-      location.reload();
-      return;
-    }
-    preferences.setItem("arura.build", build);
     const initial = await token(generation);
     if (!initial || generation !== sessionGeneration) return;
     stopConnection();

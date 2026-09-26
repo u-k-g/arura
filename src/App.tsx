@@ -35,6 +35,12 @@ import {
 } from "./client.ts";
 import { Dialog, Field, Icon, IconButton, run } from "./ui.tsx";
 import {
+  dismissUpdate,
+  reloadUpdatedApp,
+  updateAvailable,
+  watchForUpdates,
+} from "./build-update.ts";
+import {
   draft,
   draftAttachments,
   loadCache,
@@ -115,6 +121,26 @@ function InlineRename(props: {
         props.cancel();
       }}
     />
+  );
+}
+
+function UpdateToast() {
+  return (
+    <Show when={updateAvailable()}>
+      <div class="update-toast" role="status">
+        <span>New Arura version ready</span>
+        <button
+          type="button"
+          class="update-reload"
+          onClick={() => void run(reloadUpdatedApp)}
+        >
+          Reload
+        </button>
+        <button type="button" class="update-later" onClick={dismissUpdate}>
+          Later
+        </button>
+      </div>
+    </Show>
   );
 }
 
@@ -375,6 +401,7 @@ export default function App() {
       `${Math.min(20, Math.max(12, size))}px`,
     );
     void start();
+    onCleanup(watchForUpdates());
   });
   createEffect(() => {
     if (authorized()) {
@@ -1437,6 +1464,7 @@ export default function App() {
             </button>
             <p role="status">{notice()}</p>
           </form>
+          <UpdateToast />
         </main>
       }
     >
@@ -2009,6 +2037,7 @@ export default function App() {
           {notice()}
         </div>
       </Show>
+      <UpdateToast />
     </Show>
   );
 }

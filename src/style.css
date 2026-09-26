@@ -1138,6 +1138,40 @@ small {
   z-index: 1000;
   border: var(--hairline) solid var(--line);
 }
+.update-toast {
+  position: fixed;
+  z-index: 1100;
+  top: max(12px, env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 8px 10px 8px 14px;
+  border: var(--hairline) solid var(--line);
+  border-radius: 8px;
+  background: var(--dialog);
+  box-shadow: 0 4px 16px #0002;
+  color: var(--ink);
+  font-size: 13px;
+}
+.update-toast > span {
+  min-width: 0;
+}
+.update-toast button {
+  flex: none;
+  min-height: 32px;
+  padding: 5px 10px;
+}
+.update-toast .update-reload {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.update-toast .update-later {
+  color: var(--muted);
+}
 dialog {
   border: var(--hairline) solid var(--line);
   border-radius: 12px;

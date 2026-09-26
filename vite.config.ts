@@ -15,6 +15,7 @@ function aruraBuildId(): Plugin {
 }
 
 export default defineConfig({
+  define: { __ARURA_BUILD_ID__: JSON.stringify(buildId) },
   plugins: [
     solid(),
     aruraBuildId(),
