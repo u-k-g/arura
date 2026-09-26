@@ -14,6 +14,7 @@ import {
   interactionFromEvent,
   normalizeMessages,
   plainText,
+  scheduledRunIdentity,
   streamedInterimText,
   type Turn,
   visibleText,
@@ -834,6 +835,11 @@ export class Hermes extends EventEmitter {
         archived?: boolean;
       }
     >();
+    const cronRuns = new Map<string, {
+      group: string;
+      startedAt: number;
+      tie: string;
+    }>();
     for (const profile of profiles) {
       for (let offset = 0;; offset += 100) {
         const query = new URLSearchParams({
@@ -848,13 +854,23 @@ export class Hermes extends EventEmitter {
         for (const row of rows) {
           const sourceId = String(row.id ?? row.session_id);
           const key = conversationKey(profile, sourceId);
+          const source = String(row.source ?? "").trim().toLowerCase();
+          const rootId = String(
+            row._lineage_root_id ?? row.parent_session_id ?? sourceId,
+          );
+          const run = scheduledRunIdentity(source, rootId);
+          if (run) {
+            cronRuns.set(key, {
+              group: JSON.stringify([profile, run.jobId]),
+              startedAt: epochMillis(row.started_at),
+              tie: `${run.runStamp}:${sourceId}`,
+            });
+          }
           all.set(key, {
             key,
             profile,
             sourceId,
-            source: String(row.source ?? "")
-              .trim()
-              .toLowerCase(),
+            source,
             title: row.title || "Untitled conversation",
             ...(row.pinned !== undefined
               ? { pinned: Boolean(row.pinned) }
@@ -898,7 +914,29 @@ export class Hermes extends EventEmitter {
         ),
       });
     }
-    return [...all.values()];
+    const newest = new Map<string, {
+      key: string;
+      startedAt: number;
+      tie: string;
+    }>();
+    for (const [key, run] of cronRuns) {
+      const current = newest.get(run.group);
+      if (
+        !current || run.startedAt > current.startedAt ||
+        (run.startedAt === current.startedAt && run.tie > current.tie)
+      ) {
+        newest.set(run.group, { key, ...run });
+      }
+    }
+    return [...all.values()].map((conversation) => {
+      const run = cronRuns.get(conversation.key);
+      return run
+        ? {
+          ...conversation,
+          cronSidebar: newest.get(run.group)?.key === conversation.key,
+        }
+        : conversation;
+    });
   }
   async setOrganization(key: string, pinned: boolean, archived: boolean) {
     const [profile, sourceId] = JSON.parse(key) as [string, string];

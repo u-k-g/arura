@@ -706,7 +706,8 @@ export default function App() {
   const recentConversations = createMemo(() =>
     chats()
       .filter((c) =>
-        visibleInThreads(c) && c.section === "recent" && !c.backgroundSession
+        visibleInThreads(c) && c.section === "recent" &&
+        (!c.backgroundSession || c.cronSidebar)
       )
       .sort((a, b) => conversationActivity(b) - conversationActivity(a))
   );
@@ -960,7 +961,7 @@ export default function App() {
     >
       <span class="connection" classList={{ offline: !gatewayOnline() }}>
         <Icon
-          name={gatewayOnline() ? "activity" : "stats-down-square-solid"}
+          name={gatewayOnline() ? "activity" : "stats-down-square"}
         />
       </span>
     </button>

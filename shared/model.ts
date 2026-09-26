@@ -8,6 +8,7 @@ export interface Conversation {
   sourceId: string;
   source?: string;
   backgroundSession?: boolean;
+  cronSidebar?: boolean;
   title: string;
   activityAt: number;
   messageActivityAt?: number;
@@ -217,6 +218,13 @@ export function conversationReadActivity(
 ): number {
   return Math.max(c.activityAt, c.messageActivityAt ?? 0);
 }
+export function scheduledRunIdentity(source: string, rootId: string) {
+  if (source.trim().toLowerCase() !== "cron") return undefined;
+  const match = /^cron_(.+)_(\d{8})_(\d{6})$/.exec(rootId);
+  return match
+    ? { jobId: match[1], runStamp: `${match[2]}${match[3]}` }
+    : undefined;
+}
 export function shouldArchive(
   c: Conversation,
   days: number,
@@ -225,6 +233,7 @@ export function shouldArchive(
   return (
     c.section === "recent" &&
     !c.bot &&
+    c.source !== "cron" &&
     !c.folderId &&
     !c.running &&
     !c.pendingInput &&

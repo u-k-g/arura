@@ -63,6 +63,8 @@ export default defineSchema({
     sourceId: v.string(),
     source: v.optional(v.string()),
     backgroundSession: v.optional(v.boolean()),
+    cronSidebar: v.optional(v.boolean()),
+    archivedCronVisible: v.optional(v.boolean()),
     pendingPersistence: v.optional(v.boolean()),
     title: v.string(),
     activityAt: v.number(),
@@ -90,6 +92,7 @@ export default defineSchema({
     .index("section", ["section", "rank"])
     .index("profile", ["profile"])
     .index("activity", ["section", "activityAt"])
+    .index("cronSidebar", ["cronSidebar", "section"])
     .index("archive", ["section", "archivedAt"]),
   folders: defineTable({ name: v.string(), rank: v.number() }),
   artifacts: defineTable({

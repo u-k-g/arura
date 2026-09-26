@@ -149,6 +149,10 @@ grace period.
 - Use the global search palette; no separate sidebar session-search field.
 - Scheduled jobs show all profiles together, with blueprints in the job list,
   compact timestamps and prompt previews, and primary actions above the details.
+  The newest run conversation for each job appears in Threads. A newer run
+  replaces the older run there without deleting its Hermes history. The visible
+  run can be archived manually and stays in Archived; scheduled run
+  conversations do not autoarchive.
 - Settings has one gear button in the sidebar footer, not the top bar. The
   default profile setting chooses the profile for new chats. Archive is
   available in both the top bar and each chat's context menu. Archiving or

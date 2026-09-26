@@ -128,6 +128,13 @@ export const overview = query({
       .filter((q) => q.neq(q.field("backgroundSession"), true))
       .filter((q) => q.neq(q.field("deleted"), true))
       .paginate({ cursor: null, numItems: 100 });
+    const cron = await ctx.db.query("conversations")
+      .withIndex(
+        "cronSidebar",
+        (q) => q.eq("cronSidebar", true).eq("section", "recent"),
+      )
+      .filter((q) => q.neq(q.field("deleted"), true))
+      .collect();
     const settings = Object.fromEntries(
       (await ctx.db.query("settings").collect()).map((x) => [x.key, x.value]),
     );
@@ -135,7 +142,7 @@ export const overview = query({
       deviceId: self.id,
       readBaseline: Math.min(...devices.map((row) => row.createdAt)),
       reads: [...reads.values()],
-      conversations: [...pinned, ...recent.page],
+      conversations: [...pinned, ...recent.page, ...cron],
       recentCursor: recent.continueCursor,
       recentHasMore: !recent.isDone,
       drafts: await ctx.db.query("drafts").collect(),
@@ -171,7 +178,12 @@ export const archived = query({
       .query("conversations")
       .withIndex("archive", (q) => q.eq("section", "archived"))
       .order("desc")
-      .filter((q) => q.neq(q.field("backgroundSession"), true))
+      .filter((q) =>
+        q.or(
+          q.neq(q.field("backgroundSession"), true),
+          q.eq(q.field("archivedCronVisible"), true),
+        )
+      )
       .filter((q) => q.neq(q.field("deleted"), true))
       .paginate({ cursor: args.cursor, numItems: 10 });
   },
@@ -336,6 +348,9 @@ export const move = mutation({
       folderId: args.folderId,
       rank: args.rank ?? Date.now(),
       archivedAt: args.section === "archived" ? Date.now() : undefined,
+      archivedCronVisible: c.source === "cron"
+        ? args.section === "archived"
+        : c.archivedCronVisible,
       unarchivedAt: c.section === "archived" && args.section !== "archived"
         ? Date.now()
         : c.unarchivedAt,
@@ -717,6 +732,7 @@ export const ingest = mutation({
         .query("conversations")
         .withIndex("key", (q) => q.eq("key", input.key))
         .unique();
+      const organization = incomingOrganization(old, input, Date.now());
       const data = {
         key: String(input.key),
         sourceId: String(input.sourceId),
@@ -726,6 +742,11 @@ export const ingest = mutation({
             .trim()
             .toLowerCase(),
         ),
+        cronSidebar: input.cronSidebar === undefined
+          ? old?.cronSidebar
+          : input.cronSidebar === true,
+        archivedCronVisible: (organization.section ?? old?.section) ===
+            "archived" && old?.archivedCronVisible === true,
         pendingPersistence: input.pendingPersistence === true,
         profile: String(input.profile),
         bot: Boolean(input.bot),
@@ -733,7 +754,6 @@ export const ingest = mutation({
         activityAt: Number(input.activityAt),
         deleted: false,
       };
-      const organization = incomingOrganization(old, input, Date.now());
       if (data.bot && (organization.section ?? old?.section) === "archived") {
         organization.section = "recent";
         organization.archivedAt = undefined;

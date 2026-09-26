@@ -363,6 +363,20 @@ export function hermesFixture(
       if (path === "/api/auth/ws-ticket") {
         return json({ ticket: "fixture-ticket" });
       }
+      if (path === "/api/fixture/session" && request.method === "POST") {
+        const body = await request.json();
+        const session = create(String(body.id));
+        Object.assign(session, {
+          source: String(body.source ?? "cron"),
+          title: String(body.title ?? body.id),
+          profile: String(body.profile ?? "default"),
+          pendingPersistence: false,
+          archived: false,
+          pinned: false,
+        });
+        event("sessions.changed", "", {});
+        return json(session);
+      }
       if (
         path === "/api/ws" &&
         hooks.requirePassword &&

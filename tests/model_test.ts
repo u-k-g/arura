@@ -8,6 +8,7 @@ import {
   interactionFromEvent,
   mergeHistoryMessages,
   normalizeMessages,
+  scheduledRunIdentity,
   shouldArchive,
   streamedInterimText,
   subagentTranscript,
@@ -16,6 +17,15 @@ import {
   withoutReasoning,
   workGroup,
 } from "../shared/model.ts";
+
+Deno.test("scheduled run identity uses the job ID and run timestamp", () => {
+  deepStrictEqual(
+    scheduledRunIdentity("cron", "cron_job_with_parts_20260925_120300"),
+    { jobId: "job_with_parts", runStamp: "20260925120300" },
+  );
+  equal(scheduledRunIdentity("tool", "cron_job_20260925_120300"), undefined);
+  equal(scheduledRunIdentity("cron", "unrelated-session"), undefined);
+});
 
 Deno.test("repeated interim stream text remains visible once", () => {
   const interim = "Let me zoom into the photo first.";
@@ -249,6 +259,7 @@ Deno.test("archive protects pinned folders, active work, input, and recently res
   for (
     const patch of [
       { bot: true },
+      { source: "cron", cronSidebar: true },
       { section: "essential" },
       { section: "pinned" },
       { folderId: "folder" },
