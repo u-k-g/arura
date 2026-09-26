@@ -177,36 +177,6 @@
   padding: 4px;
   border: 0;
 }
-.composer-tools {
-  position: relative;
-}
-.composer-tools > summary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  width: 26px;
-  height: 28px;
-  border-radius: 4px;
-}
-.composer-tools-menu {
-  position: absolute;
-  bottom: 36px;
-  right: 0;
-  width: 250px;
-  z-index: 8;
-  padding: 6px;
-  background: var(--dialog);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  box-shadow: 0 8px 30px #0003;
-  display: grid;
-}
-.composer-tools-menu button {
-  justify-content: flex-start;
-  padding: 7px 10px;
-  border: 0;
-}
 .capabilities-view {
   padding: 24px;
   max-width: 850px;
@@ -268,9 +238,6 @@
   .composer-bottom {
     width: 100%;
     justify-content: flex-end;
-  }
-  .composer-tools {
-    margin-right: auto;
   }
   .composer-model {
     max-width: 180px;
@@ -731,10 +698,6 @@ dialog.conversation-menu {
     min-width: 36px;
     min-height: 36px;
   }
-  .composer-tools > summary {
-    width: 36px;
-    height: 36px;
-  }
   .markdown table {
     display: block;
     overflow-x: auto;
@@ -1157,11 +1120,6 @@ dialog.conversation-menu {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-  }
-  .composer-bottom .composer-tools {
-    order: 1;
-    margin: 0;
-    flex: none;
   }
   .composer-bottom .mobile-composer-navigation {
     display: flex;

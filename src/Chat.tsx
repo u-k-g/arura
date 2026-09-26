@@ -18,12 +18,9 @@ import {
 import {
   attachmentHref,
   contextReference,
-  type ReferenceKind,
   referencePattern,
   referenceValue,
 } from "../shared/references.ts";
-import DOMPurify from "dompurify";
-import { marked } from "marked";
 import {
   createEffect,
   createMemo,
@@ -36,7 +33,6 @@ import {
   Suspense,
   untrack,
 } from "solid-js";
-import { fileReferences } from "../shared/artifacts.ts";
 import {
   elapsed,
   groupMessages,
@@ -62,45 +58,15 @@ import {
 } from "./client.ts";
 import ComposerInput, { type ComposerHandle } from "./ComposerInput.tsx";
 import TurnMinimap, { type TurnMinimapItem } from "./TurnMinimap.tsx";
-import type { ControlView } from "./RunControls.tsx";
-import { Dialog, Field, Icon, IconButton, run } from "./ui.tsx";
+import { AnswerMarkdown, Markdown } from "./Markdown.tsx";
+import { Icon, IconButton, run } from "./ui.tsx";
 
-const RunControls = lazy(() => import("./RunControls.tsx"));
 const Clarification = lazy(() => import("./Clarification.tsx"));
 const historyIndexCache = new Map<
   string,
   { revision: string; items: HistoryIndexItem[] }
 >();
 
-DOMPurify.addHook("beforeSanitizeAttributes", (node) => {
-  if (node.nodeName !== "A") return;
-  const element = node as Element,
-    href = element.getAttribute("href");
-  if (!href || /^https?:/i.test(href)) return;
-  const file = fileReferences([
-    { role: "assistant", content: `[file](<${href}>)` },
-  ])[0];
-  if (file) {
-    element.setAttribute(
-      "href",
-      `/api/download?path=${encodeURIComponent(file.path)}`,
-    );
-  }
-});
-DOMPurify.addHook("afterSanitizeAttributes", (node) => {
-  if (node.tagName === "A") {
-    node.setAttribute("target", "_blank");
-    node.setAttribute("rel", "noopener noreferrer");
-  }
-});
-function Markdown(props: { text: string }) {
-  const html = () =>
-    DOMPurify.sanitize(marked.parse(props.text, { async: false }) as string, {
-      FORBID_TAGS: ["img", "iframe", "video", "audio", "object", "embed"],
-      FORBID_ATTR: ["style"],
-    });
-  return <div class="markdown" innerHTML={html()} />;
-}
 const ContextSuggestions = lazy(() => import("./ContextSuggestions.tsx"));
 export default function Chat(props: {
   profile?: string;
@@ -221,8 +187,7 @@ export default function Chat(props: {
       )
       .sort((a, b) => b.createdAt - a.createdAt)
   );
-  const [edit, setEdit] = createSignal<string>(),
-    [controls, setControls] = createSignal<ControlView>();
+  const [edit, setEdit] = createSignal<string>();
   const [uploads, setUploads] = createSignal<
     { path: string; name: string; image: boolean }[]
   >([]);
@@ -298,17 +263,11 @@ export default function Chat(props: {
       ),
     );
   });
-  const [suggestions, setSuggestions] = createSignal<
-      { command: string; description: string; name?: string }[]
-    >([]),
-    [attachment, setAttachment] = createSignal(false),
-    [reference, setReference] = createSignal("");
   const [completions, setCompletions] = createSignal<
     { text: string; display?: string; meta?: string; kind?: string }[]
   >([]);
   const [completionIndex, setCompletionIndex] = createSignal(0),
     [cursor, setCursor] = createSignal(0);
-  const [referenceKind, setReferenceKind] = createSignal<ReferenceKind>("url");
   const [pendingUploads, setPendingUploads] = createSignal<
     { id: string; file: File; error?: string }[]
   >([]);
@@ -1374,13 +1333,20 @@ export default function Chat(props: {
                 )}
           </For>
         </div>
-        <Markdown
-          text={message.role === "user"
-            ? userMessageText(message.text)
-              .replace(referencePattern, "")
-              .trim()
-            : message.text}
-        />
+        <Show
+          when={message.role === "assistant"}
+          fallback={
+            <Markdown
+              text={message.role === "user"
+                ? userMessageText(message.text)
+                  .replace(referencePattern, "")
+                  .trim()
+                : message.text}
+            />
+          }
+        >
+          <AnswerMarkdown text={message.text} />
+        </Show>
         <div class="message-actions">
           <IconButton
             icon="page"
@@ -1626,7 +1592,7 @@ export default function Chat(props: {
                     when={t().text &&
                       (t().state === "running" || !turnIsInHistory())}
                   >
-                    <Markdown text={t().text} />
+                    <AnswerMarkdown text={t().text} />
                   </Show>
                   <Show
                     when={t().state === "running" &&
@@ -2082,8 +2048,8 @@ export default function Chat(props: {
                 ? `completion-${completionIndex()}`
                 : undefined}
               placeholder={connected()
-                ? "Describe what you need"
-                : "Write a draft while offline…"}
+                ? "Ask anything."
+                : "NO CONNECTION TO GATEWAY…"}
               value={text()}
               onChange={changeText}
               onCursor={setCursor}
@@ -2218,54 +2184,11 @@ export default function Chat(props: {
                 : ""}
             </button>
 
-            <details class="composer-tools">
-              <summary aria-label="More composer actions">
-                <Icon name="more-horiz" />
-              </summary>
-              <div class="composer-tools-menu">
-                <button
-                  type="button"
-                  class="text-button"
-                  onClick={() =>
-                    void run(async () => {
-                      const result = await rpc("commands.catalog");
-                      setSuggestions(
-                        (result.pairs ?? [])
-                          .map(([command, description]: [string, string]) => ({
-                            command,
-                            description,
-                          }))
-                          .filter(
-                            (item: { command: string }) =>
-                              !/^\/(?:image|voice|wake|terminal|shell|hud|radio|pet|browser)(?:\s|$)/i
-                                .test(
-                                  item.command,
-                                ),
-                          ),
-                      );
-                    })}
-                >
-                  / Commands
-                </button>
-                <button type="button" onClick={() => setControls("automation")}>
-                  <Icon name="clock" />
-                  Automations
-                </button>
-                <button type="button" onClick={() => setControls("context")}>
-                  <Icon name="page" />
-                  Context
-                </button>
-                <button type="button" onClick={() => setControls("subagents")}>
-                  <Icon name="bot" />
-                  Delegated work
-                </button>
-              </div>
-            </details>
             <IconButton
               icon="attachment"
               class="composer-add"
-              label="Add context"
-              onClick={() => setAttachment(true)}
+              label="Upload files"
+              onClick={() => fileInput.click()}
             />
             <div>
               <Show when={turn()?.state === "running"}>
@@ -2299,78 +2222,18 @@ export default function Chat(props: {
           type="file"
           multiple
           hidden
-          onChange={(e) => void run(() => upload(e.currentTarget.files))}
+          onChange={(e) => {
+            const input = e.currentTarget;
+            void run(async () => {
+              try {
+                await upload(input.files);
+              } finally {
+                input.value = "";
+              }
+            });
+          }}
         />
       </div>
-      <Show when={attachment()}>
-        <Dialog title="Add context" close={() => setAttachment(false)}>
-          <button
-            type="button"
-            onClick={() => {
-              setAttachment(false);
-              fileInput.click();
-            }}
-          >
-            <Icon name="attachment" />
-            Upload files
-          </button>
-          <Field label="File, folder, or URL">
-            <select
-              aria-label="Reference type"
-              value={referenceKind()}
-              onChange={(event) =>
-                setReferenceKind(event.currentTarget.value as ReferenceKind)}
-            >
-              <option value="url">URL</option>
-              <option value="file">File</option>
-              <option value="folder">Folder</option>
-              <option value="image">Image</option>
-            </select>
-            <input
-              aria-label="Reference"
-              value={reference()}
-              onInput={(e) => setReference(e.currentTarget.value)}
-            />
-          </Field>
-          <button
-            type="button"
-            class="primary"
-            onClick={() => {
-              if (!reference().trim()) return;
-              changeText(
-                text() +
-                  "\n" +
-                  (reference().trim().startsWith("@")
-                    ? reference().trim()
-                    : contextReference(referenceKind(), reference().trim())),
-              );
-              setReference("");
-              setAttachment(false);
-            }}
-          >
-            Attach reference
-          </button>
-          <h3>Conversations</h3>
-          <For each={workspace()?.conversations ?? []}>
-            {(c) => (
-              <button
-                type="button"
-                class="list-button"
-                onClick={() => {
-                  changeText(
-                    text() +
-                      "\n" +
-                      contextReference("session", `${c.profile}/${c.sourceId}`),
-                  );
-                  setAttachment(false);
-                }}
-              >
-                {c.title}
-              </button>
-            )}
-          </For>
-        </Dialog>
-      </Show>
       <Show when={model()}>
         <ModelPicker
           anchor={modelButton}
@@ -2471,39 +2334,6 @@ export default function Chat(props: {
             });
           }}
         />
-      </Show>
-      <Show when={suggestions().length}>
-        <Dialog title="Commands and skills" close={() => setSuggestions([])}>
-          <For each={suggestions()}>
-            {(s) => (
-              <button
-                type="button"
-                class="list-button"
-                onClick={() => {
-                  changeText(`${s.command ?? s.name ?? s} `);
-                  setSuggestions([]);
-                  input.focus();
-                }}
-              >
-                <strong>{s.command ?? s.name ?? String(s)}</strong>
-                <span>{s.description}</span>
-              </button>
-            )}
-          </For>
-        </Dialog>
-      </Show>
-      <Show when={controls()}>
-        {(view) => (
-          <Suspense fallback={<p>Loading controls…</p>}>
-            <RunControls
-              conversation={props.conversation}
-              profile={props.profile}
-              navigate={props.navigate}
-              view={view()}
-              close={() => setControls(undefined)}
-            />
-          </Suspense>
-        )}
       </Show>
     </div>
   );

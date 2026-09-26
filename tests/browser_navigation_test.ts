@@ -3,7 +3,7 @@ import { openSettings, signIn } from "./sign_in.ts";
 import { chromium, expect, type Page } from "@playwright/test";
 Deno.test({
   name:
-    "conversation rename, context, independent views and deletion work across devices",
+    "conversation rename, independent views and deletion work across devices",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -109,34 +109,10 @@ Deno.test({
       expect(await b.evaluate(() => localStorage.getItem("arura.view"))).toBe(
         original,
       );
-      await a
-        .getByRole("button", {
-          name: "Add context",
-          exact: true,
-        })
-        .click();
-      await a
-        .getByRole("dialog", { name: "Add context", exact: true })
-        .getByRole("button", { name: title, exact: true })
-        .click();
-      await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveText(
-        `@session:${JSON.parse(requireValue(original, "original"))[0]}/${
-          JSON.parse(requireValue(original, "original"))[1]
-        }`,
-      );
-      await a
-        .getByRole("button", {
-          name: "Add context",
-          exact: true,
-        })
-        .click();
-      await a.getByLabel("Reference", { exact: true }).fill("/fixture/garden");
-      await a
-        .getByRole("button", { name: "Attach reference", exact: true })
-        .click();
-      await expect(a.getByLabel("Message Hermes", { exact: true })).toHaveText(
-        /\/fixture\/garden/,
-      );
+      await expect(a.getByRole("dialog", { name: "Add context" }))
+        .toHaveCount(0);
+      await expect(a.getByLabel("More composer actions"))
+        .toHaveCount(0);
       await b
         .getByLabel("Message Hermes", { exact: true })
         .fill("Summarize garden notes");
@@ -151,38 +127,6 @@ Deno.test({
       await expect(
         a.getByRole("button", { name: "Notifications", exact: true }),
       ).toHaveCount(0);
-      await a.getByLabel("More composer actions", { exact: true }).click();
-      await expect(
-        a.locator(".composer-tools-menu").getByRole("button", {
-          name: "Attach files",
-        }),
-      ).toHaveCount(0);
-      await expect(
-        a.locator(".composer-tools-menu").getByRole("button", {
-          name: /Reference a file/,
-        }),
-      ).toHaveCount(0);
-      await a
-        .getByRole("button", { name: "Delegated work", exact: true })
-        .click();
-      const delegated = a.getByRole("dialog", {
-        name: "Delegated work",
-        exact: true,
-      });
-      await delegated
-        .getByRole("button", { name: "View progress", exact: true })
-        .click();
-      await expect(delegated).toContainText("Comparing native plant options");
-      expect(await delegated.innerText()).not.toContain("NEVER_EXPOSE");
-      expect(await delegated.innerText()).not.toContain("secret-query");
-      await delegated
-        .getByRole("button", { name: "Stop task", exact: true })
-        .click();
-      await expect(delegated).toContainText("No delegated work is active");
-      await delegated
-        .getByRole("button", { name: "Close", exact: true })
-        .last()
-        .click();
       await openSettings(a);
       await a.getByRole("button", { name: "Appearance", exact: true }).click();
       await expect(

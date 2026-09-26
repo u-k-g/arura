@@ -115,7 +115,10 @@ Deno.test({
       await expect(input).toHaveText("");
       await input.press("ControlOrMeta+z");
       await expect(input).toHaveText("");
-      await page.locator('input[type="file"]').setInputFiles({
+      const fileChooserPromise = page.waitForEvent("filechooser");
+      await page.getByRole("button", { name: "Upload files" }).click();
+      const fileChooser = await fileChooserPromise;
+      await fileChooser.setFiles({
         name: "removed-reference.txt",
         mimeType: "text/plain",
         buffer: Buffer.from("Do not send this attachment"),

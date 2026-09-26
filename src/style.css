@@ -654,6 +654,33 @@ small {
   margin-left: 0;
   color: var(--muted);
 }
+.sources-disclosure {
+  margin-top: 12px;
+}
+.sources-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  min-height: 30px;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+}
+.sources-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+.sources-disclosure > summary .icon {
+  width: 13px;
+  height: 13px;
+  transform: rotate(-90deg);
+}
+.sources-disclosure[open] > summary .icon {
+  transform: none;
+}
+.sources-disclosure > .markdown {
+  margin-top: 6px;
+}
 .message-actions {
   display: flex;
   gap: 1px;

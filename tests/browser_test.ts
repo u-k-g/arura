@@ -577,15 +577,6 @@ Deno.test({
       await expect(
         b.getByRole("button", { name: "Model", exact: true }),
       ).toContainText("high", { timeout: 15000 });
-      await a.getByLabel("More composer actions", { exact: true }).click();
-      await a.getByRole("button", { name: "Context", exact: true }).click();
-      await expect(
-        a.getByRole("dialog", { name: "Context usage" }),
-      ).toContainText("2,000");
-      await a
-        .getByRole("button", { name: "Close", exact: true })
-        .last()
-        .click();
       await a.getByLabel("Message Hermes", { exact: true }).fill("/res");
       await expect(
         a.getByRole("listbox", { name: "Commands and skills" }),

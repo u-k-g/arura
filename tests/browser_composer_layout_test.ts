@@ -61,7 +61,7 @@ Deno.test({
       await mobile.goto(url);
       await signIn(mobile, "Composer mobile layout");
       const mobileForm = mobile.locator(".composer");
-      await expect(mobileForm.getByRole("button", { name: "Add context" }))
+      await expect(mobileForm.getByRole("button", { name: "Upload files" }))
         .toBeVisible();
       const overflow = await mobileForm.evaluate((element) => {
         const controls = element.querySelector(".composer-bottom")!;
