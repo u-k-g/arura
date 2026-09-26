@@ -20,8 +20,7 @@ Deno.test({
         ),
       );
       await signIn(page, "Navigation review");
-      await expect(page.locator(".mobile-composer-navigation"))
-        .toBeHidden();
+      await expect(page.locator(".mobile-composer-navigation")).toBeHidden();
       await expect(
         page.getByRole("heading", {
           name: "HERMES",
@@ -29,15 +28,19 @@ Deno.test({
         }),
       ).toBeVisible();
       expect(
-        await page.getByRole("heading", {
-          name: "HERMES",
-          exact: true,
-        }).evaluate(async (heading) => {
-          await document.fonts.ready;
-          return getComputedStyle(heading).fontFamily.startsWith(
-            '"Hermes Display"',
-          ) && document.fonts.check('700 48px "Hermes Display"');
-        }),
+        await page
+          .getByRole("heading", {
+            name: "HERMES",
+            exact: true,
+          })
+          .evaluate(async (heading) => {
+            await document.fonts.ready;
+            return (
+              getComputedStyle(heading).fontFamily.startsWith(
+                '"Hermes Display"',
+              ) && document.fonts.check('700 48px "Hermes Display"')
+            );
+          }),
       ).toBe(true);
       await page
         .getByRole("button", { name: "Collapse sidebar", exact: true })
@@ -57,11 +60,11 @@ Deno.test({
       await expect(palette).toBeVisible();
       await expect(palette.locator(".dialog-inner > header")).toHaveCount(0);
       await expect(palette.locator(".palette-search .icon")).toBeVisible();
-      await expect(palette.locator(".palette-item-icon").first())
-        .toBeVisible();
+      await expect(palette.locator(".palette-item-icon").first()).toBeVisible();
       await expect(palette.locator(".palette-help")).toContainText("Navigate");
-      await expect(palette.getByRole("button", { name: "Close" }))
-        .toHaveCount(0);
+      await expect(palette.getByRole("button", { name: "Close" })).toHaveCount(
+        0,
+      );
       const paletteBox = requireValue(await palette.boundingBox(), "palette");
       const searchBox = requireValue(
         await palette.locator(".palette-search").boundingBox(),
@@ -72,8 +75,7 @@ Deno.test({
       expect(
         requireValue(await firstOption.boundingBox(), "first option").height,
       ).toBeGreaterThanOrEqual(42);
-      await expect(palette.locator(".palette-item-text small"))
-        .toHaveCount(0);
+      await expect(palette.locator(".palette-item-text small")).toHaveCount(0);
       await page.screenshot({ path: "/var/tmp/arura-command-palette.png" });
       await palette.getByRole("combobox").press("Enter");
       await expect(palette).toHaveCount(0);
@@ -104,12 +106,12 @@ Deno.test({
       await expect(
         page.getByRole("button", { name: "Access & devices", exact: true }),
       ).toBeVisible();
+      await expect(
+        page.getByRole("navigation", { name: "Settings sections" }),
+      ).toBeVisible();
       await page
-        .locator(".settings-dialog")
-        .getByRole("button", { name: "Close", exact: true })
-        .click();
-      await page
-        .getByRole("button", { name: "Expand sidebar", exact: true })
+        .getByRole("navigation", { name: "Main navigation" })
+        .getByRole("button", { name: "Threads", exact: true })
         .click();
       const conversation = page.getByRole("button", {
         name: "Fixture conversation",
@@ -138,14 +140,14 @@ Deno.test({
       await expect(
         menu.getByRole("link", { name: "Export conversation", exact: true }),
       ).toBeFocused();
-      await expect(menu.getByRole("button", { name: "Delete conversation" }))
-        .toHaveCount(0);
+      await expect(
+        menu.getByRole("button", { name: "Delete conversation" }),
+      ).toHaveCount(0);
       await page.keyboard.press("Escape");
       await page.setViewportSize({ width: 390, height: 844 });
       await page.getByRole("button", { name: "Open conversations" }).click();
-      await page.locator(
-        ".navigation-sheet .thread-row.selected .thread-select",
-      )
+      await page
+        .locator(".navigation-sheet .thread-row.selected .thread-select")
         .click({ button: "right" });
       await expect(menu).toBeVisible();
       await expect(
@@ -169,6 +171,25 @@ Deno.test({
       await page.keyboard.press("Escape");
       await expect(
         page.getByRole("dialog", { name: "Conversations", exact: true }),
+      ).toHaveCount(0);
+      await page.getByRole("button", { name: "Open conversations" }).click();
+      await page
+        .getByRole("dialog", { name: "Conversations", exact: true })
+        .getByRole("button", { name: "Settings", exact: true })
+        .click();
+      await expect(
+        page.getByRole("button", { name: "Open Settings", exact: true }),
+      ).toBeVisible();
+      await page.getByRole("button", { name: "Open Settings" }).click();
+      await page
+        .getByRole("dialog", { name: "Settings", exact: true })
+        .getByRole("button", { name: "Appearance", exact: true })
+        .click();
+      await expect(
+        page.getByRole("heading", { name: "Appearance", exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("dialog", { name: "Settings", exact: true }),
       ).toHaveCount(0);
     } finally {
       await browser.close();

@@ -29,7 +29,7 @@
 }
 .sidebar-sections {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 2px;
   margin: 0 4px 6px;
   border-bottom: 1px solid var(--line);
@@ -927,9 +927,17 @@ dialog.conversation-menu {
 .archive-more {
   flex: none;
   width: 100%;
-  min-height: 32px;
+  min-height: 38px;
   justify-content: flex-start;
-  padding: 6px 8px;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--hover);
+  text-align: left;
+}
+.archive-more:hover {
+  background: var(--active);
 }
 .archive-list .thread-select {
   color: var(--muted);
@@ -950,7 +958,7 @@ dialog.conversation-menu {
   transform: rotate(90deg);
 }
 .archive-list .thread-row:hover .session-age,
-.archive-list .thread-row:focus-within .session-age {
+.archive-list .thread-row:has(> .icon-button:focus-visible) .session-age {
   visibility: hidden;
 }
 .navigation .thread-row > .archive-button .icon,
@@ -991,9 +999,9 @@ dialog.conversation-menu {
   right: 24px;
 }
 .nav-scroll .thread-row:hover .session-age,
-.nav-scroll .thread-row:focus-within .session-age,
+.nav-scroll .thread-row:has(> .icon-button:focus-visible) .session-age,
 .topbar > .thread-row:hover .session-age,
-.topbar > .thread-row:focus-within .session-age {
+.topbar > .thread-row:has(> .icon-button:focus-visible) .session-age {
   visibility: hidden;
 }
 @media (hover: hover) and (pointer: fine) {
@@ -1007,7 +1015,7 @@ dialog.conversation-menu {
     right: 0;
   }
   .nav-scroll .thread-row:hover .session-dot,
-  .nav-scroll .thread-row:focus-within .session-dot {
+  .nav-scroll .thread-row:has(> .icon-button:focus-visible) .session-dot {
     visibility: hidden;
   }
 }

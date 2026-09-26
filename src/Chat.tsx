@@ -2003,7 +2003,7 @@ export default function Chat(props: {
         >
           <div class="composer-entry">
             <IconButton
-              icon="plus"
+              icon="attachment"
               class="composer-add"
               label="Add context"
               onClick={() => setAttachment(true)}
@@ -2162,16 +2162,6 @@ export default function Chat(props: {
                 <Icon name="more-horiz" />
               </summary>
               <div class="composer-tools-menu">
-                <IconButton
-                  icon="attachment"
-                  label="Attach files"
-                  onClick={() => fileInput.click()}
-                />
-                <IconButton
-                  icon="folder"
-                  label="Reference a file, folder, URL, or conversation"
-                  onClick={() => setAttachment(true)}
-                />
                 <button
                   type="button"
                   class="text-button"

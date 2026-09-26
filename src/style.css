@@ -1870,7 +1870,7 @@ progress {
   height: 13px;
 }
 .thread-row:hover > .icon-button,
-.thread-row:focus-within > .icon-button {
+.thread-row > .icon-button:focus-visible {
   opacity: 1;
 }
 

@@ -23,25 +23,25 @@ export async function openSettings(page: Page) {
       .getByRole("button", { name: "Close", exact: true })
       .click();
   }
-  if (!(await page.locator(".settings-dialog").isVisible())) {
-    const button = page
-      .getByRole("button", { name: "Settings", exact: true })
-      .first();
-    const sheet = page.getByRole("button", {
-      name: "Open conversations",
-      exact: true,
-    });
-    if (
-      !(await button.isVisible().catch(() => false)) &&
-      (await sheet.isVisible().catch(() => false))
-    ) {
-      await sheet.click();
-    }
-    await button.click();
-  }
-  const picker = page.getByRole("button", {
+  const navigation = page.getByRole("navigation", {
     name: "Settings sections",
     exact: true,
   });
-  if (await picker.isVisible()) await picker.click();
+  if (await navigation.isVisible().catch(() => false)) return;
+  const settingsTab = page
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("button", { name: "Settings", exact: true });
+  if (!(await settingsTab.isVisible().catch(() => false))) {
+    await page
+      .getByRole("button", { name: /Open (conversations|Settings)/ })
+      .click();
+  }
+  if ((await settingsTab.getAttribute("aria-current")) !== "page") {
+    await settingsTab.click();
+  }
+  if (!(await navigation.isVisible().catch(() => false))) {
+    await page
+      .getByRole("button", { name: "Open Settings", exact: true })
+      .click();
+  }
 }

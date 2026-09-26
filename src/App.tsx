@@ -1,5 +1,8 @@
 import ProfilePicker from "./ProfilePicker.tsx";
-import SettingsFrame from "./SettingsFrame.tsx";
+import SettingsFrame, {
+  inSettings,
+  SettingsNavigation,
+} from "./SettingsFrame.tsx";
 import ActionDialog from "./ActionDialog.tsx";
 import { confirmAction } from "./ActionDialog.tsx";
 import type { ConversationPage, Doc } from "../shared/contracts.ts";
@@ -151,6 +154,12 @@ export default function App() {
       : savedView;
   if (initialView !== savedView) preferences.setItem("arura.view", initialView);
   const [view, setView] = createSignal(initialView);
+  createEffect(() => {
+    if (inSettings(view()) && collapsed()) {
+      setCollapsed(false);
+      preferences.setItem("arura.sidebarCollapsed", "false");
+    }
+  });
   const [sheet, setSheet] = createSignal(false),
     [search, setSearch] = createSignal(""),
     [palette, setPalette] = createSignal(false);
@@ -175,11 +184,13 @@ export default function App() {
         ? undefined
         : desktopResourceHost();
   const navigationTitle = () =>
-    resourceSection() === "profiles"
-      ? "Profiles & bots"
-      : resourceSection() === "jobs"
-        ? "Scheduled jobs"
-        : "Conversations";
+    inSettings(view())
+      ? "Settings"
+      : resourceSection() === "profiles"
+        ? "Profiles & bots"
+        : resourceSection() === "jobs"
+          ? "Scheduled jobs"
+          : "Conversations";
   const [matches, setMatches] = createSignal<
     { key: string; title: string; profile: string }[]
   >([]);
@@ -951,13 +962,16 @@ export default function App() {
             ["threads", "Threads", "message-text"],
             ["resources:profiles", "Bots", "comp-align-bottom-solid"],
             ["resources:jobs", "Cron jobs", "timer"],
+            ["settings", "Settings", "settings"],
           ]}
         >
           {([route, label, icon]) => {
             const active = () =>
               route === "threads"
                 ? !view() || view().startsWith("[")
-                : view().split("?")[0] === route;
+                : route === "settings"
+                  ? inSettings(view())
+                  : view().split("?")[0] === route;
             return (
               <button
                 type="button"
@@ -979,7 +993,7 @@ export default function App() {
           }}
         </For>
       </nav>
-      <Show when={!resourceSection()}>
+      <Show when={!resourceSection() && !inSettings(view())}>
         <div class="nav-scroll">
           <Show when={essentialConversations().length}>
             <div class="essentials">
@@ -1253,11 +1267,15 @@ export default function App() {
                 class="text-button archive-more"
                 onClick={() => setArchiveLimit((x) => x + 10)}
               >
+                <Icon name="plus" />
                 Show 10 more
               </button>
             </Show>
           </Show>
         </div>
+      </Show>
+      <Show when={inSettings(view())}>
+        <SettingsNavigation view={view()} navigate={navigate} />
       </Show>
       <Show when={resourceSection()}>
         <div
@@ -1273,11 +1291,6 @@ export default function App() {
             icon="page"
             label="Artifacts"
             onClick={() => navigate("resources:artifacts")}
-          />
-          <IconButton
-            icon="settings"
-            label="Settings"
-            onClick={() => navigate("settings")}
           />
           <span class="footer-spacer" />
           {conversationActions()}
@@ -1376,9 +1389,11 @@ export default function App() {
                 <IconButton
                   icon="menu"
                   label={
-                    resourceSection()
-                      ? `Open ${navigationTitle()}`
-                      : "Open conversations"
+                    inSettings(view())
+                      ? "Open Settings"
+                      : resourceSection()
+                        ? `Open ${navigationTitle()}`
+                        : "Open conversations"
                   }
                   onClick={() => setSheet(true)}
                 />
@@ -1486,7 +1501,7 @@ export default function App() {
               </Show>
             </header>
           </Show>
-          <SettingsFrame view={view()} navigate={navigate}>
+          <SettingsFrame view={view()}>
             <Suspense fallback={<div class="loading">Opening…</div>}>
               <Show
                 when={view() !== "capabilities"}

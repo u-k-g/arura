@@ -69,6 +69,16 @@ Deno.test({
         .click();
       await page.getByRole("button", { name: "Mark as read" }).click();
       await expect(row).not.toHaveClass(/unread/);
+      await page.mouse.move(900, 700);
+      await expect
+        .poll(() =>
+          row
+            .locator(".row-menu-button")
+            .evaluate((button) => getComputedStyle(button).opacity),
+        )
+        .toBe("0");
+      await expect(row.locator(".session-dot")).toBeVisible();
+      await expect(row.locator(".session-age")).toBeVisible();
       const readColor = await row
         .locator(".session-dot")
         .evaluate((dot) => getComputedStyle(dot).backgroundColor);

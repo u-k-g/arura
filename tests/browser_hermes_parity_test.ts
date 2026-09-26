@@ -138,8 +138,8 @@ Deno.test({
         page.getByRole("navigation", { name: "Capabilities", exact: true }),
       ).toBeVisible();
       await page
-        .locator(".settings-dialog")
-        .getByRole("button", { name: "Close", exact: true })
+        .getByRole("navigation", { name: "Main navigation" })
+        .getByRole("button", { name: "Threads", exact: true })
         .click();
       await page
         .getByRole("button", { name: "Fixture conversation", exact: true })

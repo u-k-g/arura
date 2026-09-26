@@ -1,6 +1,5 @@
-import { createSignal, For, type JSX, Show } from "solid-js";
-import { Dialog, Icon, IconButton } from "./ui.tsx";
-import { preferences } from "./cache.ts";
+import { For, type JSX, Show } from "solid-js";
+import { Icon } from "./ui.tsx";
 
 const groups = [
   [
@@ -40,16 +39,14 @@ export const inSettings = (view: string) =>
   (view.startsWith("resources:") &&
     !separate.has(view.slice(10).split("?")[0]));
 
-export default function SettingsFrame(props: {
+export function SettingsNavigation(props: {
   view: string;
   navigate: (view: string) => void;
-  children: JSX.Element;
 }) {
-  const [menu, setMenu] = createSignal(false);
   const selected = () =>
     props.view === "settings" ? "resources:models" : props.view;
-  const navigation = () => (
-    <nav class="settings-rail" aria-label="Settings sections">
+  return (
+    <nav class="settings-rail nav-scroll" aria-label="Settings sections">
       <For each={groups}>
         {(group) => (
           <div class="settings-rail-group">
@@ -68,7 +65,6 @@ export default function SettingsFrame(props: {
                         ].includes(selected())),
                   }}
                   onClick={() => {
-                    setMenu(false);
                     props.navigate(route);
                   }}
                 >
@@ -82,37 +78,15 @@ export default function SettingsFrame(props: {
       </For>
     </nav>
   );
+}
+
+export default function SettingsFrame(props: {
+  view: string;
+  children: JSX.Element;
+}) {
   return (
     <Show when={inSettings(props.view)} fallback={props.children}>
-      <Dialog
-        title="Settings"
-        class="settings-dialog"
-        close={() =>
-          props.navigate(preferences.getItem("arura.lastConversation") ?? "")
-        }
-      >
-        <div class="settings-layout">
-          <div class="settings-desktop-rail">{navigation()}</div>
-          <div class="settings-content">
-            <IconButton
-              class="mobile-only settings-section-picker"
-              icon="menu"
-              label="Settings sections"
-              onClick={() => setMenu(true)}
-            />
-            {props.children}
-          </div>
-        </div>
-      </Dialog>
-      <Show when={menu()}>
-        <Dialog
-          title="Settings sections"
-          class="navigation-sheet"
-          close={() => setMenu(false)}
-        >
-          {navigation()}
-        </Dialog>
-      </Show>
+      <div class="settings-content">{props.children}</div>
     </Show>
   );
 }

@@ -151,6 +151,16 @@ Deno.test({
         a.getByRole("button", { name: "Notifications", exact: true }),
       ).toHaveCount(0);
       await a.getByLabel("More composer actions", { exact: true }).click();
+      await expect(
+        a.locator(".composer-tools-menu").getByRole("button", {
+          name: "Attach files",
+        }),
+      ).toHaveCount(0);
+      await expect(
+        a.locator(".composer-tools-menu").getByRole("button", {
+          name: /Reference a file/,
+        }),
+      ).toHaveCount(0);
       await a
         .getByRole("button", { name: "Delegated work", exact: true })
         .click();
@@ -178,8 +188,8 @@ Deno.test({
         a.getByRole("heading", { name: "Keyboard shortcuts", exact: true }),
       ).toHaveCount(0);
       await a
-        .locator(".settings-dialog")
-        .getByRole("button", { name: "Close", exact: true })
+        .getByRole("navigation", { name: "Main navigation" })
+        .getByRole("button", { name: "Threads", exact: true })
         .click();
       await a.getByRole("button", { name: title, exact: true }).click();
       await a
