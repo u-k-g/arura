@@ -451,13 +451,13 @@ export class Hermes extends EventEmitter {
           turn.activity.length,
       );
       const entry = turn.activity.find((x) => x.id === id);
+      if (type === "tool.start") {
+        turn.stats?.milestones.push({
+          at: Date.now(),
+          label: `${String(payload.name ?? payload.tool ?? "Tool")} started`,
+        });
+      }
       if (!entry) {
-        if (type === "tool.start") {
-          turn.stats?.milestones.push({
-            at: Date.now(),
-            label: `${String(payload.name ?? payload.tool ?? "Tool")} started`,
-          });
-        }
         turn.activity.push({
           id,
           label: toolPresentation(

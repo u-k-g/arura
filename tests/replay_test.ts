@@ -99,9 +99,23 @@ Deno.test("first model token precedes visible output when reasoning or a tool ca
 
     const tool = await hermes.create("default");
     fixture.event("message.start", tool.sourceId, {});
-    fixture.event("tool.generating", tool.sourceId, { name: "web_search" });
+    fixture.event("tool.generating", tool.sourceId, {
+      name: "web_search",
+      tool_call_id: "search-1",
+    });
     await until(() => Boolean(turns.get(tool.key)?.stats?.firstTokenAt));
     equal(turns.get(tool.key)?.text, "");
+    fixture.event("tool.start", tool.sourceId, {
+      name: "web_search",
+      tool_call_id: "search-1",
+    });
+    await until(() =>
+      Boolean(
+        turns.get(tool.key)?.stats?.milestones.some((m) =>
+          m.label === "web_search started"
+        ),
+      )
+    );
   } finally {
     hermes.close();
     await fixture.close();

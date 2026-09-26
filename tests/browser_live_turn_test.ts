@@ -100,6 +100,7 @@ Deno.test({
               { at: currentStartedAt + 1300, label: "read_file started" },
               { at: currentStartedAt + 1400, label: "read_file returned" },
               { at: currentStartedAt + 1400, label: "read_file returned" },
+              { at: currentStartedAt + 1400, label: "search_files returned" },
             ],
           },
           activity: [
@@ -169,13 +170,15 @@ Deno.test({
       const stats = page.getByRole("dialog", { name: "Output stats" });
       await expect(stats).toContainText("34.2 tps");
       await expect(stats).not.toContainText("Time to first output");
-      await expect(
-        stats.locator(".output-stats-timeline li").filter({
-          hasText: "read_file start",
-        }),
-      ).toHaveCount(1);
-      await expect(stats).toContainText("read_file start 2x");
-      await expect(stats).toContainText("read_file end 2x");
+      await expect(stats.locator(".output-stats-timeline li")).toHaveCount(3);
+      await expect(stats.locator(".output-stats-timeline li").nth(1))
+        .toContainText("Tools ×3");
+      await expect(stats.locator(".output-stats-timeline li").nth(1))
+        .toContainText("0.1s");
+      await expect(stats).not.toContainText("read_file");
+      await page.screenshot({
+        path: `${Deno.env.get("TMPDIR")}/output-stats-mobile.png`,
+      });
       await stats.getByRole("button", { name: "Close" }).click();
       const messageButtons = page.locator(
         ".message.assistant .message-actions",

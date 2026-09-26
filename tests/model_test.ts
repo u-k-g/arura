@@ -12,11 +12,37 @@ import {
   shouldArchive,
   streamedInterimText,
   subagentTranscript,
+  turnPhases,
   userMessageText,
   visibleText,
   withoutReasoning,
   workGroup,
 } from "../shared/model.ts";
+
+Deno.test("output phases span parallel tool batches and model time", () => {
+  const milestones = [
+    { at: 0, label: "Sent" },
+    { at: 100, label: "Model started" },
+    { at: 3100, label: "First model token" },
+    ...["skill_view", "web_search", "web_search", "web_search", "web_search"]
+      .map((name) => ({ at: 16100, label: `${name} started` })),
+    ...["skill_view", "web_search", "web_search", "web_search", "web_search"]
+      .map((name) => ({ at: 18700, label: `${name} returned` })),
+    ...["web_search", "web_search", "web_search", "web_extract"]
+      .map((name) => ({ at: 27700, label: `${name} started` })),
+    ...["web_search", "web_search", "web_search", "web_extract"]
+      .map((name) => ({ at: 35000, label: `${name} returned` })),
+    { at: 85800, label: "First output" },
+    { at: 99500, label: "Finished" },
+  ];
+  deepStrictEqual(turnPhases({ milestones }, 0), [
+    { kind: "LLM", startedAt: 100, endedAt: 16100 },
+    { kind: "Tools", startedAt: 16100, endedAt: 18700, toolCalls: 5 },
+    { kind: "LLM", startedAt: 18700, endedAt: 27700 },
+    { kind: "Tools", startedAt: 27700, endedAt: 35000, toolCalls: 4 },
+    { kind: "LLM", startedAt: 35000, endedAt: 99500 },
+  ]);
+});
 
 Deno.test("scheduled run identity uses the job ID and run timestamp", () => {
   deepStrictEqual(

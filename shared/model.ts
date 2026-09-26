@@ -137,6 +137,52 @@ export interface TurnStats {
   milestones: TurnMilestone[];
   answerId?: string;
 }
+export interface TurnPhase {
+  kind: "LLM" | "Tools";
+  startedAt: number;
+  endedAt?: number;
+  toolCalls?: number;
+}
+
+export function turnPhases(
+  stats: TurnStats,
+  startedAt: number,
+  finishedAt?: number,
+): TurnPhase[] {
+  const modelStartedAt =
+    stats.milestones.find((item) =>
+      item.label === "Model started" || item.label === "Model start"
+    )?.at ?? startedAt;
+  let phase: TurnPhase = { kind: "LLM", startedAt: modelStartedAt };
+  const phases: TurnPhase[] = [phase];
+  let activeTools = 0;
+  for (const item of stats.milestones) {
+    if (item.at < modelStartedAt) continue;
+    if (
+      / (?:started|start)$/.test(item.label) &&
+      item.label !== "Model started" && item.label !== "Model start"
+    ) {
+      if (activeTools === 0) {
+        phase.endedAt = item.at;
+        phase = { kind: "Tools", startedAt: item.at, toolCalls: 0 };
+        phases.push(phase);
+      }
+      activeTools++;
+      phase.toolCalls = (phase.toolCalls ?? 0) + 1;
+    } else if (/ (?:returned|end)$/.test(item.label) && activeTools > 0) {
+      activeTools--;
+      if (activeTools === 0) {
+        phase.endedAt = item.at;
+        phase = { kind: "LLM", startedAt: item.at };
+        phases.push(phase);
+      }
+    }
+  }
+  const end = stats.milestones.findLast((item) => item.label === "Finished")
+    ?.at ?? finishedAt;
+  if (end !== undefined) phase.endedAt = end;
+  return phases;
+}
 export interface Interaction {
   id: string;
   kind: "approval" | "clarify" | "secret";

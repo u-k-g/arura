@@ -2083,16 +2083,40 @@ progress {
   overflow: auto;
 }
 .output-stats-timeline li {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  padding: 3px 0;
+  display: grid;
+  grid-template-columns: max-content max-content minmax(24px, 1fr) max-content;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 0;
   font-size: 12px;
 }
 .output-stats-timeline time {
-  min-width: 42px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.output-stats-phase-name {
+  white-space: nowrap;
+}
+.output-stats-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.output-stats-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--muted);
+}
+.output-stats-timeline .is-tools .output-stats-bar > span {
+  background: var(--accent);
+}
+.output-stats-duration {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .output-stats-note {
   margin: 12px 0 0;

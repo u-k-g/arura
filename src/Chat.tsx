@@ -39,6 +39,7 @@ import {
   mergeHistoryMessages,
   type Message,
   type Turn,
+  turnPhases,
   type TurnStats,
   userMessageText,
 } from "../shared/model.ts";
@@ -1296,30 +1297,6 @@ export default function Chat(props: {
   );
   const secondsFromStart = (at: number, start: number) =>
     `${Math.max(0, (at - start) / 1000).toFixed(1)}s`;
-  const groupedMilestones = (stats: TurnStats, start: number) => {
-    const rows: { time: string; label: string; count: number }[] = [];
-    const counts = new Map<string, Map<string, number>>();
-    for (const item of stats.milestones) {
-      const time = secondsFromStart(item.at, start);
-      const label = item.label.replace(/ started$/, " start").replace(
-        / returned$/,
-        " end",
-      );
-      let labels = counts.get(time);
-      if (!labels) {
-        labels = new Map();
-        counts.set(time, labels);
-      }
-      const existing = labels.get(label);
-      if (existing !== undefined) {
-        rows[existing].count++;
-      } else {
-        labels.set(label, rows.length);
-        rows.push({ time, label, count: 1 });
-      }
-    }
-    return rows;
-  };
   const renderLiveWork = (t: Turn) => (
     <Show when={!historyOwnsWork()}>
       <div class="work-summary-row">
@@ -2494,37 +2471,96 @@ export default function Chat(props: {
                   <p>Detailed timing was not recorded for this reply.</p>
                 }
               >
-                {(stats) => (
-                  <>
-                    <div class="output-stats-heading">
-                      <h3>Timeline</h3>
-                      <Show when={stats().tokensPerSecond !== undefined}>
-                        <span>{stats().tokensPerSecond!.toFixed(1)} tps</span>
-                      </Show>
-                    </div>
-                    <ol class="output-stats-timeline">
-                      <For
-                        each={groupedMilestones(stats(), view().startedAt)}
-                      >
-                        {(item) => (
-                          <li>
-                            <time>{item.time}</time>
+                {(stats) => {
+                  const phases = createMemo(() =>
+                    turnPhases(
+                      stats(),
+                      view().startedAt,
+                      view().finishedAt,
+                    )
+                  );
+                  const longest = createMemo(() =>
+                    Math.max(
+                      1,
+                      ...phases().map((phase) =>
+                        (phase.endedAt ?? phase.startedAt) - phase.startedAt
+                      ),
+                    )
+                  );
+                  return (
+                    <>
+                      <div class="output-stats-heading">
+                        <h3>Timeline</h3>
+                        <Show when={phases().at(-1)?.endedAt}>
+                          {(end) => (
                             <span>
-                              {item.label}
-                              {item.count > 1 ? ` ${item.count}x` : ""}
+                              {secondsFromStart(end(), view().startedAt)} total
                             </span>
-                          </li>
-                        )}
-                      </For>
-                    </ol>
-                    <p class="output-stats-note">
-                      Times use events received by Arura.
-                      {stats().tokensPerSecond !== undefined
-                        ? " TPS is Hermes's recent-call average."
-                        : ""}
-                    </p>
-                  </>
-                )}
+                          )}
+                        </Show>
+                      </div>
+                      <ol class="output-stats-timeline">
+                        <For each={phases()}>
+                          {(phase) => (
+                            <li
+                              classList={{ "is-tools": phase.kind === "Tools" }}
+                            >
+                              <time>
+                                {secondsFromStart(
+                                  phase.startedAt,
+                                  view().startedAt,
+                                )}
+                                {"–"}
+                                {phase.endedAt === undefined
+                                  ? "…"
+                                  : secondsFromStart(
+                                    phase.endedAt,
+                                    view().startedAt,
+                                  )}
+                              </time>
+                              <span class="output-stats-phase-name">
+                                {phase.kind}
+                                {phase.toolCalls ? ` ×${phase.toolCalls}` : ""}
+                              </span>
+                              <span class="output-stats-bar" aria-hidden="true">
+                                <span
+                                  style={{
+                                    width: `${
+                                      Math.max(
+                                        2,
+                                        (((phase.endedAt ?? phase.startedAt) -
+                                          phase.startedAt) / longest()) * 100,
+                                      )
+                                    }%`,
+                                  }}
+                                />
+                              </span>
+                              <strong class="output-stats-duration">
+                                {phase.endedAt === undefined
+                                  ? "…"
+                                  : secondsFromStart(
+                                    phase.endedAt,
+                                    phase.startedAt,
+                                  )}
+                              </strong>
+                            </li>
+                          )}
+                        </For>
+                      </ol>
+                      <p class="output-stats-note">
+                        LLM includes processing and writing. Tools spans each
+                        batch from first start to last result. Times are based
+                        on events received by Arura.
+                        <Show when={stats().tokensPerSecond}>
+                          {(speed) =>
+                            ` Hermes reports ${
+                              speed().toFixed(1)
+                            } tps for recent model calls.`}
+                        </Show>
+                      </p>
+                    </>
+                  );
+                }}
               </Show>
             </Show>
           </Dialog>
