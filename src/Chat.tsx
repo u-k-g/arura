@@ -1296,6 +1296,30 @@ export default function Chat(props: {
   );
   const secondsFromStart = (at: number, start: number) =>
     `${Math.max(0, (at - start) / 1000).toFixed(1)}s`;
+  const groupedMilestones = (stats: TurnStats, start: number) => {
+    const rows: { time: string; label: string; count: number }[] = [];
+    const counts = new Map<string, Map<string, number>>();
+    for (const item of stats.milestones) {
+      const time = secondsFromStart(item.at, start);
+      const label = item.label.replace(/ started$/, " start").replace(
+        / returned$/,
+        " end",
+      );
+      let labels = counts.get(time);
+      if (!labels) {
+        labels = new Map();
+        counts.set(time, labels);
+      }
+      const existing = labels.get(label);
+      if (existing !== undefined) {
+        rows[existing].count++;
+      } else {
+        labels.set(label, rows.length);
+        rows.push({ time, label, count: 1 });
+      }
+    }
+    return rows;
+  };
   const renderLiveWork = (t: Turn) => (
     <Show when={!historyOwnsWork()}>
       <div class="work-summary-row">
@@ -2479,13 +2503,16 @@ export default function Chat(props: {
                       </Show>
                     </div>
                     <ol class="output-stats-timeline">
-                      <For each={stats().milestones}>
+                      <For
+                        each={groupedMilestones(stats(), view().startedAt)}
+                      >
                         {(item) => (
                           <li>
-                            <time>
-                              {secondsFromStart(item.at, view().startedAt)}
-                            </time>
-                            <span>{item.label}</span>
+                            <time>{item.time}</time>
+                            <span>
+                              {item.label}
+                              {item.count > 1 ? ` ${item.count}x` : ""}
+                            </span>
                           </li>
                         )}
                       </For>

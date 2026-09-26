@@ -95,6 +95,11 @@ Deno.test({
             milestones: [
               { at: currentStartedAt, label: "Sent" },
               { at: currentStartedAt + 1200, label: "First model token" },
+              { at: currentStartedAt + 1300, label: "read_file started" },
+              { at: currentStartedAt + 1300, label: "search_files started" },
+              { at: currentStartedAt + 1300, label: "read_file started" },
+              { at: currentStartedAt + 1400, label: "read_file returned" },
+              { at: currentStartedAt + 1400, label: "read_file returned" },
             ],
           },
           activity: [
@@ -164,7 +169,28 @@ Deno.test({
       const stats = page.getByRole("dialog", { name: "Output stats" });
       await expect(stats).toContainText("34.2 tps");
       await expect(stats).not.toContainText("Time to first output");
+      await expect(
+        stats.locator(".output-stats-timeline li").filter({
+          hasText: "read_file start",
+        }),
+      ).toHaveCount(1);
+      await expect(stats).toContainText("read_file start 2x");
+      await expect(stats).toContainText("read_file end 2x");
       await stats.getByRole("button", { name: "Close" }).click();
+      const messageButtons = page.locator(
+        ".message.assistant .message-actions",
+      ).first().locator("button");
+      const infoBounds = requireValue(
+        await messageButtons.nth(0).boundingBox(),
+        "message info button bounds",
+      );
+      const copyBounds = requireValue(
+        await messageButtons.nth(1).boundingBox(),
+        "message copy button bounds",
+      );
+      expect(infoBounds.width).toBe(copyBounds.width);
+      expect(infoBounds.height).toBe(copyBounds.height);
+      expect(Math.abs(infoBounds.y - copyBounds.y)).toBeLessThan(1);
       await page.screenshot({
         path: `${Deno.env.get("TMPDIR")}/live-turn-mobile.png`,
       });

@@ -682,26 +682,32 @@ small {
   margin-top: 6px;
 }
 .message-actions {
-  display: flex;
-  gap: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   position: absolute;
-  right: 0;
-  bottom: 2px;
+  right: 4px;
+  bottom: 4px;
   z-index: 1;
-  background: var(--canvas);
+  padding: 2px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--canvas) 45%, transparent);
   opacity: 0;
 }
 .message:hover .message-actions {
   opacity: 1;
 }
 .message-actions .icon {
-  width: 11px;
-  height: 11px;
+  width: 14px;
+  height: 14px;
 }
-.message-actions .icon-button {
-  min-height: 25px;
-  min-width: 25px;
-  padding: 4px;
+.message-actions .icon-button,
+.message-actions .output-stats-button {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 7px;
   color: var(--muted);
 }
 .working {
@@ -1412,9 +1418,12 @@ dialog::backdrop {
   .message-actions {
     opacity: 1;
   }
-  .message-actions .icon-button {
-    width: 34px;
-    height: 32px;
+  .message-actions .icon-button,
+  .message-actions .output-stats-button {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
   }
   .compose-area {
     padding: 8px 10px max(8px, env(safe-area-inset-bottom));
