@@ -71,6 +71,7 @@ export function hermesFixture(
   const profiles = new Map([
     ["default", { name: "default", description: "Fixture profile", soul: "" }],
   ]);
+  const profileModels = new Map<string, { model: string; provider: string }>();
   let avatarData = "";
   let botRevision = 0;
   let botMetadata: Record<string, unknown> = {};
@@ -441,6 +442,7 @@ export function hermesFixture(
                 );
                 return {
                   ...profile,
+                  ...profileModels.get(profile.name),
                   display_name: "",
                   ui_meta: {
                     "hermes-bots": profile.name === "default"
@@ -1194,7 +1196,23 @@ export function hermesFixture(
           event("profiles.changed", "", {});
           return json({ ok: true, name: body.name });
         }
-        return json({ profiles: [...profiles.values()] });
+        return json({
+          profiles: [...profiles.values()].map((profile) => ({
+            ...profile,
+            ...profileModels.get(profile.name),
+          })),
+        });
+      }
+      const profileModelPath = path.match(/^\/api\/profiles\/([^/]+)\/model$/);
+      if (profileModelPath && request.method === "PUT") {
+        const name = decodeURIComponent(profileModelPath[1]);
+        if (!profiles.has(name)) {
+          return new Response("Profile missing", { status: 404 });
+        }
+        const { model, provider } = await request.json();
+        profileModels.set(name, { model, provider });
+        event("profiles.changed", "", {});
+        return json({ ok: true });
       }
       const profilePath = path.match(/^\/api\/profiles\/([^/]+)(\/soul)?$/);
       if (profilePath) {

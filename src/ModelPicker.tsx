@@ -39,9 +39,10 @@ export default function ModelPicker(props: {
   current: string;
   provider: string;
   effort: string;
+  showEffort?: boolean;
   close: () => void;
   choose: (model: ModelOption) => Promise<void>;
-  changeEffort: (effort: string, model: ModelOption) => Promise<void>;
+  changeEffort?: (effort: string, model: ModelOption) => Promise<void>;
 }) {
   let panel!: HTMLDivElement;
   const position = () => {
@@ -202,9 +203,7 @@ export default function ModelPicker(props: {
                 <div
                   class="model-picker-row"
                   classList={{
-                    selected: props.current === modelLabel(entry) ||
-                      props.current === entry.id ||
-                      props.current === entry.model,
+                    selected: selected() === entry,
                   }}
                 >
                   <button
@@ -249,40 +248,43 @@ export default function ModelPicker(props: {
               </p>
             </Show>
           </div>
-          <footer class="model-picker-footer">
-            <label>
-              Reasoning effort
-              <select
-                aria-label="Reasoning effort"
-                value={efforts()?.includes(props.effort) ? props.effort : ""}
-                disabled={busy() || !efforts()?.length}
-                onChange={(event) => {
-                  const effort = event.currentTarget.value;
-                  const entry = selected();
-                  if (entry && efforts()?.includes(effort)) {
-                    perform(() => props.changeEffort(effort, entry));
-                  }
-                }}
-              >
-                <option value="" disabled>
-                  {efforts() === undefined
-                    ? "Not reported"
-                    : !efforts()?.length
-                    ? "Not supported"
-                    : "Choose effort"}
-                </option>
-                <For each={efforts() ?? []}>
-                  {(effort) => (
-                    <option value={effort}>
-                      {effort === "none"
-                        ? "Off"
-                        : effort.charAt(0).toUpperCase() + effort.slice(1)}
-                    </option>
-                  )}
-                </For>
-              </select>
-            </label>
-          </footer>
+          <Show when={props.showEffort !== false}>
+            <footer class="model-picker-footer">
+              <label>
+                Reasoning effort
+                <select
+                  aria-label="Reasoning effort"
+                  value={efforts()?.includes(props.effort) ? props.effort : ""}
+                  disabled={busy() || !efforts()?.length}
+                  onChange={(event) => {
+                    const effort = event.currentTarget.value;
+                    const entry = selected();
+                    const changeEffort = props.changeEffort;
+                    if (entry && efforts()?.includes(effort) && changeEffort) {
+                      perform(() => changeEffort(effort, entry));
+                    }
+                  }}
+                >
+                  <option value="" disabled>
+                    {efforts() === undefined
+                      ? "Not reported"
+                      : !efforts()?.length
+                      ? "Not supported"
+                      : "Choose effort"}
+                  </option>
+                  <For each={efforts() ?? []}>
+                    {(effort) => (
+                      <option value={effort}>
+                        {effort === "none"
+                          ? "Off"
+                          : effort.charAt(0).toUpperCase() + effort.slice(1)}
+                      </option>
+                    )}
+                  </For>
+                </select>
+              </label>
+            </footer>
+          </Show>
         </div>
       </div>
     </div>

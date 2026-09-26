@@ -1,4 +1,5 @@
 import { confirmAction, rejectAction } from "./ActionDialog.tsx";
+import ModelPicker, { modelLabel, type ModelOption } from "./ModelPicker.tsx";
 type ResourceField = {
   key: string;
   label?: string;
@@ -698,6 +699,13 @@ export default function Resources(props: {
         title: string;
       } | null
     >(null),
+    [profileModelPicker, setProfileModelPicker] = createSignal<{
+      anchor: HTMLButtonElement;
+      name: string;
+      current: string;
+      provider: string;
+      models: ModelOption[];
+    }>(),
     [detail, setDetail] = createSignal<unknown>();
   let refreshVersion = 0;
   onCleanup(() => {
@@ -743,6 +751,7 @@ export default function Resources(props: {
       previousSurface = surfaceKey;
       setData(undefined);
       setForm(null);
+      setProfileModelPicker(undefined);
       setDetail(undefined);
       setToolConfig(undefined);
       if (props.name === "jobs" && scheduleDraft()) {
@@ -1003,16 +1012,24 @@ export default function Resources(props: {
     </nav>
   );
   const [actionPending, setActionPending] = createSignal(false);
-  async function action(operation: string, item: ResourceRow = {}) {
+  async function action(
+    operation: string,
+    item: ResourceRow = {},
+    anchor?: HTMLButtonElement,
+  ) {
     if (actionPending()) return;
     setActionPending(true);
     try {
-      await performAction(operation, item);
+      await performAction(operation, item, anchor);
     } finally {
       setActionPending(false);
     }
   }
-  async function performAction(operation: string, item: ResourceRow = {}) {
+  async function performAction(
+    operation: string,
+    item: ResourceRow = {},
+    anchor?: HTMLButtonElement,
+  ) {
     const id = String(
       (props.name === "webhooks" ? item.name : item.id) ??
         item.name ??
@@ -1027,6 +1044,34 @@ export default function Resources(props: {
         ? { conversation: connectionConversation() }
         : {}),
     };
+    if (operation === "profileModel" && anchor) {
+      const catalog = await resource("models");
+      const models: ModelOption[] = (catalog.providers ?? []).flatMap(
+        (provider: {
+          slug?: string;
+          id?: string;
+          name: string;
+          models?: string[];
+        }) =>
+          (provider.models ?? []).map((model) => ({
+            id: model,
+            name: model,
+            provider: provider.slug ?? provider.id ?? "",
+            providerName: provider.name,
+          })),
+      );
+      if (!models.length) {
+        throw new Error("No models are available from Hermes");
+      }
+      setProfileModelPicker({
+        anchor,
+        name: id,
+        current: String(item.model ?? ""),
+        provider: String(item.provider ?? ""),
+        models,
+      });
+      return;
+    }
     if (
       operation === "connectConnector" ||
       operation === "reconnectConnector"
@@ -1795,7 +1840,10 @@ export default function Resources(props: {
                           <button
                             type="button"
                             disabled={actionPending()}
-                            onClick={() => void run(() => action(op, item))}
+                            onClick={(event) =>
+                              void run(() =>
+                                action(op, item, event.currentTarget)
+                              )}
                           >
                             {label}
                           </button>
@@ -1835,6 +1883,54 @@ export default function Resources(props: {
             </Dialog>
           </Show>
         </Show>
+      </Show>
+      <Show when={profileModelPicker()}>
+        {(picker) => (
+          <ModelPicker
+            anchor={picker().anchor}
+            models={picker().models}
+            current={picker().current}
+            provider={picker().provider}
+            effort=""
+            showEffort={false}
+            close={() => setProfileModelPicker(undefined)}
+            choose={async (model) => {
+              const name = picker().name;
+              let result = await resource(
+                "profileModel",
+                { id: name },
+                {
+                  model: model.id ?? model.model ?? modelLabel(model),
+                  provider: model.provider ?? "",
+                },
+              );
+              if (result?.confirm_required) {
+                if (
+                  await rejectAction(
+                    result.confirm_message ?? "Confirm this model selection?",
+                  )
+                ) return;
+                result = await resource(
+                  "profileModel",
+                  { id: name },
+                  {
+                    model: model.id ?? model.model ?? modelLabel(model),
+                    provider: model.provider ?? "",
+                    confirm_expensive_model: true,
+                  },
+                );
+              }
+              if (result?.ok === false) {
+                throw new Error(
+                  result.error ?? "Hermes did not accept the model",
+                );
+              }
+              setProfileModelPicker(undefined);
+              inform("Model saved");
+              await refresh();
+            }}
+          />
+        )}
       </Show>
       <Show when={form()}>
         {(f) => (

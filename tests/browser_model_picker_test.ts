@@ -1,5 +1,5 @@
 import { chromium, expect } from "@playwright/test";
-import { signIn } from "./sign_in.ts";
+import { openSettings, signIn } from "./sign_in.ts";
 import { requireValue } from "./require_value.ts";
 
 Deno.test({
@@ -256,6 +256,75 @@ Deno.test({
         a.getByRole("button", { name: "Model", exact: true }),
       ).toBeFocused();
     } finally {
+      await browser.close();
+    }
+  },
+});
+Deno.test({
+  name: "bot model action uses the composer model picker and saves provider",
+  ignore: !Deno.env.get("ARURA_TEST_URL"),
+  async fn() {
+    const browser = await chromium.launch({
+      headless: true,
+      executablePath: Deno.env.get("ARURA_BROWSER_EXECUTABLE"),
+    });
+    const page = await browser.newPage({
+      viewport: { width: 1440, height: 900 },
+    });
+    const url = requireValue(Deno.env.get("ARURA_TEST_URL"), "test URL");
+    const name = `bot-model-${crypto.randomUUID()}`;
+    try {
+      await page.goto(url);
+      await signIn(page, "Bot model picker");
+      await expect(page.getByRole("button", {
+        name: "Fixture conversation",
+        exact: true,
+      })).toBeVisible();
+      const created = await page.request.post(
+        `${url}/api/resource/createProfile`,
+        {
+          headers: { origin: url },
+          data: { name },
+        },
+      );
+      expect(created.ok(), await created.text()).toBe(true);
+      await openSettings(page);
+      await page.getByRole("button", {
+        name: "Profiles & bots",
+        exact: true,
+      }).click();
+      await page.getByRole("navigation", { name: "Profiles & bots list" })
+        .getByRole("button", { name, exact: true }).click();
+      await page.locator(".resource-card")
+        .filter({ has: page.getByRole("heading", { name, exact: true }) })
+        .getByRole("button", { name: "Model", exact: true }).click();
+      const picker = page.getByRole("dialog", { name: "Choose a model" });
+      await expect(picker).toBeVisible();
+      await expect(picker.getByRole("combobox", { name: "Reasoning effort" }))
+        .toHaveCount(0);
+      await picker.getByRole("button", {
+        name: "Fixture provider",
+        exact: true,
+      }).click();
+      await picker.getByRole("button", {
+        name: "fixture-alternative · Fixture provider",
+        exact: true,
+      }).click();
+      await expect(picker).toHaveCount(0);
+      const roster = await page.request.get(
+        `${url}/api/resource/profileRoster`,
+      );
+      expect(roster.ok()).toBe(true);
+      expect(
+        (await roster.json()).profiles.find((profile: { name: string }) =>
+          profile.name === name
+        ),
+      ).toMatchObject({ model: "fixture-alternative", provider: "fixture" });
+    } finally {
+      await page.request.delete(
+        `${url}/api/resource/deleteProfile?id=${encodeURIComponent(name)}`,
+        { headers: { origin: url } },
+      );
       await browser.close();
     }
   },
