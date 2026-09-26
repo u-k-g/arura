@@ -991,6 +991,15 @@ export function hermesFixture(
       if (path === "/api/status" || path === "/api/health") {
         return json({ status: "healthy" });
       }
+      if (path === "/api/logs") {
+        return json({
+          file: url.searchParams.get("file") ?? "agent",
+          lines: [
+            "2026-09-25 21:29:20,281 INFO gateway.run: Previous event",
+            "2026-09-25 21:29:25,282 INFO gateway.run: Gateway housekeeping started and is checking scheduled jobs across every configured profile",
+          ],
+        });
+      }
       if (path === "/api/files") return json({ path: "/fixture" });
       if (path === "/api/files/upload" && request.method === "POST") {
         const body = await request.json();

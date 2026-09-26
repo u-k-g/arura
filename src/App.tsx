@@ -950,21 +950,80 @@ export default function App() {
     openPalette: () => setPalette(true),
     newChat: () => void newChat(),
   };
-  const gatewayOnline = () => connected() && !!workspace()?.connection?.online;
-  const gatewayStatus = () => (
-    <button
-      type="button"
-      class="gateway-status"
-      aria-label={`Gateway ${gatewayOnline() ? "connected" : "disconnected"}`}
-      title={`Gateway ${gatewayOnline() ? "connected" : "disconnected"}`}
-      onClick={() => navigate("resources:status")}
-    >
-      <span class="connection" classList={{ offline: !gatewayOnline() }}>
-        <Icon
-          name={gatewayOnline() ? "activity" : "stats-down-square"}
-        />
-      </span>
-    </button>
+  const [browserOnline, setBrowserOnline] = createSignal(
+    globalThis.navigator.onLine,
+  );
+  onMount(() => {
+    const update = () => setBrowserOnline(globalThis.navigator.onLine);
+    globalThis.addEventListener("online", update);
+    globalThis.addEventListener("offline", update);
+    onCleanup(() => {
+      globalThis.removeEventListener("online", update);
+      globalThis.removeEventListener("offline", update);
+    });
+  });
+  const gatewayOnline = () =>
+    browserOnline() && connected() && !!workspace()?.connection?.online;
+  const [latestGatewayMessage, setLatestGatewayMessage] = createSignal(
+    "Waiting for gateway activity",
+  );
+  createEffect(() => {
+    if (!gatewayOnline()) return;
+    let disposed = false;
+    const refresh = async () => {
+      try {
+        const data = await request(
+          "/api/resource/logs?file=gateway&lines=20",
+        ) as { lines?: unknown };
+        if (disposed) return;
+        const lines = Array.isArray(data.lines)
+          ? data.lines.filter((line): line is string =>
+            typeof line === "string"
+          )
+          : [];
+        const latest = lines.findLast((line) =>
+          /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/.test(line)
+        ) ?? lines.findLast((line) =>
+          line.trim()
+        );
+        setLatestGatewayMessage(
+          latest?.replace(
+            /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:,\d+)?\s+(?:TRACE|DEBUG|INFO|WARNING|ERROR|CRITICAL)\s+[^:]+:\s*/,
+            "",
+          ).trim() || "No gateway messages yet",
+        );
+      } catch {
+        if (!disposed) setLatestGatewayMessage("Gateway console unavailable");
+      }
+    };
+    void refresh();
+    const timer = globalThis.setInterval(() => void refresh(), 15000);
+    onCleanup(() => {
+      disposed = true;
+      globalThis.clearInterval(timer);
+    });
+  });
+  const gatewayStatus = (showMessage = false) => (
+    <>
+      <button
+        type="button"
+        class="gateway-status"
+        aria-label={`Gateway ${gatewayOnline() ? "connected" : "disconnected"}`}
+        title={`Gateway ${gatewayOnline() ? "connected" : "disconnected"}`}
+        onClick={() => navigate("resources:status")}
+      >
+        <span class="connection" classList={{ offline: !gatewayOnline() }}>
+          <Icon
+            name={gatewayOnline() ? "activity" : "stats-down-square"}
+          />
+        </span>
+      </button>
+      <Show when={showMessage}>
+        <span class="gateway-console-message" aria-live="off">
+          {gatewayOnline() ? latestGatewayMessage() : "Gateway disconnected"}
+        </span>
+      </Show>
+    </>
   );
   const navigation = (mobile = false) => (
     <div class="navigation">
@@ -975,7 +1034,7 @@ export default function App() {
           label="Collapse sidebar"
           onClick={toggleSidebar}
         />
-        {gatewayStatus()}
+        {gatewayStatus(true)}
         {navigationActions()}
       </header>
       <nav class="sidebar-sections" aria-label="Main navigation">

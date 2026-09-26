@@ -656,6 +656,72 @@ export default function Chat(props: {
     setText(value);
     writeDraft(props.conversation, value);
   };
+  let composerForm!: HTMLFormElement;
+  let composerMeasureFrame = 0;
+  const [composerStacked, setComposerStacked] = createSignal(false);
+  const measureComposer = () => {
+    const entry = composerForm.querySelector<HTMLElement>(".composer-entry");
+    const input = composerForm.querySelector<HTMLElement>(".composer-input");
+    const controls = composerForm.querySelector<HTMLElement>(
+      ".composer-bottom",
+    );
+    if (!entry || !input || !controls) return;
+    if (globalThis.getComputedStyle(entry).display !== "contents") {
+      setComposerStacked(false);
+      return;
+    }
+    const inputStyle = globalThis.getComputedStyle(input);
+    const singleLineHeight = parseFloat(inputStyle.lineHeight) +
+      parseFloat(inputStyle.paddingTop) + parseFloat(inputStyle.paddingBottom);
+    if (!composerStacked()) {
+      setComposerStacked(input.scrollHeight > singleLineHeight + 3);
+      return;
+    }
+    const formStyle = globalThis.getComputedStyle(composerForm);
+    const controlWidthStyle = controls.style.width;
+    controls.style.width = "max-content";
+    const controlWidth = controls.getBoundingClientRect().width;
+    controls.style.width = controlWidthStyle;
+    const inlineWidth = composerForm.clientWidth -
+      parseFloat(formStyle.paddingLeft) -
+      parseFloat(formStyle.paddingRight) -
+      controlWidth - parseFloat(formStyle.columnGap);
+    if (inlineWidth <= 0) return;
+    const measure = input.cloneNode(true) as HTMLElement;
+    measure.removeAttribute("contenteditable");
+    measure.setAttribute("aria-hidden", "true");
+    measure.style.position = "absolute";
+    measure.style.visibility = "hidden";
+    measure.style.pointerEvents = "none";
+    measure.style.width = `${inlineWidth}px`;
+    measure.style.minHeight = "0";
+    measure.style.maxHeight = "none";
+    measure.style.overflow = "visible";
+    composerForm.append(measure);
+    setComposerStacked(measure.scrollHeight > singleLineHeight + 3);
+    measure.remove();
+  };
+  const scheduleComposerMeasure = () => {
+    globalThis.cancelAnimationFrame(composerMeasureFrame);
+    composerMeasureFrame = globalThis.requestAnimationFrame(measureComposer);
+  };
+  onMount(() => {
+    const observer = new globalThis.ResizeObserver(scheduleComposerMeasure);
+    observer.observe(composerForm);
+    const controls = composerForm.querySelector(".composer-bottom");
+    if (controls) observer.observe(controls);
+    scheduleComposerMeasure();
+    onCleanup(() => {
+      observer.disconnect();
+      globalThis.cancelAnimationFrame(composerMeasureFrame);
+    });
+  });
+  createEffect(() => {
+    text();
+    displayedModel();
+    displayedEffort();
+    scheduleComposerMeasure();
+  });
   async function restoreFailedMessage(item: Transcript["commands"][number]) {
     if (
       text().trim() &&
@@ -1983,7 +2049,9 @@ export default function Chat(props: {
           />
         </Suspense>
         <form
+          ref={composerForm}
           class="composer"
+          classList={{ stacked: composerStacked() }}
           onSubmit={async (e) => {
             e.preventDefault();
             if (submitPending || sending()) return;
@@ -2002,12 +2070,6 @@ export default function Chat(props: {
           }}
         >
           <div class="composer-entry">
-            <IconButton
-              icon="attachment"
-              class="composer-add"
-              label="Add context"
-              onClick={() => setAttachment(true)}
-            />
             <ComposerInput
               ref={(handle) => {
                 input = handle;
@@ -2154,7 +2216,6 @@ export default function Chat(props: {
                   displayedEffort() === "none" ? "Off" : displayedEffort()
                 }`
                 : ""}
-              <Icon name="nav-arrow-down" />
             </button>
 
             <details class="composer-tools">
@@ -2200,6 +2261,12 @@ export default function Chat(props: {
                 </button>
               </div>
             </details>
+            <IconButton
+              icon="attachment"
+              class="composer-add"
+              label="Add context"
+              onClick={() => setAttachment(true)}
+            />
             <div>
               <Show when={turn()?.state === "running"}>
                 <button

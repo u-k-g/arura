@@ -856,6 +856,18 @@ dialog.conversation-menu {
   min-width: 26px;
   min-height: 26px;
   padding: 0;
+  flex: none;
+}
+.gateway-console-message {
+  flex: 1;
+  min-width: 0;
+  margin-left: 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  color: var(--subtle);
+  font-size: 11px;
+  line-height: 1.3;
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
 }
 .sidebar-titlebar > button[aria-label="Search conversations"] {
   margin-left: auto;
@@ -1020,6 +1032,16 @@ dialog.conversation-menu {
 .composer-entry {
   display: contents;
 }
+.composer.stacked {
+  flex-wrap: wrap;
+}
+.composer.stacked .composer-input-wrap {
+  flex: 1 0 100%;
+}
+.composer.stacked .composer-bottom {
+  width: 100%;
+  justify-content: flex-end;
+}
 .mobile-send,
 .composer-bottom .mobile-composer-navigation {
   display: none;
@@ -1153,6 +1175,9 @@ dialog.conversation-menu {
     height: 36px;
     min-width: 36px;
     min-height: 36px;
+  }
+  .composer-bottom .composer-add {
+    order: 3;
   }
   .composer-bottom > div:last-child {
     order: 3;
