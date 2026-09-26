@@ -111,13 +111,15 @@ export const overview = query({
         read.device === sharedReadDevice ||
         (previous.device !== sharedReadDevice &&
           read.activityAt > previous.activityAt)
-      )
+      ) {
         reads.set(read.key, read);
+      }
     }
     const pinned = await ctx.db
       .query("conversations")
-      .withIndex("section", (q) =>
-        q.gt("section", "archived").lt("section", "recent"),
+      .withIndex(
+        "section",
+        (q) => q.gt("section", "archived").lt("section", "recent"),
       )
       .filter((q) => q.neq(q.field("deleted"), true))
       .collect();
@@ -130,8 +132,9 @@ export const overview = query({
       .paginate({ cursor: null, numItems: 100 });
     const cron = await ctx.db
       .query("conversations")
-      .withIndex("cronSidebar", (q) =>
-        q.eq("cronSidebar", true).eq("section", "recent"),
+      .withIndex(
+        "cronSidebar",
+        (q) => q.eq("cronSidebar", true).eq("section", "recent"),
       )
       .filter((q) => q.neq(q.field("deleted"), true))
       .collect();
@@ -182,7 +185,7 @@ export const archived = query({
         q.or(
           q.neq(q.field("backgroundSession"), true),
           q.eq(q.field("archivedCronVisible"), true),
-        ),
+        )
       )
       .filter((q) => q.neq(q.field("deleted"), true))
       .paginate({ cursor: args.cursor, numItems: 10 });
@@ -230,18 +233,18 @@ async function transcriptActivity(ctx: QueryCtx, conversation: string) {
     .take(30);
   const queued = await ctx.db
     .query("commands")
-    .withIndex("pending", (q) =>
-      q.eq("conversation", conversation).eq("status", "queued"),
+    .withIndex(
+      "pending",
+      (q) => q.eq("conversation", conversation).eq("status", "queued"),
     )
     .collect();
   return {
-    turn:
-      (
-        await ctx.db
-          .query("turns")
-          .withIndex("conversation", (q) => q.eq("conversation", conversation))
-          .unique()
-      )?.data ?? null,
+    turn: (
+      await ctx.db
+        .query("turns")
+        .withIndex("conversation", (q) => q.eq("conversation", conversation))
+        .unique()
+    )?.data ?? null,
     commands: [
       ...queued,
       ...recent.filter((command) => command.status !== "queued"),
@@ -267,8 +270,7 @@ export const outputStats = query({
         q
           .eq("conversation", conversation)
           .gte("startedAt", args.after)
-          .lte("startedAt", args.before),
-      )
+          .lte("startedAt", args.before))
       .collect();
   },
 });
@@ -305,8 +307,9 @@ export const markRead = mutation({
     if (!conversation) return;
     const old = await ctx.db
       .query("conversationReads")
-      .withIndex("device", (q) =>
-        q.eq("device", sharedReadDevice).eq("key", key),
+      .withIndex(
+        "device",
+        (q) => q.eq("device", sharedReadDevice).eq("key", key),
       )
       .unique();
     const value = {
@@ -360,14 +363,12 @@ export const move = mutation({
       folderId: args.folderId,
       rank: args.rank ?? Date.now(),
       archivedAt: args.section === "archived" ? Date.now() : undefined,
-      archivedCronVisible:
-        c.source === "cron"
-          ? args.section === "archived"
-          : c.archivedCronVisible,
-      unarchivedAt:
-        c.section === "archived" && args.section !== "archived"
-          ? Date.now()
-          : c.unarchivedAt,
+      archivedCronVisible: c.source === "cron"
+        ? args.section === "archived"
+        : c.archivedCronVisible,
+      unarchivedAt: c.section === "archived" && args.section !== "archived"
+        ? Date.now()
+        : c.unarchivedAt,
     });
   },
 });
@@ -395,8 +396,9 @@ export const saveDraft = mutation({
     await device(ctx);
     const existing = await ctx.db
       .query("drafts")
-      .withIndex("profile", (q) =>
-        q.eq("profile", args.profile).eq("key", args.key),
+      .withIndex(
+        "profile",
+        (q) => q.eq("profile", args.profile).eq("key", args.key),
       )
       .unique();
     if (!args.text.trim()) {
@@ -432,10 +434,12 @@ export const folder = mutation({
       throw new Error("Create a new folder to move a conversation");
     }
     if (args.remove && args.id) {
-      for (const c of await ctx.db
-        .query("conversations")
-        .filter((q) => q.eq(q.field("folderId"), args.id))
-        .collect()) {
+      for (
+        const c of await ctx.db
+          .query("conversations")
+          .filter((q) => q.eq(q.field("folderId"), args.id))
+          .collect()
+      ) {
         await ctx.db.patch(c._id, { folderId: undefined, section: "pinned" });
       }
       await ctx.db.delete(args.id);
@@ -452,9 +456,9 @@ export const folder = mutation({
       : undefined;
     const conversation = key
       ? await ctx.db
-          .query("conversations")
-          .withIndex("key", (q) => q.eq("key", key))
-          .unique()
+        .query("conversations")
+        .withIndex("key", (q) => q.eq("key", key))
+        .unique()
       : undefined;
     if (key && (!conversation || conversation.deleted)) {
       throw new Error("Conversation not found");
@@ -468,10 +472,9 @@ export const folder = mutation({
         folderId: id,
         rank: Date.now(),
         archivedAt: undefined,
-        unarchivedAt:
-          conversation.section === "archived"
-            ? Date.now()
-            : conversation.unarchivedAt,
+        unarchivedAt: conversation.section === "archived"
+          ? Date.now()
+          : conversation.unarchivedAt,
       });
     }
     return id;
@@ -715,14 +718,14 @@ export const ingest = mutation({
         .withIndex("conversation", (q) =>
           q
             .eq("conversation", String(t.conversation))
-            .eq("startedAt", Number(t.startedAt)),
-        )
+            .eq("startedAt", Number(t.startedAt)))
         .unique();
       const value = {
         conversation: String(t.conversation),
         startedAt: Number(t.startedAt),
-        answerId:
-          typeof t.stats?.answerId === "string" ? t.stats.answerId : undefined,
+        answerId: typeof t.stats?.answerId === "string"
+          ? t.stats.answerId
+          : undefined,
         answerText: String(t.text ?? "").slice(0, 160),
         data: t.stats,
       };
@@ -730,10 +733,12 @@ export const ingest = mutation({
       else await ctx.db.insert("turnStats", value);
     }
     if (args.archivePolicy) {
-      for (const [key, value] of Object.entries({
-        archiveDays: args.archivePolicy.days,
-        archiveEnabled: args.archivePolicy.enabled,
-      })) {
+      for (
+        const [key, value] of Object.entries({
+          archiveDays: args.archivePolicy.days,
+          archiveEnabled: args.archivePolicy.enabled,
+        })
+      ) {
         const previous = await ctx.db
           .query("settings")
           .withIndex("key", (q) => q.eq("key", key))
@@ -749,16 +754,20 @@ export const ingest = mutation({
         .withIndex("key", (q) => q.eq("key", key))
         .unique();
       if (old) await ctx.db.patch(old._id, { deleted: true });
-      for (const scan of await ctx.db
-        .query("artifactScans")
-        .withIndex("conversation", (q) => q.eq("conversation", key))
-        .collect()) {
+      for (
+        const scan of await ctx.db
+          .query("artifactScans")
+          .withIndex("conversation", (q) => q.eq("conversation", key))
+          .collect()
+      ) {
         await ctx.db.delete(scan._id);
       }
-      for (const file of await ctx.db
-        .query("artifacts")
-        .withIndex("conversation", (q) => q.eq("conversation", key))
-        .collect()) {
+      for (
+        const file of await ctx.db
+          .query("artifacts")
+          .withIndex("conversation", (q) => q.eq("conversation", key))
+          .collect()
+      ) {
         await ctx.db.delete(file._id);
       }
     }
@@ -778,10 +787,9 @@ export const ingest = mutation({
             .trim()
             .toLowerCase(),
         ),
-        cronSidebar:
-          input.cronSidebar === undefined
-            ? old?.cronSidebar
-            : input.cronSidebar === true,
+        cronSidebar: input.cronSidebar === undefined
+          ? old?.cronSidebar
+          : input.cronSidebar === true,
         archivedCronVisible:
           (organization.section ?? old?.section) === "archived" &&
           old?.archivedCronVisible === true,
@@ -812,15 +820,18 @@ export const ingest = mutation({
       const p = args.page;
       const old = await ctx.db
         .query("pages")
-        .withIndex("page", (q) =>
-          q.eq("conversation", p.conversation).eq("offset", p.offset),
+        .withIndex(
+          "page",
+          (q) => q.eq("conversation", p.conversation).eq("offset", p.offset),
         )
         .unique();
       if (p.offset === 0 && old?.revision !== p.revision) {
-        for (const stale of await ctx.db
-          .query("pages")
-          .withIndex("page", (q) => q.eq("conversation", p.conversation))
-          .collect()) {
+        for (
+          const stale of await ctx.db
+            .query("pages")
+            .withIndex("page", (q) => q.eq("conversation", p.conversation))
+            .collect()
+        ) {
           if (stale.offset !== 0) {
             await deleteHistoryChunks(ctx, stale._id);
             await ctx.db.delete(stale._id);
@@ -830,8 +841,9 @@ export const ingest = mutation({
       if (p.offset > 0) {
         const head = await ctx.db
           .query("pages")
-          .withIndex("page", (q) =>
-            q.eq("conversation", p.conversation).eq("offset", 0),
+          .withIndex(
+            "page",
+            (q) => q.eq("conversation", p.conversation).eq("offset", 0),
           )
           .unique();
         if (!head || head.revision !== p.headRevision) return;
@@ -968,8 +980,9 @@ export const pendingOrganization = query({
     await adapter(ctx);
     return await ctx.db
       .query("conversations")
-      .withIndex("organizationPending", (q) =>
-        q.eq("organizationPending", true),
+      .withIndex(
+        "organizationPending",
+        (q) => q.eq("organizationPending", true),
       )
       .filter((q) => q.neq(q.field("deleted"), true))
       .take(100);

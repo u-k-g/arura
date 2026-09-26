@@ -349,6 +349,10 @@ Deno.test("tool calls split across history pages retain both input and output", 
 });
 
 Deno.test("model switches are hidden without removing ordinary messages", () => {
+  const marker =
+    "[System: The active model for this chat has changed to deepseek-v4.1-flash via provider opencode-go. From this point forward, use this runtime metadata when answering questions about what model/provider is active.]";
+  equal(userMessageText(marker), "");
+  equal(userMessageText(`${marker}\n\nTry that again`), "Try that again");
   const rows = normalizeMessages([
     { id: 1, role: "user", content: "Model changed" },
     {
@@ -357,9 +361,12 @@ Deno.test("model switches are hidden without removing ordinary messages", () => 
       display_kind: "model_switch",
       content: "Internal event",
     },
+    { id: 3, role: "user", content: marker },
+    { id: 4, role: "user", content: `${marker}\n\nTry that again` },
   ]);
-  equal(rows.length, 1);
+  equal(rows.length, 2);
   equal(rows[0].text, "Model changed");
+  equal(rows[1].text, "Try that again");
   equal(
     groupMessages([{ id: "legacy", role: "event", text: "Model changed" }])
       .length,

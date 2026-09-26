@@ -57,8 +57,8 @@ export function watchForUpdates() {
 export async function reloadUpdatedApp() {
   if ("serviceWorker" in globalThis.navigator) {
     try {
-      const registration =
-        await globalThis.navigator.serviceWorker.getRegistration();
+      const registration = await globalThis.navigator.serviceWorker
+        .getRegistration();
       if (registration) {
         let changed = false;
         const onChange = () => {

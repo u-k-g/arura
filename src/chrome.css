@@ -1016,6 +1016,7 @@ dialog.conversation-menu {
   justify-content: flex-end;
 }
 .mobile-send,
+.mobile-stop,
 .composer-bottom .mobile-composer-navigation {
   display: none;
 }
@@ -1112,6 +1113,21 @@ dialog.conversation-menu {
     min-width: 36px;
     min-height: 36px;
   }
+  .composer-entry .mobile-stop {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    flex: none;
+    min-height: 36px;
+    padding: 0 5px;
+    color: var(--muted);
+  }
+  .composer-entry .mobile-stop:hover,
+  .composer-entry .mobile-stop:focus-visible {
+    color: var(--ink);
+    background: var(--hover);
+  }
   .composer-bottom {
     display: flex;
     flex-wrap: nowrap;
@@ -1145,11 +1161,10 @@ dialog.conversation-menu {
     min-height: 36px;
   }
   .composer-bottom .composer-add {
-    order: 3;
+    order: 1;
   }
   .composer-bottom > div:last-child {
-    order: 3;
-    flex: none;
+    display: none;
   }
   .composer-bottom .desktop-send {
     display: none;

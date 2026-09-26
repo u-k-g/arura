@@ -90,6 +90,13 @@ Deno.test({
           startedAt: currentStartedAt,
           ...(complete ? { finishedAt: Date.now() } : {}),
           state: complete ? "complete" : "running",
+          stats: {
+            tokensPerSecond: 34.2,
+            milestones: [
+              { at: currentStartedAt, label: "Sent" },
+              { at: currentStartedAt + 1200, label: "First output" },
+            ],
+          },
           activity: [
             {
               id: "vision",
@@ -114,7 +121,10 @@ Deno.test({
       const original = await (
         await fetch(
           `${
-            requireValue(Deno.env.get("HERMES_URL"), "Hermes URL")
+            requireValue(
+              Deno.env.get("HERMES_URL"),
+              "Hermes URL",
+            )
           }/api/sessions/fixture-chat/messages`,
         )
       ).json();
@@ -130,6 +140,31 @@ Deno.test({
       ).toHaveCount(1);
       await expect(page.locator('[data-message-id="interim"]')).toHaveCount(0);
       await expect(page.getByText(/Working for/)).toBeVisible();
+      const mobileStop = page.getByRole("button", { name: "Stop response" });
+      const mobileSend = page.getByRole("button", { name: "Queue message" });
+      await expect(mobileStop).toBeVisible();
+      await expect(page.locator(".composer-bottom .desktop-stop")).toBeHidden();
+      const stopBounds = requireValue(
+        await mobileStop.boundingBox(),
+        "stop bounds",
+      );
+      const sendBounds = requireValue(
+        await mobileSend.boundingBox(),
+        "send bounds",
+      );
+      expect(stopBounds.x + stopBounds.width).toBeLessThanOrEqual(
+        sendBounds.x + 8,
+      );
+      await page
+        .locator(".live-message .message-actions")
+        .getByRole("button", {
+          name: "Output stats",
+        })
+        .click();
+      const stats = page.getByRole("dialog", { name: "Output stats" });
+      await expect(stats).toContainText("34.2 tps");
+      await expect(stats).not.toContainText("Time to first output");
+      await stats.getByRole("button", { name: "Close" }).click();
       await page.screenshot({
         path: `${Deno.env.get("TMPDIR")}/live-turn-mobile.png`,
       });

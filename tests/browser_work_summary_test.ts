@@ -2,7 +2,8 @@ import { chromium, expect } from "@playwright/test";
 import { signIn } from "./sign_in.ts";
 import { requireValue } from "./require_value.ts";
 Deno.test({
-  name: "work summary sits between its prompt and answer without duplicate tool rows",
+  name:
+    "work summary sits between its prompt and answer without duplicate tool rows",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -30,15 +31,34 @@ Deno.test({
       const summary = page.locator(".history-work").last();
       await expect(summary).toBeVisible();
       await expect(summary.locator(".past-tool")).toHaveCount(0);
-      await summary
-        .locator("..")
-        .getByRole("button", { name: "Output stats" })
-        .click();
+      const response = answer.locator("xpath=ancestor::article");
+      const statsButton = response.getByRole("button", {
+        name: "Output stats",
+      });
+      expect(
+        await response.locator(".message-actions").evaluate(
+          (element) => globalThis.getComputedStyle(element).opacity,
+        ),
+      ).toBe("0");
+      await answer.hover();
+      expect(
+        await response.locator(".message-actions").evaluate(
+          (element) => globalThis.getComputedStyle(element).opacity,
+        ),
+      ).toBe("1");
+      await statsButton.click();
       const stats = page.getByRole("dialog", { name: "Output stats" });
       await expect(stats).toBeVisible();
-      await expect(stats).toContainText("Time to first output");
+      await expect(stats).not.toContainText("Time to first output");
       await expect(stats).toContainText("Timeline");
+      await page.screenshot({ path: "/var/tmp/arura-output-stats-layout.png" });
       await stats.getByRole("button", { name: "Close" }).click();
+      await page.mouse.move(0, 0);
+      expect(
+        await response.locator(".message-actions").evaluate(
+          (element) => globalThis.getComputedStyle(element).opacity,
+        ),
+      ).toBe("0");
       expect(
         requireValue(await summary.boundingBox(), "summary bounds").y,
       ).toBeLessThan(

@@ -23,17 +23,18 @@ Deno.test({
       const model = form.getByRole("button", { name: "Model" });
       await expect(model.locator(".icon")).toHaveCount(0);
       await expect(form).not.toHaveClass(/stacked/);
-      const narrowWidth = await input.evaluate((element) =>
-        element.getBoundingClientRect().width
+      const narrowWidth = await input.evaluate(
+        (element) => element.getBoundingClientRect().width,
       );
       await input.fill("x".repeat(100));
       await expect(form).toHaveClass(/stacked/);
-      const wideWidth = await input.evaluate((element) =>
-        element.getBoundingClientRect().width
+      const wideWidth = await input.evaluate(
+        (element) => element.getBoundingClientRect().width,
       );
       expect(wideWidth).toBeGreaterThan(narrowWidth + 100);
-      expect(await input.evaluate((element) => element.scrollHeight))
-        .toBeLessThan(40);
+      expect(
+        await input.evaluate((element) => element.scrollHeight),
+      ).toBeLessThan(40);
       const positions = await form.evaluate((element) => {
         const input = element.querySelector(".composer-input")!;
         const controls = element.querySelector(".composer-bottom")!;
@@ -61,21 +62,27 @@ Deno.test({
       await mobile.goto(url);
       await signIn(mobile, "Composer mobile layout");
       const mobileForm = mobile.locator(".composer");
-      await expect(mobileForm.getByRole("button", { name: "Upload files" }))
-        .toBeVisible();
+      await expect(
+        mobileForm.getByRole("button", { name: "Upload files" }),
+      ).toBeVisible();
       const overflow = await mobileForm.evaluate((element) => {
         const controls = element.querySelector(".composer-bottom")!;
         return controls.scrollWidth - controls.clientWidth;
       });
       expect(overflow).toBeLessThanOrEqual(1);
       const mobilePositions = await mobileForm.evaluate((element) => ({
-        attachment: element.querySelector(".composer-add")!
+        attachment: element
+          .querySelector(".composer-add")!
           .getBoundingClientRect().x,
-        model: element.querySelector(".composer-model")!
+        model: element.querySelector(".composer-model")!.getBoundingClientRect()
+          .x,
+        navigation: element
+          .querySelector(".mobile-composer-navigation")!
           .getBoundingClientRect().x,
       }));
-      expect(mobilePositions.attachment).toBeGreaterThan(
-        mobilePositions.model,
+      expect(mobilePositions.attachment).toBeGreaterThan(mobilePositions.model);
+      expect(mobilePositions.attachment).toBeLessThan(
+        mobilePositions.navigation,
       );
     } finally {
       await browser.close();
