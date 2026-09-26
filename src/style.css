@@ -2076,9 +2076,8 @@ progress {
 .output-stats-timeline li {
   display: flex;
   align-items: baseline;
-  gap: 14px;
-  padding: 7px 0;
-  border-top: 1px solid var(--line);
+  gap: 12px;
+  padding: 3px 0;
   font-size: 12px;
 }
 .output-stats-timeline time {

@@ -91,7 +91,7 @@ Deno.test({
         }),
       });
       await earlier.getByRole("button", { name: "Output stats" }).click();
-      await expect(stats).toContainText("First output");
+      await expect(stats).toContainText("First model token");
       await expect(stats).toContainText("returned");
       await stats.getByRole("button", { name: "Close" }).click();
       await page.screenshot({ path: "/var/tmp/arura-work-layout.png" });

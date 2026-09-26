@@ -94,7 +94,7 @@ Deno.test({
             tokensPerSecond: 34.2,
             milestones: [
               { at: currentStartedAt, label: "Sent" },
-              { at: currentStartedAt + 1200, label: "First output" },
+              { at: currentStartedAt + 1200, label: "First model token" },
             ],
           },
           activity: [

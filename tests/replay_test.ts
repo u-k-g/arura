@@ -61,6 +61,55 @@ Deno.test("password login discovers its provider and authorizes REST and WebSock
   }
 });
 
+Deno.test("first model token precedes visible output when reasoning or a tool call streams first", async () => {
+  const fixture = hermesFixture(0);
+  const before = Deno.env.get("HERMES_URL");
+  Deno.env.set("HERMES_URL", `http://127.0.0.1:${fixture.server.addr.port}`);
+  const hermes = new Hermes();
+  const turns = new Map<string, Turn>();
+  hermes.on("turn", (turn: Turn) => turns.set(turn.conversation, turn));
+  const until = async (check: () => boolean) => {
+    const end = Date.now() + 5000;
+    while (!check()) {
+      if (Date.now() > end) {
+        throw new Error("Timed out waiting for Hermes event");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  };
+  try {
+    await hermes.connect();
+    const reasoning = await hermes.create("default");
+    fixture.event("message.start", reasoning.sourceId, {});
+    fixture.event("reasoning.delta", reasoning.sourceId, {
+      text: "private thought",
+    });
+    await until(() => Boolean(turns.get(reasoning.key)?.stats?.firstTokenAt));
+    equal(turns.get(reasoning.key)?.text, "");
+    const first = turns.get(reasoning.key)?.stats?.firstTokenAt;
+    fixture.event("message.delta", reasoning.sourceId, { text: "Answer" });
+    await until(() => turns.get(reasoning.key)?.text === "Answer");
+    equal(turns.get(reasoning.key)?.stats?.firstTokenAt, first);
+    equal(
+      turns.get(reasoning.key)?.stats?.milestones.filter((m) =>
+        m.label === "First model token"
+      ).length,
+      1,
+    );
+
+    const tool = await hermes.create("default");
+    fixture.event("message.start", tool.sourceId, {});
+    fixture.event("tool.generating", tool.sourceId, { name: "web_search" });
+    await until(() => Boolean(turns.get(tool.key)?.stats?.firstTokenAt));
+    equal(turns.get(tool.key)?.text, "");
+  } finally {
+    hermes.close();
+    await fixture.close();
+    if (before === undefined) Deno.env.delete("HERMES_URL");
+    else Deno.env.set("HERMES_URL", before);
+  }
+});
+
 Deno.test("live deltas arriving during replay do not overtake missing deltas", async () => {
   let sid = "",
     turn: Turn | undefined;

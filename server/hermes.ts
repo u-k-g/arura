@@ -374,7 +374,6 @@ export class Hermes extends EventEmitter {
       this.stopRecovery(sid);
     }
     if (type === "message.delta" && this.recovering.has(sid)) return;
-    if (/reasoning|thinking/.test(type)) return;
     let turn = this.turns.get(key);
     if (type === "message.start" || (!turn && type === "message.delta")) {
       this.interimStreams.delete(key);
@@ -399,6 +398,20 @@ export class Hermes extends EventEmitter {
       this.emit("started", key);
     }
     if (!turn) return;
+    // Reasoning and tool-call arguments can be the model's first output,
+    // before any reply text reaches the user. Hermes does not expose a
+    // provider-side token timestamp, so use the first streamed event received.
+    if (
+      !turn.stats?.firstTokenAt && !turn.stats?.firstOutputAt &&
+      (type === "tool.generating" ||
+        (["reasoning.delta", "message.delta"].includes(type) &&
+          typeof payload.text === "string" && payload.text.length > 0))
+    ) {
+      const at = Date.now();
+      turn.stats?.milestones.push({ at, label: "First model token" });
+      if (turn.stats) turn.stats.firstTokenAt = at;
+    }
+    if (/reasoning|thinking/.test(type)) return;
     if (type.endsWith(".expire")) {
       turn.interactions = turn.interactions.filter(
         (x) => x.id !== payload.request_id,
@@ -406,13 +419,7 @@ export class Hermes extends EventEmitter {
     }
     if (type === "message.delta") {
       const delta = typeof payload.text === "string" ? payload.text : "";
-      if (delta && !turn.stats?.firstOutputAt) {
-        const at = Date.now();
-        if (turn.stats) {
-          turn.stats.firstOutputAt = at;
-          turn.stats.milestones.push({ at, label: "First output" });
-        }
-      } else if (
+      if (
         delta &&
         turn.stats?.milestones.at(-1)?.label.endsWith(" returned")
       ) {
@@ -425,11 +432,7 @@ export class Hermes extends EventEmitter {
       } else turn.text += delta;
     }
     if (type === "message.interim") {
-      if (payload.text && turn.stats && !turn.stats.firstOutputAt) {
-        const at = Date.now();
-        turn.stats.firstOutputAt = at;
-        turn.stats.milestones.push({ at, label: "First output" });
-      } else if (
+      if (
         payload.text &&
         turn.stats?.milestones.at(-1)?.label.endsWith(" returned")
       ) {

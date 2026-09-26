@@ -130,7 +130,8 @@ export interface TurnMilestone {
   label: string;
 }
 export interface TurnStats {
-  firstOutputAt?: number;
+  firstTokenAt?: number;
+  firstOutputAt?: number; // Older saved turns used visible output timing.
   outputTokens?: number;
   tokensPerSecond?: number;
   milestones: TurnMilestone[];
