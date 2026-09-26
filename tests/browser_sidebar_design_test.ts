@@ -74,7 +74,7 @@ Deno.test({
         .poll(() =>
           row
             .locator(".row-menu-button")
-            .evaluate((button) => getComputedStyle(button).opacity),
+            .evaluate((button) => getComputedStyle(button).opacity)
         )
         .toBe("0");
       await expect(row.locator(".session-dot")).toBeVisible();

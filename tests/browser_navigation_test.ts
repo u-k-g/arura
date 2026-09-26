@@ -2,7 +2,8 @@ import { requireValue } from "./require_value.ts";
 import { openSettings, signIn } from "./sign_in.ts";
 import { chromium, expect, type Page } from "@playwright/test";
 Deno.test({
-  name: "conversation rename, context, independent views and deletion work across devices",
+  name:
+    "conversation rename, context, independent views and deletion work across devices",
   ignore: !Deno.env.get("ARURA_TEST_URL"),
   async fn() {
     const browser = await chromium.launch({
@@ -27,7 +28,7 @@ Deno.test({
         .click();
       await expect
         .poll(() =>
-          page.evaluate(() => localStorage.getItem("arura.view") ?? ""),
+          page.evaluate(() => localStorage.getItem("arura.view") ?? "")
         )
         .toBe("");
       await expect(

@@ -1740,8 +1740,8 @@ export default function Chat(props: {
               >
                 <small>
                   Hermes could not match the message selected for editing.
-                  Restore your text, then refresh the conversation before
-                  trying again.
+                  Restore your text, then refresh the conversation before trying
+                  again.
                 </small>
               </Show>
               <Show when={commandIssues().length > 1}>

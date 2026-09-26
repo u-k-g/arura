@@ -17,21 +17,28 @@ export const essentialIconSearchData: Record<string, string> = {
   "moon-sat": "Science night dark mode sleep",
   "rain": "Weather weather storm water wet",
   "wind": "Weather weather air fresh breeze forecast",
-  "snow-flake": "Weather weather storm ac air conditioner freeze freezer winter cold flake",
+  "snow-flake":
+    "Weather weather storm ac air conditioner freeze freezer winter cold flake",
   "music-note": "Music audio song note sound",
   "camera": "Photos and Videos photo picture lens shoot selfie",
   "palette": "Activities colors swatch theme design",
   "asterisk": "Typography star wildcard required footnote",
   "flare": "Shapes geometry figure vector draw",
-  "infinite": "Science limitless endless boundless unbounded unlimited loop forever repeat",
+  "infinite":
+    "Science limitless endless boundless unbounded unlimited loop forever repeat",
   "code": "Development develop programming source script",
   "database": "Database db storage repo sql server data",
-  "dashboard": "System accelerate acceleration panel speed metrics analytics home",
-  "dashboard-dots": "System accelerate acceleration panel speed metrics analytics home",
-  "dashboard-speed": "System accelerate acceleration panel metrics analytics home",
-  "control-slider": "System controller ui element dashboard panel setting computer os settings desktop slider handle adjust parameter",
+  "dashboard":
+    "System accelerate acceleration panel speed metrics analytics home",
+  "dashboard-dots":
+    "System accelerate acceleration panel speed metrics analytics home",
+  "dashboard-speed":
+    "System accelerate acceleration panel metrics analytics home",
+  "control-slider":
+    "System controller ui element dashboard panel setting computer os settings desktop slider handle adjust parameter",
   "barcode": "Shopping scan sku product inventory",
-  "server": "Connectivity connection computer network hosting backend cloud database",
+  "server":
+    "Connectivity connection computer network hosting backend cloud database",
   "globe": "Communication world earth international map",
   "planet": "Science space orbit astro science",
   "language": "Other misc general utility ui",
@@ -41,13 +48,15 @@ export const essentialIconSearchData: Record<string, string> = {
   "dna": "Science genetics biology science helix",
   "atom": "Science science chemistry physics nuclear",
   "radiation-solid": "Science lab research experiment study",
-  "magnet-solid": "Science attract science polarity lab research experiment study",
+  "magnet-solid":
+    "Science attract science polarity lab research experiment study",
   "sine-wave": "Science lab research experiment study",
   "square-wave": "Science shape box checkbox region",
   "sigma-function": "3D Editor greek math symbol 3d modeling mesh render",
   "arc-3d": "3D Editor modeling blender 4d 3d mesh render",
   "cube": "3D Editor modeling blender 4d solid model object 3d box volume",
-  "cube-scan": "3D Editor 3d measure ar lidar box volume solid qr barcode camera detect",
+  "cube-scan":
+    "3D Editor 3d measure ar lidar box volume solid qr barcode camera detect",
   "cylinder": "3D Editor shape geometry 3d modeling mesh render",
   "fillet-3d": "3D Editor 3d modeling mesh render",
   "sphere": "3D Editor modeling blender 4d geometry ball 3d globe shape",
@@ -64,17 +73,20 @@ export const essentialIconSearchData: Record<string, string> = {
   "suitcase": "Clothing luggage travel bag rollaboard",
   "airplane": "Transport fly jet plane flight travel airline",
   "car": "Transport vehicle auto drive driving transport",
-  "truck": "Transport ship semitruck shipment amazon delivery shipping vehicle cargo",
+  "truck":
+    "Transport ship semitruck shipment amazon delivery shipping vehicle cargo",
   "motorcycle": "Transport travel vehicle commute trip",
   "bicycle": "Transport cycle bike transport sport life activity cycling pedal",
-  "train": "Transport transport train station track public rail metro locomotive",
+  "train":
+    "Transport transport train station track public rail metro locomotive",
   "map": "Maps location gps travel directions",
   "map-pin": "Maps location marker place gps travel directions map attach",
   "compass": "Navigation navigation direction map orient",
   "sea-waves": "Activities sport hobby leisure outdoor",
   "fish": "Animals seafood animal ocean swim",
   "running": "Activities run jog sport fitness",
-  "arrow-archery": "Activities sport activity arrows direction navigate pointer chevron move bow arrow target",
+  "arrow-archery":
+    "Activities sport activity arrows direction navigate pointer chevron move bow arrow target",
   "basketball": "Activities sport hobby leisure outdoor",
   "football": "Activities soccer sport ball game",
   "gym": "Activities fitness workout dumbbell weights",
@@ -94,7 +106,8 @@ export const essentialIconSearchData: Record<string, string> = {
   "git-branch": "Git git github version branch commit merge",
   "journal": "Docs diary notes book log",
   "lock": "Security secure password private encrypt",
-  "shield-check": "Security security protection firewall safe trust done success tick approve ok complete",
+  "shield-check":
+    "Security security protection firewall safe trust done success tick approve ok complete",
   "fingerprint": "Identity biometric identity touchid auth",
   "iris-scan": "Identity qr barcode camera detect",
   "sound-high": "Audio audio volume speaker listen",
@@ -117,7 +130,8 @@ export const essentialIconSearchData: Record<string, string> = {
   "dice-six": "Gaming random game chance roll",
   "wolf": "Animals animal dog wild nature",
   "package": "Transport ship shipment amazon box travel vehicle commute trip",
-  "director-chair": "Home movie cinema hollywood film filming house domestic appliance interior",
+  "director-chair":
+    "Home movie cinema hollywood film filming house domestic appliance interior",
   "lamp": "Home light home house desk brightness fixture",
   "fridge": "Home kitchen appliance cold food",
   "user": "Users person people ux account profile avatar",

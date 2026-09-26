@@ -27,6 +27,10 @@
   width: 13px;
   height: 13px;
 }
+.sidebar-titlebar .gateway-status .icon {
+  width: 15px;
+  height: 15px;
+}
 .sidebar-sections {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -927,12 +931,12 @@ dialog.conversation-menu {
 .archive-more {
   flex: none;
   width: 100%;
-  min-height: 38px;
+  min-height: 27px;
   justify-content: flex-start;
-  gap: 10px;
-  margin-top: 4px;
-  padding: 8px 10px;
-  border-radius: 6px;
+  gap: 8px;
+  margin-top: 2px;
+  padding: 3px 8px;
+  border-radius: 3px;
   background: var(--hover);
   text-align: left;
 }

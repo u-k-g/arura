@@ -55,8 +55,7 @@ export function SettingsNavigation(props: {
                 <button
                   type="button"
                   classList={{
-                    selected:
-                      selected() === route ||
+                    selected: selected() === route ||
                       (route === "capabilities" &&
                         [
                           "resources:skills",

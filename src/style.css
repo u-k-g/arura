@@ -501,14 +501,13 @@ small {
   color: var(--muted);
   white-space: nowrap;
 }
-.connection i {
-  height: 5px;
-  width: 5px;
-  border-radius: 50%;
-  background: #73988c;
+.connection .icon {
+  width: 15px;
+  height: 15px;
+  color: #73988c;
 }
-.connection.offline i {
-  background: #b5a17d;
+.connection.offline .icon {
+  color: #b5a17d;
 }
 .mobile-only {
   display: none;
@@ -1322,10 +1321,6 @@ dialog::backdrop {
   .connection {
     font-size: 0;
   }
-  .connection i {
-    height: 6px;
-    width: 6px;
-  }
   .topbar > .icon-button {
     width: 40px;
     height: 40px;
@@ -1462,6 +1457,9 @@ dialog::backdrop {
     display: none;
   }
   .navigation-sheet .thread-row {
+    min-height: 46px;
+  }
+  .navigation-sheet .archive-more {
     min-height: 46px;
   }
   .navigation-sheet .thread-select {

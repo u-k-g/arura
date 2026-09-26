@@ -88,7 +88,7 @@ function InlineRename(props: {
     };
     globalThis.addEventListener("pointerdown", outside, true);
     onCleanup(() =>
-      globalThis.removeEventListener("pointerdown", outside, true),
+      globalThis.removeEventListener("pointerdown", outside, true)
     );
   });
   return (
@@ -148,10 +148,9 @@ export default function App() {
     setIconSearch("");
   });
   const savedView = preferences.getItem("arura.view") ?? "";
-  const initialView =
-    savedView.split("?")[0] === "resources:files"
-      ? "resources:artifacts"
-      : savedView;
+  const initialView = savedView.split("?")[0] === "resources:files"
+    ? "resources:artifacts"
+    : savedView;
   if (initialView !== savedView) preferences.setItem("arura.view", initialView);
   const [view, setView] = createSignal(initialView);
   createEffect(() => {
@@ -163,34 +162,34 @@ export default function App() {
   const [sheet, setSheet] = createSignal(false),
     [search, setSearch] = createSignal(""),
     [palette, setPalette] = createSignal(false);
-  const [desktopResourceHost, setDesktopResourceHost] =
-    createSignal<HTMLElement>();
-  const [mobileResourceHost, setMobileResourceHost] =
-    createSignal<HTMLElement>();
+  const [desktopResourceHost, setDesktopResourceHost] = createSignal<
+    HTMLElement
+  >();
+  const [mobileResourceHost, setMobileResourceHost] = createSignal<
+    HTMLElement
+  >();
   const resourceSection = () => {
     const route = view().split("?")[0];
     return route === "resources:profiles"
       ? "profiles"
       : route === "resources:jobs"
-        ? "jobs"
-        : undefined;
+      ? "jobs"
+      : undefined;
   };
   const resourceSidebarMount = () =>
     narrow()
-      ? sheet()
-        ? mobileResourceHost()
-        : undefined
+      ? sheet() ? mobileResourceHost() : undefined
       : collapsed()
-        ? undefined
-        : desktopResourceHost();
+      ? undefined
+      : desktopResourceHost();
   const navigationTitle = () =>
     inSettings(view())
       ? "Settings"
       : resourceSection() === "profiles"
-        ? "Profiles & bots"
-        : resourceSection() === "jobs"
-          ? "Scheduled jobs"
-          : "Conversations";
+      ? "Profiles & bots"
+      : resourceSection() === "jobs"
+      ? "Scheduled jobs"
+      : "Conversations";
   const [matches, setMatches] = createSignal<
     { key: string; title: string; profile: string }[]
   >([]);
@@ -229,10 +228,11 @@ export default function App() {
     setSearchError("");
     const timer = setTimeout(async () => {
       const cacheKey = `search:${query}`;
-      const cached =
-        await loadCache<{ key: string; title: string; profile: string }[]>(
-          cacheKey,
-        );
+      const cached = await loadCache<
+        { key: string; title: string; profile: string }[]
+      >(
+        cacheKey,
+      );
       if (disposed) return;
       if (cached) setMatches(cached);
       if (!online) return;
@@ -279,6 +279,37 @@ export default function App() {
   const [archived, setArchived] = createSignal<Doc<"conversations">[]>([]),
     [archiveOpen, setArchiveOpen] = createSignal(false),
     [archiveLimit, setArchiveLimit] = createSignal(10);
+  const [revealAfterArchive, setRevealAfterArchive] = createSignal<string>();
+  let archiveList: HTMLDivElement | undefined;
+  let archiveScrollFrame = 0;
+  onCleanup(() => globalThis.cancelAnimationFrame(archiveScrollFrame));
+  createEffect(() => {
+    const anchor = revealAfterArchive();
+    if (!anchor || !archiveOpen()) return;
+    const items = archived();
+    const index = items.findIndex((item) => item._id === anchor);
+    const next = items[index + 1];
+    if (index < 0 || !next) return;
+    setRevealAfterArchive(undefined);
+    globalThis.cancelAnimationFrame(archiveScrollFrame);
+    archiveScrollFrame = globalThis.requestAnimationFrame(() => {
+      const list = archiveList;
+      if (!list?.isConnected || !archiveOpen()) return;
+      const row = [
+        ...list.querySelectorAll<HTMLDivElement>(".thread-row"),
+      ].find((item) => item.dataset.archiveId === next._id);
+      if (!row) return;
+      list.scrollTo({
+        top: list.scrollTop +
+          row.getBoundingClientRect().top -
+          list.getBoundingClientRect().top,
+        behavior: globalThis.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+          ? "instant"
+          : "smooth",
+      });
+    });
+  });
   const [archiveHasMore, setArchiveHasMore] = createSignal(false);
   const [archiveReady, setArchiveReady] = createSignal(false);
   const [menu, setMenu] = createSignal<Conversation>();
@@ -287,8 +318,9 @@ export default function App() {
     kind: "conversation" | "folder";
     id: string;
   }>();
-  const [activeConversation, setActiveConversation] =
-    createSignal<Conversation | null>(null);
+  const [activeConversation, setActiveConversation] = createSignal<
+    Conversation | null
+  >(null);
   createEffect(() => {
     const key = view();
     connected();
@@ -442,8 +474,8 @@ export default function App() {
     text.trim().split("\n")[0]?.slice(0, 60) || "Draft";
   const selected = () =>
     chats().find((c) => c.key === view()) ??
-    archived().find((c) => c.key === view()) ??
-    activeConversation();
+      archived().find((c) => c.key === view()) ??
+      activeConversation();
   const unread = (conversation: Conversation) => {
     const state = workspace()?.reads?.find(
       (item) => item.key === conversation.key,
@@ -470,7 +502,7 @@ export default function App() {
     };
     globalThis.document.addEventListener("visibilitychange", markVisible);
     onCleanup(() =>
-      globalThis.document.removeEventListener("visibilitychange", markVisible),
+      globalThis.document.removeEventListener("visibilitychange", markVisible)
     );
   });
   const viewedRevision = createMemo(() => {
@@ -554,13 +586,13 @@ export default function App() {
   onCleanup(cancelTitlePress);
   let threadPress:
     | {
-        pointer: number;
-        x: number;
-        y: number;
-        conversation: Conversation;
-        triggered: boolean;
-        timer: ReturnType<typeof setTimeout>;
-      }
+      pointer: number;
+      x: number;
+      y: number;
+      conversation: Conversation;
+      triggered: boolean;
+      timer: ReturnType<typeof setTimeout>;
+    }
     | undefined;
   let suppressedThreadClick: string | undefined;
   const cancelThreadPress = () => {
@@ -589,7 +621,7 @@ export default function App() {
     if (threadPress?.pointer !== event.pointerId) return;
     if (
       Math.hypot(event.clientX - threadPress.x, event.clientY - threadPress.y) >
-      10
+        10
     ) {
       cancelThreadPress();
     }
@@ -620,7 +652,7 @@ export default function App() {
   };
   const stopRename = (kind: "conversation" | "folder", id: string) => {
     setEditing((current) =>
-      current?.kind === kind && current.id === id ? undefined : current,
+      current?.kind === kind && current.id === id ? undefined : current
     );
   };
   const saveRename = async (
@@ -660,12 +692,12 @@ export default function App() {
   const essentialConversations = createMemo(() =>
     chats()
       .filter((c) => c.section === "essential")
-      .sort((a, b) => a.rank - b.rank),
+      .sort((a, b) => a.rank - b.rank)
   );
   const pinnedConversations = createMemo(() =>
     chats()
       .filter((c) => c.section === "pinned" && !c.folderId)
-      .sort((a, b) => a.rank - b.rank),
+      .sort((a, b) => a.rank - b.rank)
   );
   const folderConversations = (folderId: string) =>
     chats()
@@ -674,13 +706,13 @@ export default function App() {
   const recentConversations = createMemo(() =>
     chats()
       .filter((c) => c.section === "recent" && !c.backgroundSession)
-      .sort((a, b) => conversationActivity(b) - conversationActivity(a)),
+      .sort((a, b) => conversationActivity(b) - conversationActivity(a))
   );
   const sidebarConversations = () => [
     ...essentialConversations(),
     ...pinnedConversations(),
     ...(workspace()?.folders ?? []).flatMap((folder) =>
-      folderConversations(folder._id),
+      folderConversations(folder._id)
     ),
     ...recentConversations(),
   ];
@@ -778,8 +810,9 @@ export default function App() {
       c.bot ||
       c.folderId ||
       workspace()?.settings.archiveEnabled === false
-    )
+    ) {
       return undefined;
+    }
     if (c.pendingInput) {
       return "Automatic archive paused while input is pending";
     }
@@ -787,8 +820,9 @@ export default function App() {
     if (
       c.section === "recent" &&
       (c.unarchivedAt ?? 0) > conversationActivity(c)
-    )
+    ) {
       return "Time since restoration; the archive clock restarted";
+    }
     if (ageStatus(c) === "overdue") return "Due for automatic archive";
     if (ageStatus(c) === "warning") return "Automatic archive within one day";
     return undefined;
@@ -810,11 +844,9 @@ export default function App() {
         }}
       >
         <Show
-          when={
-            editable &&
+          when={editable &&
             editing()?.kind === "conversation" &&
-            editing()?.id === c().key
-          }
+            editing()?.id === c().key}
           fallback={
             <button
               type="button"
@@ -863,8 +895,7 @@ export default function App() {
               initial={c().title}
               label="Rename conversation"
               save={(name) =>
-                saveRename("conversation", c().key, c().title, name)
-              }
+                saveRename("conversation", c().key, c().title, name)}
               cancel={() => stopRename("conversation", c().key)}
             />
           </div>
@@ -921,7 +952,9 @@ export default function App() {
       onClick={() => navigate("resources:status")}
     >
       <span class="connection" classList={{ offline: !gatewayOnline() }}>
-        <i aria-hidden="true" />
+        <Icon
+          name={gatewayOnline() ? "activity" : "stats-down-square-solid"}
+        />
       </span>
     </button>
   );
@@ -970,8 +1003,8 @@ export default function App() {
               route === "threads"
                 ? !view() || view().startsWith("[")
                 : route === "settings"
-                  ? inSettings(view())
-                  : view().split("?")[0] === route;
+                ? inSettings(view())
+                : view().split("?")[0] === route;
             return (
               <button
                 type="button"
@@ -984,8 +1017,7 @@ export default function App() {
                     route === "threads"
                       ? (preferences.getItem("arura.lastConversation") ?? "")
                       : route,
-                  )
-                }
+                  )}
               >
                 <Icon name={icon} />
               </button>
@@ -1061,7 +1093,7 @@ export default function App() {
               const folder = createMemo(
                 () =>
                   workspace()?.folders.find((item) => item._id === folderId) ??
-                  initial,
+                    initial,
               );
               return (
                 <details
@@ -1081,10 +1113,8 @@ export default function App() {
                   <summary>
                     <Icon name="folder" />
                     <Show
-                      when={
-                        editing()?.kind === "folder" &&
-                        editing()?.id === folderId
-                      }
+                      when={editing()?.kind === "folder" &&
+                        editing()?.id === folderId}
                       fallback={
                         <button
                           type="button"
@@ -1103,8 +1133,7 @@ export default function App() {
                         initial={folder().name}
                         label="Rename folder"
                         save={(name) =>
-                          saveRename("folder", folderId, folder().name, name)
-                        }
+                          saveRename("folder", folderId, folder().name, name)}
                         cancel={() => stopRename("folder", folderId)}
                       />
                     </Show>
@@ -1126,9 +1155,8 @@ export default function App() {
                             kind: "folder",
                             id: folderId,
                             direction: 1,
-                          }),
-                        )
-                      }
+                          })
+                        )}
                     />
                     <IconButton
                       icon="nav-arrow-down"
@@ -1140,9 +1168,8 @@ export default function App() {
                             kind: "folder",
                             id: folderId,
                             direction: -1,
-                          }),
-                        )
-                      }
+                          })
+                        )}
                     />
                     <button
                       type="button"
@@ -1159,7 +1186,7 @@ export default function App() {
                             mutate("workspace.folder", {
                               id: folderId,
                               remove: true,
-                            }),
+                            })
                           );
                         }
                       }}
@@ -1194,14 +1221,17 @@ export default function App() {
             type="button"
             class="archive-toggle"
             aria-expanded={archiveOpen()}
-            onClick={() => setArchiveOpen((x) => !x)}
+            onClick={() => {
+              setArchiveOpen((open) => !open);
+              setRevealAfterArchive(undefined);
+            }}
           >
             <span>Archived</span>
             <span class="archive-rule" />
             <Icon name="nav-arrow-down" />
           </button>
           <Show when={archiveOpen()}>
-            <div class="archive-list">
+            <div class="archive-list" ref={archiveList}>
               <Show when={!archiveReady()}>
                 <p class="archive-status" role="status">
                   {connected()
@@ -1216,7 +1246,7 @@ export default function App() {
               </Show>
               <For each={archived()}>
                 {(c) => (
-                  <div class="thread-row">
+                  <div class="thread-row" data-archive-id={c._id}>
                     <button
                       type="button"
                       class="thread-select"
@@ -1235,9 +1265,11 @@ export default function App() {
                         {(at) => (
                           <time
                             class="session-age"
-                            title={`Archived ${new Date(
-                              at(),
-                            ).toLocaleString()}`}
+                            title={`Archived ${
+                              new Date(
+                                at(),
+                              ).toLocaleString()
+                            }`}
                           >
                             {ageFrom(at())}
                           </time>
@@ -1245,7 +1277,7 @@ export default function App() {
                       </Show>
                     </button>
                     <IconButton
-                      icon="u-turn-arrow-left"
+                      icon="u-turn-arrow-right"
                       class="unarchive-button"
                       label={`Unarchive ${c.title}`}
                       onClick={() =>
@@ -1253,9 +1285,8 @@ export default function App() {
                           mutate("workspace.move", {
                             key: c.key,
                             section: "recent",
-                          }),
-                        )
-                      }
+                          })
+                        )}
                     />
                   </div>
                 )}
@@ -1265,7 +1296,10 @@ export default function App() {
               <button
                 type="button"
                 class="text-button archive-more"
-                onClick={() => setArchiveLimit((x) => x + 10)}
+                onClick={() => {
+                  setRevealAfterArchive(archived().at(-1)?._id);
+                  setArchiveLimit((x) => x + 10);
+                }}
               >
                 <Icon name="plus" />
                 Show 10 more
@@ -1281,8 +1315,7 @@ export default function App() {
         <div
           class="nav-scroll resource-sidebar-host"
           ref={(node) =>
-            mobile ? setMobileResourceHost(node) : setDesktopResourceHost(node)
-          }
+            mobile ? setMobileResourceHost(node) : setDesktopResourceHost(node)}
         />
       </Show>
       <footer class="nav-footer">
@@ -1388,13 +1421,11 @@ export default function App() {
               <Show when={!chatView()}>
                 <IconButton
                   icon="menu"
-                  label={
-                    inSettings(view())
-                      ? "Open Settings"
-                      : resourceSection()
-                        ? `Open ${navigationTitle()}`
-                        : "Open conversations"
-                  }
+                  label={inSettings(view())
+                    ? "Open Settings"
+                    : resourceSection()
+                    ? `Open ${navigationTitle()}`
+                    : "Open conversations"}
                   onClick={() => setSheet(true)}
                 />
               </Show>
@@ -1402,10 +1433,8 @@ export default function App() {
                 {(c) => (
                   <>
                     <Show
-                      when={
-                        editing()?.kind === "conversation" &&
-                        editing()?.id === c().key
-                      }
+                      when={editing()?.kind === "conversation" &&
+                        editing()?.id === c().key}
                       fallback={
                         <button
                           type="button"
@@ -1414,8 +1443,7 @@ export default function App() {
                           aria-label={`${c().title}, double tap to rename or long press for actions`}
                           onDblClick={() =>
                             !c().bot &&
-                            beginRename("conversation", c().key, false)
-                          }
+                            beginRename("conversation", c().key, false)}
                           onContextMenu={(event) => {
                             event.preventDefault();
                             cancelTitlePress();
@@ -1429,15 +1457,15 @@ export default function App() {
                               return;
                             }
                             event.preventDefault();
-                            const bounds =
-                              event.currentTarget.getBoundingClientRect();
+                            const bounds = event.currentTarget
+                              .getBoundingClientRect();
                             openMenuAt(c(), bounds.left, bounds.bottom);
                           }}
                           onPointerDown={(event) => {
                             if (event.pointerType === "mouse") return;
                             cancelTitlePress();
-                            const bounds =
-                              event.currentTarget.getBoundingClientRect();
+                            const bounds = event.currentTarget
+                              .getBoundingClientRect();
                             const x = event.clientX || bounds.left;
                             const y = event.clientY || bounds.bottom;
                             titlePressTimer = setTimeout(() => {
@@ -1468,28 +1496,28 @@ export default function App() {
                           initial={c().title}
                           label="Rename conversation"
                           save={(name) =>
-                            saveRename("conversation", c().key, c().title, name)
-                          }
+                            saveRename(
+                              "conversation",
+                              c().key,
+                              c().title,
+                              name,
+                            )}
                           cancel={() => stopRename("conversation", c().key)}
                         />
                       </div>
                     </Show>
                     <IconButton
-                      icon={
-                        c().section === "archived"
-                          ? "u-turn-arrow-left"
-                          : "archive"
-                      }
+                      icon={c().section === "archived"
+                        ? "u-turn-arrow-right"
+                        : "archive"}
                       class={`mobile-archive-button ${
                         c().section === "archived" ? "unarchive-icon" : ""
                       }`}
                       label={`${
                         c().section === "archived" ? "Unarchive" : "Archive"
                       } ${c().title}`}
-                      disabled={
-                        c().section !== "archived" &&
-                        (c().running || c().pendingInput)
-                      }
+                      disabled={c().section !== "archived" &&
+                        (c().running || c().pendingInput)}
                       onClick={() => void run(() => archiveConversation(c()))}
                     />
                   </>
@@ -1530,13 +1558,11 @@ export default function App() {
                             when={view() === "resources:platforms"}
                             fallback={
                               <Show
-                                when={
-                                  ![
-                                    "resources:skills",
-                                    "resources:toolsets",
-                                    "resources:mcp",
-                                  ].includes(view())
-                                }
+                                when={![
+                                  "resources:skills",
+                                  "resources:toolsets",
+                                  "resources:mcp",
+                                ].includes(view())}
                                 fallback={
                                   <Capabilities
                                     section={view().slice(10)}
@@ -1638,12 +1664,10 @@ export default function App() {
                     type="button"
                     aria-label={label}
                     title={label}
-                    aria-pressed={
-                      (workspace()?.conversations.find(
-                        (item) => item.key === conversation().key,
-                      )?.essentialIcon ??
-                        (conversation().bot ? "bot" : "message-text")) === icon
-                    }
+                    aria-pressed={(workspace()?.conversations.find(
+                      (item) => item.key === conversation().key,
+                    )?.essentialIcon ??
+                      (conversation().bot ? "bot" : "message-text")) === icon}
                     onClick={() =>
                       void run(async () => {
                         await mutate("workspace.setEssentialIcon", {
@@ -1651,8 +1675,7 @@ export default function App() {
                           icon,
                         });
                         setIconPicker(undefined);
-                      })
-                    }
+                      })}
                   >
                     <Icon name={icon} />
                   </button>
@@ -1666,13 +1689,11 @@ export default function App() {
         )}
       </Show>
       <Show
-        when={
-          menu() &&
+        when={menu() &&
           (workspace()?.conversations.find(
             (item) => item.key === menu()?.key,
           ) ??
-            menu())
-        }
+            menu())}
       >
         {(c) => (
           <Dialog
@@ -1689,23 +1710,18 @@ export default function App() {
                     <button
                       type="button"
                       class={c().section === "archived" ? "unarchive-icon" : ""}
-                      disabled={
-                        c().section !== "archived" &&
-                        (c().running || c().pendingInput)
-                      }
+                      disabled={c().section !== "archived" &&
+                        (c().running || c().pendingInput)}
                       onClick={() =>
                         void run(async () => {
                           await archiveConversation(c());
                           setMenu(undefined);
-                        })
-                      }
+                        })}
                     >
                       <Icon
-                        name={
-                          c().section === "archived"
-                            ? "u-turn-arrow-left"
-                            : "archive"
-                        }
+                        name={c().section === "archived"
+                          ? "u-turn-arrow-right"
+                          : "archive"}
                       />
                       {c().section === "archived" ? "Unarchive" : "Archive"}
                     </button>
@@ -1718,8 +1734,7 @@ export default function App() {
                             unread: !unread(c()),
                           });
                           setMenu(undefined);
-                        })
-                      }
+                        })}
                     >
                       <Icon name="eye" />
                       {unread(c()) ? "Mark as read" : "Mark as unread"}
@@ -1731,8 +1746,7 @@ export default function App() {
                           await navigator.clipboard.writeText(c().sourceId);
                           setMenu(undefined);
                           inform("Session ID copied");
-                        })
-                      }
+                        })}
                     >
                       <Icon name="page" />
                       Copy session ID
@@ -1763,12 +1777,12 @@ export default function App() {
                             void run(async () => {
                               await mutate("workspace.move", {
                                 key: c().key,
-                                section:
-                                  c().section === section ? "recent" : section,
+                                section: c().section === section
+                                  ? "recent"
+                                  : section,
                               });
                               setMenu(undefined);
-                            })
-                          }
+                            })}
                         >
                           <Icon
                             name={section === "essential" ? "star" : "pin"}
@@ -1791,9 +1805,11 @@ export default function App() {
                       </button>
                     </Show>
                     <a
-                      href={`/api/download?type=conversation&id=${encodeURIComponent(
-                        c().sourceId,
-                      )}&profile=${encodeURIComponent(c().profile)}`}
+                      href={`/api/download?type=conversation&id=${
+                        encodeURIComponent(
+                          c().sourceId,
+                        )
+                      }&profile=${encodeURIComponent(c().profile)}`}
                       download=""
                     >
                       <Icon name="download" />
@@ -1845,8 +1861,7 @@ export default function App() {
                             folderId: f._id,
                           });
                           setMenu(undefined);
-                        })
-                      }
+                        })}
                     >
                       <Icon name="folder" />
                       Move to {f.name}
@@ -1863,8 +1878,7 @@ export default function App() {
                           section: "pinned",
                         });
                         setMenu(undefined);
-                      })
-                    }
+                      })}
                   >
                     <Icon name="pin" />
                     Remove from folder
@@ -1879,8 +1893,7 @@ export default function App() {
                         conversationKey: c().key,
                       });
                       beginRename("folder", String(id));
-                    })
-                  }
+                    })}
                 >
                   <Icon name="plus" />
                   Create new folder
