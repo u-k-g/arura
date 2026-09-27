@@ -83,6 +83,10 @@ Deno.test({
       await expect(palette).toBeVisible();
       await palette.getByRole("combobox").press("Enter");
       await expect(palette).toHaveCount(0);
+      const composer = page.getByRole("textbox", { name: "Message Hermes" });
+      await expect(composer).toBeFocused();
+      await page.keyboard.type("focus check");
+      await expect(composer).toHaveText("focus check");
       await page.keyboard.press("Control+k");
       await expect(
         page.getByRole("dialog", { name: "Find anything", exact: true }),

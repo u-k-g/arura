@@ -487,3 +487,19 @@ Deno.test("a new reply never attaches its work to an older answered prompt in st
     undefined,
   );
 });
+
+Deno.test("a persisted answer owns the live turn even when its display text changed", () => {
+  const groups = groupMessages([
+    { id: "prompt", role: "user", text: "Recipe", createdAt: 100 },
+    { id: "answer", role: "assistant", text: "Final recipe", createdAt: 200 },
+  ]);
+  equal(
+    workGroup(groups, {
+      text: "Different streamed rendering",
+      startedAt: 110,
+      state: "complete",
+      stats: { answerId: "answer", milestones: [] },
+    }),
+    groups[0],
+  );
+});

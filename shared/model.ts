@@ -69,8 +69,15 @@ export function groupMessages(messages: Message[]) {
 }
 export function workGroup(
   groups: ReturnType<typeof groupMessages>,
-  turn: Pick<Turn, "text" | "startedAt"> & Partial<Pick<Turn, "state">>,
+  turn:
+    & Pick<Turn, "text" | "startedAt">
+    & Partial<Pick<Turn, "state" | "stats">>,
 ) {
+  const answerId = turn.stats?.answerId;
+  if (answerId) {
+    const persisted = groups.findLast((group) => group.answer?.id === answerId);
+    if (persisted) return persisted;
+  }
   const text = turn.text.replace(/\s+/g, "");
   const answer = text &&
     groups.findLast(

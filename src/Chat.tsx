@@ -77,6 +77,7 @@ export default function Chat(props: {
   profile?: string;
   conversation: string;
   reset?: number;
+  focusComposerRequest?: number;
   title: string;
   navigate: (view: string) => void;
   mobileActions: {
@@ -333,6 +334,15 @@ export default function Chat(props: {
   };
   let input!: ComposerHandle;
   let fileInput!: HTMLInputElement;
+  createEffect(() => {
+    const request = props.focusComposerRequest;
+    if (!request) return;
+    globalThis.requestAnimationFrame(() => {
+      if (props.focusComposerRequest === request && !props.conversation) {
+        input?.focus();
+      }
+    });
+  });
   const historyRevision = createMemo(() =>
     historyPages()
       .map((page) => `${page.offset}:${page.revision}`)

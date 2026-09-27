@@ -188,6 +188,7 @@ export default function App() {
   const [sheet, setSheet] = createSignal(false),
     [search, setSearch] = createSignal(""),
     [palette, setPalette] = createSignal(false);
+  const [focusComposerRequest, setFocusComposerRequest] = createSignal(0);
   const [desktopResourceHost, setDesktopResourceHost] = createSignal<
     HTMLElement
   >();
@@ -488,6 +489,7 @@ export default function App() {
   });
   const navigate = (next: string) => {
     setView(next);
+    if (next) setFocusComposerRequest(0);
     preferences.setItem("arura.view", next);
     if (next.startsWith("[")) {
       preferences.setItem("arura.lastConversation", next);
@@ -779,7 +781,10 @@ export default function App() {
         label: "New conversation",
         group: "Commands",
         icon: "plus",
-        run: () => void newChat(),
+        run: () => {
+          void newChat();
+          setFocusComposerRequest((value) => value + 1);
+        },
       },
       {
         id: "sidebar",
@@ -1637,6 +1642,7 @@ export default function App() {
                         <Chat
                           conversation={view()}
                           reset={blankChatVersion()}
+                          focusComposerRequest={focusComposerRequest()}
                           profile={chosenProfile()}
                           title={selected()?.title ?? "New session"}
                           navigate={navigate}
