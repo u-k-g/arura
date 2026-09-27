@@ -620,6 +620,12 @@ small {
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
+.markdown math[display="block"] {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
 .markdown p:last-child {
   margin: 0;
 }

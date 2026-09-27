@@ -7,7 +7,7 @@ import { Icon } from "./ui.tsx";
 import "katex/dist/katex.min.css";
 
 const mathMarkdown = new Marked(
-  markedKatex({ output: "mathml", throwOnError: false, nonStandard: true }),
+  markedKatex({ output: "mathml", throwOnError: false }),
 );
 
 export function splitPreviews(text: string) {
@@ -15,13 +15,15 @@ export function splitPreviews(text: string) {
   const directive = /^::preview\{file="([^"\n]+\.html?)"\}[ \t]*$/gm;
   let offset = 0;
   for (const match of text.matchAll(directive)) {
-    if (match.index > offset)
+    if (match.index > offset) {
       parts.push({ text: text.slice(offset, match.index) });
+    }
     parts.push({ file: match[1] });
     offset = match.index + match[0].length;
   }
-  if (offset < text.length || !parts.length)
+  if (offset < text.length || !parts.length) {
     parts.push({ text: text.slice(offset) });
+  }
   return parts;
 }
 
@@ -182,14 +184,13 @@ function AnswerContent(props: { text: string }) {
   return (
     <For each={splitPreviews(props.text)}>
       {(part) =>
-        part.file ? (
-          <InlinePreview file={part.file} />
-        ) : (
-          <Show when={part.text?.trim()}>
-            <Markdown text={part.text ?? ""} />
-          </Show>
-        )
-      }
+        part.file
+          ? <InlinePreview file={part.file} />
+          : (
+            <Show when={part.text?.trim()}>
+              <Markdown text={part.text ?? ""} />
+            </Show>
+          )}
     </For>
   );
 }

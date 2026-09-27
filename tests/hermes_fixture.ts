@@ -230,7 +230,7 @@ export function hermesFixture(
     event("message.start", sid, {});
     if (text === "ARURA_TEST_MATH_PREVIEW") {
       const reply =
-        'The geometry is $$d_{\\text{carriage}} + d_{\\text{counterweight}} = \\text{constant}$$.\n\n::preview{file="/fixture/inline-preview.html"}\n\n::preview{file="/fixture/missing.html"}';
+        'The geometry is $$d_{\\text{carriage}} + d_{\\text{counterweight}} = \\text{constant}$$.\n\nBuy three PCBs ($226, that is the part you cannot substitute cheaply) and self-source the commodity half. Building the whole thing may cost $300–450 plus shipping.\n\n$$d_{\\text{carriage}} + d_{\\text{counterweight}} + d_{\\text{battery}} + d_{\\text{frame}} + d_{\\text{wiring}} + d_{\\text{electronics}} + d_{\\text{pulleys}} = \\text{constant}$$\n\n::preview{file="/fixture/inline-preview.html"}\n\n::preview{file="/fixture/missing.html"}';
       s.messages.push({ id: rowId++, role: "assistant", content: reply });
       s.last_active = Date.now() / 1000;
       event("message.complete", sid, { text: reply });

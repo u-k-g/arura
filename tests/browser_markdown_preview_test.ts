@@ -30,7 +30,9 @@ Deno.test({
           has: page.locator(".inline-preview"),
         })
         .last();
-      await expect(answer.locator("math")).toBeVisible();
+      await expect(answer.locator("math")).toHaveCount(2);
+      await expect(answer).toContainText("self-source the commodity half");
+      await expect(answer).toContainText("$300–450 plus shipping");
       await expect(answer).not.toContainText("::preview");
       const preview = answer.locator(".inline-preview").first();
       await expect(
@@ -52,6 +54,16 @@ Deno.test({
       ).toHaveAttribute("href", /\/api\/download\?path=/);
       await expect(answer.locator(".inline-preview").last()).toContainText(
         "Preview file is unavailable.",
+      );
+      await page.setViewportSize({ width: 390, height: 780 });
+      const transcriptWidth = await page.locator(".transcript").evaluate(
+        (element) => ({
+          content: element.scrollWidth,
+          viewport: element.clientWidth,
+        }),
+      );
+      expect(transcriptWidth.content).toBeLessThanOrEqual(
+        transcriptWidth.viewport + 1,
       );
     } finally {
       await browser.close();

@@ -136,6 +136,10 @@ Deno.test({
       ).json();
       originalMessages = normalizeMessages(original.messages);
       if (adapterPid) Deno.kill(adapterPid, "SIGSTOP");
+      await publish("");
+      await expect(page.locator(".live-message .work-summary")).toContainText(
+        "Working for",
+      );
       await publish("Let me look at it properly.");
       await expect(page.locator(".history-work")).toHaveCount(24);
       await expect(page.locator(".live-message .markdown")).toHaveCount(1);

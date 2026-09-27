@@ -1224,10 +1224,6 @@ export default function Chat(props: {
       {activity.label}
     </div>
   );
-  // The elapsed summary anchors inside a history group only once the agent
-  // has produced something; before that the live article carries it, so a
-  // fresh turn never renders as a blank gap.
-  const hasTurnOutput = () => Boolean(turn()?.text || turn()?.activity.length);
   const showOutputStats = (
     group?: ReturnType<typeof groupMessages>[number],
     live?: Turn,
@@ -1567,12 +1563,6 @@ export default function Chat(props: {
                       {(message) => renderMessage(message())}
                     </Show>
                     <Show
-                      when={group === liveWorkGroup() && hasTurnOutput() &&
-                        turn()}
-                    >
-                      {(t) => renderLiveWork(t())}
-                    </Show>
-                    <Show
                       when={((group.prompt && group.answer) ||
                         (group.work.length &&
                           (!turn() || group !== groups().at(-1)))) &&
@@ -1687,9 +1677,7 @@ export default function Chat(props: {
                       Recovering live progress from Hermes…
                     </p>
                   </Show>
-                  <Show when={!liveWorkGroup() || !hasTurnOutput()}>
-                    {renderLiveWork(t())}
-                  </Show>
+                  {renderLiveWork(t())}
                   <Show
                     when={t().text &&
                       (t().state === "running" || !turnIsInHistory())}
