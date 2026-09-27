@@ -63,6 +63,7 @@ import {
 import ComposerInput, { type ComposerHandle } from "./ComposerInput.tsx";
 import TurnMinimap, { type TurnMinimapItem } from "./TurnMinimap.tsx";
 import { AnswerMarkdown, Markdown } from "./Markdown.tsx";
+import { sourceLinks, splitSourcesSection } from "./sources.ts";
 import { Dialog, Icon, IconButton, run } from "./ui.tsx";
 
 const Clarification = lazy(() => import("./Clarification.tsx"));
@@ -1008,6 +1009,21 @@ export default function Chat(props: {
     previousGroups = nextGroups;
     return result;
   });
+  const sourceReferences = createMemo(() => {
+    const known = new Map<string, string>();
+    const beforeAnswer = new Map<string, ReadonlyMap<string, string>>();
+    for (const group of groups()) {
+      const answer = group.answer;
+      if (!answer) continue;
+      beforeAnswer.set(answer.id, new Map(known));
+      const section = splitSourcesSection(answer.text);
+      if (!section) continue;
+      for (const [number, url] of sourceLinks(section.sources)) {
+        known.set(number, url);
+      }
+    }
+    return { beforeAnswer, latest: known };
+  });
   let groupContainer!: HTMLDivElement;
   const loadedMinimapItems = createMemo<TurnMinimapItem[]>(() =>
     groups().flatMap((group) =>
@@ -1428,7 +1444,10 @@ export default function Chat(props: {
             />
           }
         >
-          <AnswerMarkdown text={message.text} />
+          <AnswerMarkdown
+            text={message.text}
+            previousReferences={sourceReferences().beforeAnswer.get(message.id)}
+          />
         </Show>
         <div class="message-actions">
           <Show when={onStatsClick}>
@@ -1682,7 +1701,10 @@ export default function Chat(props: {
                     when={t().text &&
                       (t().state === "running" || !turnIsInHistory())}
                   >
-                    <AnswerMarkdown text={t().text} />
+                    <AnswerMarkdown
+                      text={t().text}
+                      previousReferences={sourceReferences().latest}
+                    />
                   </Show>
                   <Show when={t().text && !historyOwnsWork()}>
                     <div class="message-actions">

@@ -1,9 +1,10 @@
 import { fileReferences } from "../shared/artifacts.ts";
 import DOMPurify from "dompurify";
-import { Marked, marked } from "marked";
+import { Marked } from "marked";
 import markedKatex from "marked-katex-extension";
 import { createMemo, createResource, For, Show } from "solid-js";
 import { Icon } from "./ui.tsx";
+import { sourceLinks, splitSourcesSection } from "./sources.ts";
 import "katex/dist/katex.min.css";
 
 const mathMarkdown = new Marked(
@@ -49,59 +50,65 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
   }
 });
 
-export function splitSourcesSection(text: string) {
-  const tokens = marked.lexer(text);
-  const last = tokens.findLastIndex((token) => token.type !== "space");
-  const inline = tokens[last];
-  if (inline?.type === "paragraph") {
-    const match = inline.raw
-      .trim()
-      .match(/^(?:\*\*|__)?Sources:?(?:\*\*|__)?\s+(.+)$/is);
-    if (match && /https?:\/\/|\[[0-9]+\]/i.test(match[1])) {
-      return {
-        answer: tokens
-          .slice(0, last)
-          .map((token) => token.raw)
-          .join("")
-          .trimEnd(),
-        sources: match[1].trim(),
-      };
-    }
-  }
-  const index = tokens.findLastIndex(
-    (token) =>
-      (token.type === "paragraph" || token.type === "heading") &&
-      /^(?:\*\*|__)?Sources:?(?:\*\*|__)?$/i.test(token.text.trim()),
+function linkCitations(html: string, references: ReadonlyMap<string, string>) {
+  if (!references.size) return html;
+  const template = globalThis.document.createElement("template");
+  template.innerHTML = html;
+  const walker = globalThis.document.createTreeWalker(
+    template.content,
+    globalThis.NodeFilter.SHOW_TEXT,
   );
-  if (index < 0) return;
-  const tail = tokens.slice(index + 1);
-  if (
-    !tail.some((token) => token.type === "list") ||
-    tail.some((token) => token.type !== "list" && token.type !== "space")
-  ) {
-    return;
+  const nodes: Text[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.parentElement?.closest("a, code, pre, sup, kbd, math")) continue;
+    nodes.push(node as Text);
   }
-  return {
-    answer: tokens
-      .slice(0, index)
-      .map((token) => token.raw)
-      .join("")
-      .trimEnd(),
-    sources: tail
-      .map((token) => token.raw)
-      .join("")
-      .trim(),
-  };
+  for (const node of nodes) {
+    const matches = [...node.data.matchAll(/\[([1-9]\d*)\]/g)].filter(
+      (match) => references.has(match[1]),
+    );
+    if (!matches.length) continue;
+    const fragment = globalThis.document.createDocumentFragment();
+    let offset = 0;
+    for (const match of matches) {
+      const index = match.index ?? 0;
+      fragment.append(
+        globalThis.document.createTextNode(node.data.slice(offset, index)),
+      );
+      const superscript = globalThis.document.createElement("sup");
+      superscript.className = "source-citation";
+      const link = globalThis.document.createElement("a");
+      link.href = references.get(match[1]) ?? "";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.setAttribute("aria-label", `Source ${match[1]}`);
+      link.textContent = match[0];
+      superscript.append(link);
+      fragment.append(superscript);
+      offset = index + match[0].length;
+    }
+    fragment.append(
+      globalThis.document.createTextNode(node.data.slice(offset)),
+    );
+    node.replaceWith(fragment);
+  }
+  return template.innerHTML;
 }
 
-export function Markdown(props: { text: string }) {
+export function Markdown(props: {
+  text: string;
+  references?: ReadonlyMap<string, string>;
+}) {
   const html = () =>
-    DOMPurify.sanitize(
-      mathMarkdown.parse(props.text, { async: false }) as string,
-      {
-        FORBID_TAGS: ["img", "iframe", "video", "audio", "object", "embed"],
-        FORBID_ATTR: ["style"],
-      },
+    linkCitations(
+      DOMPurify.sanitize(
+        mathMarkdown.parse(props.text, { async: false }) as string,
+        {
+          FORBID_TAGS: ["img", "iframe", "video", "audio", "object", "embed"],
+          FORBID_ATTR: ["style"],
+        },
+      ),
+      props.references ?? new Map(),
     );
   return <div class="markdown" innerHTML={html()} />;
 }
@@ -180,7 +187,10 @@ function InlinePreview(props: { file: string }) {
   );
 }
 
-function AnswerContent(props: { text: string }) {
+function AnswerContent(props: {
+  text: string;
+  references?: ReadonlyMap<string, string>;
+}) {
   return (
     <For each={splitPreviews(props.text)}>
       {(part) =>
@@ -188,21 +198,35 @@ function AnswerContent(props: { text: string }) {
           ? <InlinePreview file={part.file} />
           : (
             <Show when={part.text?.trim()}>
-              <Markdown text={part.text ?? ""} />
+              <Markdown text={part.text ?? ""} references={props.references} />
             </Show>
           )}
     </For>
   );
 }
 
-export function AnswerMarkdown(props: { text: string }) {
+export function AnswerMarkdown(props: {
+  text: string;
+  previousReferences?: ReadonlyMap<string, string>;
+}) {
   const section = createMemo(() => splitSourcesSection(props.text));
+  const references = createMemo(() => {
+    const current = section();
+    if (!current) return;
+    return new Map([
+      ...(props.previousReferences ?? []),
+      ...sourceLinks(current.sources),
+    ]);
+  });
   return (
-    <Show when={section()} fallback={<AnswerContent text={props.text} />}>
+    <Show
+      when={section()}
+      fallback={<AnswerContent text={props.text} />}
+    >
       {(parts) => (
         <>
           <Show when={parts().answer}>
-            <AnswerContent text={parts().answer} />
+            <AnswerContent text={parts().answer} references={references()} />
           </Show>
           <details class="sources-disclosure">
             <summary>

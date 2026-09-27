@@ -644,6 +644,25 @@ small {
   font-size: 0.875em;
   font-family: var(--mono);
 }
+.markdown .source-citation {
+  font-size: 0.72em;
+  line-height: 0;
+  vertical-align: super;
+  white-space: nowrap;
+}
+.markdown .source-citation a {
+  color: var(--accent);
+  text-decoration: none;
+  padding: 6px 2px;
+}
+.markdown .source-citation a:hover {
+  text-decoration: underline;
+}
+.markdown .source-citation a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
 .markdown table {
   display: block;
   overflow: auto;

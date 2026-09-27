@@ -228,6 +228,22 @@ export function hermesFixture(
     s.pendingPersistence = false;
     s.messages.push({ id: rowId++, role: "user", content: text });
     event("message.start", sid, {});
+    const citationReply = text === "ARURA_TEST_SOURCES_FIRST"
+      ? "First reply.[1][5]\n\nSources:\n[1] https://example.com/old — old source\n[5] https://example.com/five — fifth source"
+      : text === "ARURA_TEST_SOURCES_SECOND"
+      ? "Second reply.[1][5] Keep `code [1]` unchanged.\n\nSources:\n[1] https://example.com/new — new source\n\nSources [5] from the previous reply also applies."
+      : undefined;
+    if (citationReply) {
+      s.messages.push({
+        id: rowId++,
+        role: "assistant",
+        content: citationReply,
+      });
+      s.last_active = Date.now() / 1000;
+      event("message.complete", sid, { text: citationReply });
+      event("sessions.changed", "", {});
+      return;
+    }
     if (text === "ARURA_TEST_MATH_PREVIEW") {
       const reply =
         'The geometry is $$d_{\\text{carriage}} + d_{\\text{counterweight}} = \\text{constant}$$.\n\nBuy three PCBs ($226, that is the part you cannot substitute cheaply) and self-source the commodity half. Building the whole thing may cost $300–450 plus shipping.\n\n$$d_{\\text{carriage}} + d_{\\text{counterweight}} + d_{\\text{battery}} + d_{\\text{frame}} + d_{\\text{wiring}} + d_{\\text{electronics}} + d_{\\text{pulleys}} = \\text{constant}$$\n\n::preview{file="/fixture/inline-preview.html"}\n\n::preview{file="/fixture/missing.html"}';
