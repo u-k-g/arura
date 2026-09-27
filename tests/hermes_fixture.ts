@@ -35,6 +35,10 @@ export function hermesFixture(
   const files = new Map([
     ["/fixture/notes.md", "# Notes\n\nOriginal host content.\n"],
     ["/fixture/large.txt", "A partial preview"],
+    [
+      "/fixture/inline-preview.html",
+      "<!doctype html><html><body><h1>Fixture diagram</h1><script>document.body.dataset.ready = 'yes'</script></body></html>",
+    ],
   ]);
   const uploadedBytes = new Map<string, Uint8Array<ArrayBuffer>>();
   function storeUpload(path: string, dataUrl: string) {
@@ -224,6 +228,15 @@ export function hermesFixture(
     s.pendingPersistence = false;
     s.messages.push({ id: rowId++, role: "user", content: text });
     event("message.start", sid, {});
+    if (text === "ARURA_TEST_MATH_PREVIEW") {
+      const reply =
+        'The geometry is $$d_{\\text{carriage}} + d_{\\text{counterweight}} = \\text{constant}$$.\n\n::preview{file="/fixture/inline-preview.html"}\n\n::preview{file="/fixture/missing.html"}';
+      s.messages.push({ id: rowId++, role: "assistant", content: reply });
+      s.last_active = Date.now() / 1000;
+      event("message.complete", sid, { text: reply });
+      event("sessions.changed", "", {});
+      return;
+    }
     if (text === "ARURA_TEST_INTERIM_DUPLICATE") {
       const interim = "Let me zoom into the photo first.";
       const reply = `${interim}\n\nThe fade starts higher near the temple.`;

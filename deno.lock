@@ -22,7 +22,9 @@
     "npm:idb@8.0.3": "8.0.3",
     "npm:jose@6.2.12": "6.2.12",
     "npm:jsdom@27.2.0": "27.2.0",
+    "npm:katex@0.17.0": "0.17.0",
     "npm:lexical@0.50.0": "0.50.0_typescript@7.0.2",
+    "npm:marked-katex-extension@5.1.13": "5.1.13_katex@0.17.0_marked@18.0.13",
     "npm:marked@18.0.13": "18.0.13",
     "npm:solid-js@1.9.15": "1.9.15",
     "npm:typescript@7.0.2": "7.0.2",
@@ -2171,6 +2173,9 @@
     "commander@2.20.3": {
       "integrity": "sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ=="
     },
+    "commander@8.3.0": {
+      "integrity": "sha512-OkTL9umf+He2DZkUq8f8J9of7yL6RJKI24dVITBmNfZBmri9zYZQrKkuXiKhyfPSu8tUhnVBB1iKXevvnlR4Ww=="
+    },
     "common-tags@1.8.2": {
       "integrity": "sha512-gk/Z852D2Wtb//0I+kRFNKKE9dIIVirjoqPoA1wJU+XePVXZfGeBpk45+A1rKO4Q43prqWBNY/MiIeRLbPWUaA=="
     },
@@ -2930,6 +2935,13 @@
     "jsonpointer@5.0.1": {
       "integrity": "sha512-p/nXbhSEcu3pZRdkW1OfJhpsVtW1gd4Wa1fnQc9YLiTfAjn0312eMKimbdIQzuZl9aa9xUGaRlP9T/CJE/ditQ=="
     },
+    "katex@0.17.0": {
+      "integrity": "sha512-Vdw0ATsQ9V+LuegM/BTwQqV/6cTl5lbGcIrU+BCgLxyf6bo38ybOr372tuSIxir3CN720flu1meYR6XzNMwQnw==",
+      "dependencies": [
+        "commander@8.3.0"
+      ],
+      "bin": true
+    },
     "leven@3.1.0": {
       "integrity": "sha512-qsda+H8jTaUaN/x5vzW2rzc+8Rw4TAQ/4KjB46IwK5VH+IlVeeeje/EoZRpiXvIqjFgK84QffqPztGI3VBLG1A=="
     },
@@ -3037,6 +3049,13 @@
       "integrity": "sha512-vd2F4YUyEXKGcLHoq+TEyCjxueSeHnFxyyjNp80yg0XV4vUhnDer/lvvlqM/arB5bXQN5K2/3oinyCRyx8T2CQ==",
       "dependencies": [
         "@jridgewell/sourcemap-codec"
+      ]
+    },
+    "marked-katex-extension@5.1.13_katex@0.17.0_marked@18.0.13": {
+      "integrity": "sha512-+6gVygGg5at9g+YsuIQZk7XcAc6Pg1P0grEJKEWvF7DAwceZ7ZIvU0fhQe6auUqSbnPmSjJxZuICdSCdbGaFRw==",
+      "dependencies": [
+        "katex",
+        "marked"
       ]
     },
     "marked@18.0.13": {
@@ -3583,7 +3602,7 @@
       "dependencies": [
         "@jridgewell/source-map",
         "acorn",
-        "commander",
+        "commander@2.20.3",
         "source-map-support"
       ],
       "bin": true
@@ -4107,7 +4126,9 @@
         "npm:idb@8.0.3",
         "npm:jose@6.2.12",
         "npm:jsdom@27.2.0",
+        "npm:katex@0.17.0",
         "npm:lexical@0.50.0",
+        "npm:marked-katex-extension@5.1.13",
         "npm:marked@18.0.13",
         "npm:solid-js@1.9.15",
         "npm:typescript@7.0.2",
