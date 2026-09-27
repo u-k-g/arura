@@ -2491,12 +2491,8 @@ export default function Chat(props: {
                     <>
                       <div class="output-stats-heading">
                         <h3>Timeline</h3>
-                        <Show when={phases().at(-1)?.endedAt}>
-                          {(end) => (
-                            <span>
-                              {secondsFromStart(end(), view().startedAt)} total
-                            </span>
-                          )}
+                        <Show when={stats().tokensPerSecond}>
+                          {(speed) => <span>{speed().toFixed(1)} tps</span>}
                         </Show>
                       </div>
                       <ol class="output-stats-timeline">
@@ -2551,12 +2547,9 @@ export default function Chat(props: {
                         LLM includes processing and writing. Tools spans each
                         batch from first start to last result. Times are based
                         on events received by Arura.
-                        <Show when={stats().tokensPerSecond}>
-                          {(speed) =>
-                            ` Hermes reports ${
-                              speed().toFixed(1)
-                            } tps for recent model calls.`}
-                        </Show>
+                        {stats().tokensPerSecond
+                          ? " TPS is Hermes's recent-call average."
+                          : ""}
                       </p>
                     </>
                   );
