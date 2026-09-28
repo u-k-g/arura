@@ -2,43 +2,60 @@ import { marked } from "marked";
 
 export function splitSourcesSection(text: string) {
   const tokens = marked.lexer(text);
+  const raw = (parts: Array<(typeof tokens)[number]>) =>
+    parts.map((part) => part.raw).join("").trim();
   const sourceNote = (token: (typeof tokens)[number]) =>
     token.type === "paragraph" &&
     /^Sources\s+\[[0-9]+\]/i.test(token.text.trim());
+  const sourceList = (token: (typeof tokens)[number]) =>
+    token.type === "list" && /https?:\/\/|\[[1-9]\d*\]/i.test(token.raw);
+  const sourceEnd = (start: number) => {
+    let end = start;
+    while (
+      end < tokens.length &&
+      (tokens[end].type === "space" || sourceNote(tokens[end]) ||
+        sourceList(tokens[end]))
+    ) end++;
+    return end;
+  };
 
   for (let index = tokens.length - 1; index >= 0; index--) {
     const token = tokens[index];
     if (token.type !== "paragraph" && token.type !== "heading") continue;
 
-    const tail = tokens.slice(index + 1);
     const inline = token.type === "paragraph"
       ? token.raw.trim().match(/^(?:\*\*|__)?Sources:(?:\*\*|__)?\s+(.+)$/is)
       : null;
-    if (
-      inline && /https?:\/\/|\[[0-9]+\]/i.test(inline[1]) &&
-      tail.every((part) => part.type === "space" || sourceNote(part))
-    ) {
+    if (inline && /https?:\/\/|\[[0-9]+\]/i.test(inline[1])) {
+      let end = index + 1;
+      while (
+        end < tokens.length &&
+        (tokens[end].type === "space" || sourceNote(tokens[end]))
+      ) end++;
+      const after = raw(tokens.slice(end));
       return {
-        answer: tokens.slice(0, index).map((part) => part.raw).join("")
-          .trimEnd(),
-        sources: [inline[1].trim(), ...tail.map((part) => part.raw)]
+        answer: raw(tokens.slice(0, index)),
+        sources: [
+          inline[1].trim(),
+          ...tokens.slice(index + 1, end).map((part) => part.raw),
+        ]
           .join("").trim(),
+        ...(after ? { after } : {}),
       };
     }
 
     if (!/^(?:\*\*|__)?Sources:?(?:\*\*|__)?$/i.test(token.text.trim())) {
       continue;
     }
-    if (
-      !tail.some((part) => part.type === "list") ||
-      tail.some((part) => part.type !== "list" && part.type !== "space")
-    ) {
-      continue;
-    }
+    let first = index + 1;
+    while (tokens[first]?.type === "space") first++;
+    if (!tokens[first] || !sourceList(tokens[first])) continue;
+    const end = sourceEnd(first);
+    const after = raw(tokens.slice(end));
     return {
-      answer: tokens.slice(0, index).map((part) => part.raw).join("")
-        .trimEnd(),
-      sources: tail.map((part) => part.raw).join("").trim(),
+      answer: raw(tokens.slice(0, index)),
+      sources: raw(tokens.slice(first, end)),
+      ...(after ? { after } : {}),
     };
   }
 }

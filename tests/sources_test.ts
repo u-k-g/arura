@@ -32,6 +32,23 @@ Deno.test("keeps one-line and bulleted sources collapsible", () => {
   );
 });
 
+Deno.test("collapses a sources list before a closing answer note", () => {
+  deepStrictEqual(
+    splitSourcesSection(
+      "Answer.\n\nSources:\n" +
+        "- https://islamqa.info/en/answers/83154 (first source)\n" +
+        "- https://islamqa.org/shafii/qibla-shafii/33507 (second source)\n\n" +
+        "This is a relay of positions, not my own ruling.",
+    ),
+    {
+      answer: "Answer.",
+      sources: "- https://islamqa.info/en/answers/83154 (first source)\n" +
+        "- https://islamqa.org/shafii/qibla-shafii/33507 (second source)",
+      after: "This is a relay of positions, not my own ruling.",
+    },
+  );
+});
+
 Deno.test("does not mistake a sources note for a source block", () => {
   equal(
     splitSourcesSection("Answer.\n\nSources [1]–[3] from earlier also apply."),

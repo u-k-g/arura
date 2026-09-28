@@ -344,6 +344,7 @@ export default function App() {
   const [archiveHasMore, setArchiveHasMore] = createSignal(false);
   const [archiveReady, setArchiveReady] = createSignal(false);
   const [menu, setMenu] = createSignal<Conversation>();
+  const [folderMenu, setFolderMenu] = createSignal<string>();
   const [folderPicker, setFolderPicker] = createSignal(false);
   const [editing, setEditing] = createSignal<{
     kind: "conversation" | "folder";
@@ -1182,6 +1183,14 @@ export default function App() {
               return (
                 <details
                   class="folder"
+                  classList={{
+                    unread: folderConversations(folderId).some((c) =>
+                      unread(c)
+                    ),
+                    running: folderConversations(folderId).some((c) =>
+                      c.running
+                    ),
+                  }}
                   open={!closedFolders()[folderId]}
                   onToggle={(event) => {
                     const closed = !event.currentTarget.open;
@@ -1194,89 +1203,42 @@ export default function App() {
                     );
                   }}
                 >
-                  <summary>
-                    <Icon name="folder" />
-                    <Show
-                      when={editing()?.kind === "folder" &&
-                        editing()?.id === folderId}
-                      fallback={
-                        <button
-                          type="button"
-                          class="folder-name"
-                          onDblClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            beginRename("folder", folderId);
-                          }}
-                        >
-                          {folder().name}
-                        </button>
-                      }
-                    >
-                      <InlineRename
-                        initial={folder().name}
-                        label="Rename folder"
-                        save={(name) =>
-                          saveRename("folder", folderId, folder().name, name)}
-                        cancel={() => stopRename("folder", folderId)}
-                      />
-                    </Show>
-                    <IconButton
-                      icon="edit-pencil"
-                      label={`Rename folder ${folder().name}`}
-                      onClick={(event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        beginRename("folder", folderId);
-                      }}
-                    />
-                    <IconButton
-                      icon="nav-arrow-down"
-                      label={`Move folder ${folder().name} down`}
-                      onClick={() =>
-                        void run(() =>
-                          mutate("workspace.reorder", {
-                            kind: "folder",
-                            id: folderId,
-                            direction: 1,
-                          })
-                        )}
-                    />
-                    <IconButton
-                      icon="nav-arrow-down"
-                      class="rotate-icon"
-                      label={`Move folder ${folder().name} up`}
-                      onClick={() =>
-                        void run(() =>
-                          mutate("workspace.reorder", {
-                            kind: "folder",
-                            id: folderId,
-                            direction: -1,
-                          })
-                        )}
-                    />
-                    <button
-                      type="button"
-                      class="folder-delete"
-                      aria-label={`Delete folder ${folder().name}`}
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        if (
-                          await confirmAction(
-                            "Remove this folder? Its conversations stay pinned.",
-                          )
-                        ) {
-                          void run(() =>
-                            mutate("workspace.folder", {
-                              id: folderId,
-                              remove: true,
-                            })
-                          );
+                  <summary
+                    class="thread-row"
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      setMenuAnchor({ x: event.clientX, y: event.clientY });
+                      setFolderMenu(folderId);
+                    }}
+                    onDblClick={(event) => {
+                      event.preventDefault();
+                      beginRename("folder", folderId);
+                    }}
+                  >
+                    <span class="thread-select folder-select">
+                      <span class="folder-status-icon">
+                        <Icon
+                          name={closedFolders()[folderId]
+                            ? "folder"
+                            : "folder-open"}
+                        />
+                      </span>
+                      <Show
+                        when={editing()?.kind === "folder" &&
+                          editing()?.id === folderId}
+                        fallback={
+                          <span class="folder-name">{folder().name}</span>
                         }
-                      }}
-                    >
-                      ×
-                    </button>
+                      >
+                        <InlineRename
+                          initial={folder().name}
+                          label="Rename folder"
+                          save={(name) =>
+                            saveRename("folder", folderId, folder().name, name)}
+                          cancel={() => stopRename("folder", folderId)}
+                        />
+                      </Show>
+                    </span>
                   </summary>
                   <For each={folderConversations(folderId).map((c) => c.key)}>
                     {(key) => row(key)}
@@ -1790,6 +1752,80 @@ export default function App() {
             <Show when={!iconMatches().length}>
               <p>No icons found.</p>
             </Show>
+          </Dialog>
+        )}
+      </Show>
+      <Show when={folderMenu()}>
+        {(folderId) => (
+          <Dialog
+            title={workspace()?.folders.find((item) => item._id === folderId())
+              ?.name ?? "Folder"}
+            class="conversation-menu"
+            anchor={menuAnchor()}
+            close={() => setFolderMenu(undefined)}
+          >
+            <div class="action-list">
+              <button
+                type="button"
+                onClick={() => {
+                  beginRename("folder", folderId());
+                  setFolderMenu(undefined);
+                }}
+              >
+                <Icon name="edit-pencil" /> Rename
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void run(() =>
+                    mutate("workspace.reorder", {
+                      kind: "folder",
+                      id: folderId(),
+                      direction: -1,
+                    })
+                  );
+                  setFolderMenu(undefined);
+                }}
+              >
+                <span class="rotate-icon">
+                  <Icon name="nav-arrow-down" />
+                </span>{" "}
+                Move up
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void run(() =>
+                    mutate("workspace.reorder", {
+                      kind: "folder",
+                      id: folderId(),
+                      direction: 1,
+                    })
+                  );
+                  setFolderMenu(undefined);
+                }}
+              >
+                <Icon name="nav-arrow-down" /> Move down
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const id = folderId();
+                  setFolderMenu(undefined);
+                  void run(async () => {
+                    if (
+                      await confirmAction(
+                        "Remove this folder? Its conversations stay pinned.",
+                      )
+                    ) {
+                      await mutate("workspace.folder", { id, remove: true });
+                    }
+                  });
+                }}
+              >
+                <Icon name="trash" /> Remove folder
+              </button>
+            </div>
           </Dialog>
         )}
       </Show>

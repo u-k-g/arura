@@ -32,6 +32,20 @@ test("numbered sources fold, while ordinary and unfinished text stays visible", 
   ).toBeUndefined();
 });
 
+test("a closing note stays visible after a collapsed sources list", () => {
+  render(() => (
+    <AnswerMarkdown
+      text={"Answer.\n\nSources:\n- https://example.com/one\n\n" +
+        "This is a closing note."}
+    />
+  ));
+  const details = screen.getByText("Sources").closest("details");
+  expect(details?.open).toBe(false);
+  expect(details?.textContent).toContain("https://example.com/one");
+  expect(screen.getByText("This is a closing note.").closest("details"))
+    .toBeNull();
+});
+
 test("single-line source citations fold without changing the link", () => {
   const answer =
     "A useful answer.\n\nSources: [109] https://www.youtube.com/watch?v=example";

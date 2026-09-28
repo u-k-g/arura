@@ -234,6 +234,11 @@ export function AnswerMarkdown(props: {
             </summary>
             <Markdown text={parts().sources} />
           </details>
+          <Show when={parts().after}>
+            {(after) => (
+              <AnswerContent text={after()} references={references()} />
+            )}
+          </Show>
         </>
       )}
     </Show>

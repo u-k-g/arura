@@ -403,13 +403,36 @@ small {
   min-width: 25px;
 }
 
-.folder summary {
+.folder > summary {
+  list-style: none;
+  cursor: pointer;
+}
+.folder > summary::-webkit-details-marker {
+  display: none;
+}
+.folder-select {
   display: flex;
   align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  padding: 6px 8px;
-  font-size: 14px;
+}
+.folder-status-icon {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--subtle);
+}
+.folder-status-icon .icon {
+  width: 13px;
+  height: 13px;
+  color: inherit;
+}
+.folder.unread .folder-status-icon {
+  color: var(--warning);
+}
+.folder.running .folder-status-icon {
+  color: var(--success);
+}
+.folder.unread .folder-select {
+  font-weight: 600;
 }
 .folder-name {
   flex: 1;
@@ -417,25 +440,10 @@ small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  justify-content: flex-start;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  font: inherit;
 }
 
-.folder .thread-row {
+.folder > .thread-row {
   margin-left: 16px;
-}
-.folder-delete {
-  margin-left: auto;
-  background: none;
-  border: none;
-  padding: 0;
-  opacity: 0;
-}
-.folder:hover .folder-delete {
-  opacity: 1;
 }
 .archive {
   margin-top: 12px;
@@ -1997,10 +2005,6 @@ progress {
 .badge.is-disabled {
   color: var(--muted);
   background: color-mix(in srgb, var(--muted) 8%, transparent);
-}
-.folder summary > .icon {
-  width: 13px;
-  height: 13px;
 }
 .thread-row:hover > .icon-button,
 .thread-row > .icon-button:focus-visible {

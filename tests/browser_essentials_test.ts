@@ -187,13 +187,47 @@ Deno.test({
       await expect(
         a.locator(".folder").filter({ hasText: "Saved" }),
       ).toContainText("Fixture conversation");
-      await a.getByRole("button", { name: "Saved", exact: true }).dblclick();
+      const savedFolder = a.locator(".folder").filter({ hasText: "Saved" });
+      await savedFolder.locator("summary").dblclick();
       await expect(folderName).toBeFocused();
       await folderName.fill("Library");
       await folderName.press("Enter");
       await expect(
-        a.getByRole("button", { name: "Library", exact: true }),
+        a.locator(".folder summary").filter({ hasText: "Library" }),
       ).toBeVisible();
+      const library = a.locator(".folder").filter({ hasText: "Library" });
+      const summary = library.locator("summary");
+      const chatRow = library.locator(".thread-row").last();
+      await expect(summary.locator(".folder-status-icon svg")).toBeVisible();
+      await expect(summary.locator("button")).toHaveCount(0);
+      const openPath = await summary.locator(".folder-status-icon svg path")
+        .last()
+        .getAttribute("d");
+      await summary.click();
+      await expect(library).not.toHaveAttribute("open", "");
+      await expect.poll(() =>
+        summary.locator(".folder-status-icon svg path")
+          .last().getAttribute("d")
+      ).not.toBe(openPath);
+      await summary.click();
+      await expect(library).toHaveAttribute("open", "");
+      const sizes = await summary.evaluate((element) => ({
+        folder: element.getBoundingClientRect().height,
+        chat: element.parentElement?.querySelector(".thread-row:not(summary)")
+          ?.getBoundingClientRect().height,
+      }));
+      expect(sizes.folder).toBe(sizes.chat);
+      await expect(chatRow).toBeVisible();
+      await chatRow.click({ button: "right" });
+      await a.getByRole("button", { name: "Mark as unread" }).click();
+      await expect(library).toHaveClass(/unread/);
+      const folderColor = await summary.locator(".folder-status-icon")
+        .evaluate((icon) => getComputedStyle(icon).color);
+      expect(folderColor).toBe(warningColor);
+      await summary.click({ button: "right" });
+      await expect(a.getByRole("button", { name: "Remove folder" }))
+        .toBeVisible();
+      await a.keyboard.press("Escape");
       await expect(a.getByRole("button", { name: "New folder" })).toHaveCount(
         0,
       );
