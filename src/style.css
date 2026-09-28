@@ -410,14 +410,16 @@ small {
 .folder > summary::-webkit-details-marker {
   display: none;
 }
-.folder-select {
+.thread-select.folder-select {
   display: flex;
   align-items: center;
+  gap: 6px;
 }
 .folder-status-icon {
   width: 13px;
   height: 13px;
   flex: none;
+  margin-left: -5px;
   color: var(--subtle);
 }
 .folder-status-icon .icon {
@@ -442,7 +444,7 @@ small {
   white-space: nowrap;
 }
 
-.folder > .thread-row {
+.folder > .thread-row:not(summary) {
   margin-left: 16px;
 }
 .archive {

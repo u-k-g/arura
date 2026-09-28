@@ -176,6 +176,20 @@ Deno.test({
           exact: true,
         })
         .click();
+      const chatAlignment = await a
+        .locator(
+          '.nav-scroll .thread-select[aria-label="Fixture conversation"]',
+        )
+        .evaluate((button) => {
+          const dot = button.querySelector(".session-dot")!;
+          const title = dot.nextElementSibling!;
+          return {
+            rowLeft: button.parentElement!.getBoundingClientRect().left,
+            iconCenter: dot.getBoundingClientRect().left +
+              dot.getBoundingClientRect().width / 2,
+            titleLeft: title.getBoundingClientRect().left,
+          };
+        });
       await actions();
       await a.getByRole("button", { name: "Move to folder" }).click();
       await a.getByRole("button", { name: "Create new folder" }).click();
@@ -217,6 +231,22 @@ Deno.test({
           ?.getBoundingClientRect().height,
       }));
       expect(sizes.folder).toBe(sizes.chat);
+      const folderAlignment = await summary.evaluate((element) => {
+        const icon = element.querySelector(".folder-status-icon")!;
+        const title = element.querySelector(".folder-name")!;
+        return {
+          rowLeft: element.getBoundingClientRect().left,
+          iconCenter: icon.getBoundingClientRect().left +
+            icon.getBoundingClientRect().width / 2,
+          titleLeft: title.getBoundingClientRect().left,
+        };
+      });
+      expect(Math.abs(folderAlignment.rowLeft - chatAlignment.rowLeft))
+        .toBeLessThanOrEqual(1);
+      expect(Math.abs(folderAlignment.iconCenter - chatAlignment.iconCenter))
+        .toBeLessThanOrEqual(1);
+      expect(Math.abs(folderAlignment.titleLeft - chatAlignment.titleLeft))
+        .toBeLessThanOrEqual(1);
       await expect(chatRow).toBeVisible();
       await chatRow.click({ button: "right" });
       await a.getByRole("button", { name: "Mark as unread" }).click();

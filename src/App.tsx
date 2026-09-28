@@ -1220,7 +1220,7 @@ export default function App() {
                         <Icon
                           name={closedFolders()[folderId]
                             ? "folder"
-                            : "folder-open"}
+                            : "folder-minus"}
                         />
                       </span>
                       <Show
