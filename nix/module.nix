@@ -80,7 +80,9 @@ in
         WorkingDirectory = "%S/arura-convex";
         EnvironmentFile = cfg.convexEnvironmentFile;
         ExecStart = "${getExe cfg.convexPackage} --interface 127.0.0.1 --port ${toString cfg.convexPort} --site-proxy-port ${toString cfg.convexSitePort} --convex-origin ${lib.escapeShellArg cfg.convexPublicUrl} --convex-site ${lib.escapeShellArg "${cfg.convexPublicUrl}/http"} --instance-name \${CONVEX_INSTANCE_NAME} --instance-secret \${CONVEX_INSTANCE_SECRET} --disable-beacon --redact-logs-to-client";
-        Restart = "on-failure";
+        # Convex can shut down with exit status 0 after a fatal persistence error.
+        Restart = "always";
+        RestartSec = 5;
         UMask = "0077";
         NoNewPrivileges = true;
       };

@@ -330,8 +330,32 @@ Deno.test("image-only history and tool arguments survive projection without reas
     input: { path: "notes" },
     output: "Result",
   });
-  equal(groupMessages(messages)[0].answer?.text, "The answer");
-  equal(groupMessages(messages)[0].work.length, 1);
+  equal(groupMessages(messages)[0].answer, undefined);
+  equal(groupMessages(messages)[0].work.length, 2);
+});
+
+Deno.test("a tool-call preface remains work when Hermes inserts a retry prompt", () => {
+  const groups = groupMessages(normalizeMessages([
+    { id: 8397, role: "user", content: "How do I host this?" },
+    {
+      id: 8398,
+      role: "assistant",
+      content: "I'll load the relevant skills first.",
+      finish_reason: "tool_calls",
+      tool_calls: [{ id: "call", function: { name: "skill_view" } }],
+    },
+    { id: 8399, role: "tool", tool_call_id: "call", content: "Skill" },
+    { id: 8426, role: "user", content: "[System: tool stream timed out]" },
+    {
+      id: 8450,
+      role: "assistant",
+      content: "Final answer",
+      finish_reason: "stop",
+    },
+  ]));
+  equal(groups[0].answer, undefined);
+  equal(groups[0].work[0].text, "I'll load the relevant skills first.");
+  equal(groups[1].answer?.id, "8450");
 });
 
 Deno.test("timeline events retain chronology without becoming user messages", () => {

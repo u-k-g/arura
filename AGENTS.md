@@ -2,6 +2,10 @@ Arura is a minimal web UI for the Hermes agent. Use the upstream Hermes desktop
 app directly when checking feature behavior and interaction details; Arura
 implements the retained scope as an independent web client.
 
+Never query the live Convex SQLite database directly, even with a read-only
+connection: a long read can block writes and stop the backend. Use Convex APIs
+for diagnostics, or inspect a snapshot taken while the service is stopped.
+
 Read [ADR-0001](docs/adr/0001-independent-solid-convex-client.md) when designing
 or implementing the client, changing feature scope, or working on sync, storage,
 access, or deployment. It records the accepted SolidJS/TypeScript and

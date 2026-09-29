@@ -33,6 +33,8 @@ export interface Message {
   // Compaction-archived row: displayed for context but no longer in the
   // active transcript, so Hermes can never target it for an edit or branch.
   compacted?: boolean;
+  // Hermes can save assistant text while it is still issuing tool calls.
+  continuing?: boolean;
 }
 export function groupMessages(messages: Message[]) {
   const groups: {
@@ -61,7 +63,7 @@ export function groupMessages(messages: Message[]) {
   }
   for (const group of groups) {
     const answer = group.work.findLastIndex(
-      (message) => message.role === "assistant",
+      (message) => message.role === "assistant" && !message.continuing,
     );
     if (answer >= 0) group.answer = group.work.splice(answer, 1)[0];
   }
@@ -498,6 +500,11 @@ export function normalizeMessages(rows: Record<string, unknown>[]): Message[] {
             ...(attachments.length ? { attachments } : {}),
             ...(createdAt ? { createdAt } : {}),
             ...(row.compacted ? { compacted: true } : {}),
+            ...(row.role === "assistant" &&
+                (row.finish_reason === "tool_calls" ||
+                  (Array.isArray(row.tool_calls) && row.tool_calls.length > 0))
+              ? { continuing: true }
+              : {}),
             ...(row.role === "tool"
               ? {
                 tool: String(row.name ?? row.tool_name ?? "Tool"),
