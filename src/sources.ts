@@ -3,19 +3,35 @@ import { marked } from "marked";
 export function splitSourcesSection(text: string) {
   const tokens = marked.lexer(text);
   const raw = (parts: Array<(typeof tokens)[number]>) =>
-    parts.map((part) => part.raw).join("").trim();
+    parts
+      .map((part) => part.raw)
+      .join("")
+      .trim();
   const sourceNote = (token: (typeof tokens)[number]) =>
     token.type === "paragraph" &&
     /^Sources\s+\[[0-9]+\]/i.test(token.text.trim());
   const sourceList = (token: (typeof tokens)[number]) =>
     token.type === "list" && /https?:\/\/|\[[1-9]\d*\]/i.test(token.raw);
+  const citationLine =
+    /^\s*(?:[-*+]\s*)?(?:\[[1-9]\d*\]|[1-9]\d*\.)\s+(?:https?:\/\/|\[[^\]]+\]\(https?:\/\/)/i;
+  const sourceCitation = (token: (typeof tokens)[number]) => {
+    if (token.type !== "paragraph") return false;
+    const lines = token.raw
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    return lines.length > 0 && lines.every((line) => citationLine.test(line));
+  };
   const sourceEnd = (start: number) => {
     let end = start;
     while (
       end < tokens.length &&
-      (tokens[end].type === "space" || sourceNote(tokens[end]) ||
-        sourceList(tokens[end]))
-    ) end++;
+      (tokens[end].type === "space" ||
+        sourceNote(tokens[end]) ||
+        sourceList(tokens[end]) ||
+        sourceCitation(tokens[end]))
+    )
+      end++;
     return end;
   };
 
@@ -23,15 +39,17 @@ export function splitSourcesSection(text: string) {
     const token = tokens[index];
     if (token.type !== "paragraph" && token.type !== "heading") continue;
 
-    const inline = token.type === "paragraph"
-      ? token.raw.trim().match(/^(?:\*\*|__)?Sources:(?:\*\*|__)?\s+(.+)$/is)
-      : null;
+    const inline =
+      token.type === "paragraph"
+        ? token.raw.trim().match(/^(?:\*\*|__)?Sources:(?:\*\*|__)?\s+(.+)$/is)
+        : null;
     if (inline && /https?:\/\/|\[[0-9]+\]/i.test(inline[1])) {
       let end = index + 1;
       while (
         end < tokens.length &&
         (tokens[end].type === "space" || sourceNote(tokens[end]))
-      ) end++;
+      )
+        end++;
       const after = raw(tokens.slice(end));
       return {
         answer: raw(tokens.slice(0, index)),
@@ -39,7 +57,8 @@ export function splitSourcesSection(text: string) {
           inline[1].trim(),
           ...tokens.slice(index + 1, end).map((part) => part.raw),
         ]
-          .join("").trim(),
+          .join("")
+          .trim(),
         ...(after ? { after } : {}),
       };
     }
@@ -49,7 +68,11 @@ export function splitSourcesSection(text: string) {
     }
     let first = index + 1;
     while (tokens[first]?.type === "space") first++;
-    if (!tokens[first] || !sourceList(tokens[first])) continue;
+    if (
+      !tokens[first] ||
+      !(sourceList(tokens[first]) || sourceCitation(tokens[first]))
+    )
+      continue;
     const end = sourceEnd(first);
     const after = raw(tokens.slice(end));
     return {
