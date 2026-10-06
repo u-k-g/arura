@@ -362,6 +362,7 @@ export function hermesFixture(
     event("message.complete", sid, {
       text: reply,
       reasoning: "PRIVATE REASONING MUST NOT APPEAR",
+      usage: { model: "fixture-model", avg_tps: 30.8 },
     });
     event("sessions.changed", "", {});
   }

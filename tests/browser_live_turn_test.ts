@@ -92,6 +92,7 @@ Deno.test({
           state: complete ? "complete" : "running",
           stats: {
             tokensPerSecond: 34.2,
+            model: "fixture-model",
             milestones: [
               { at: currentStartedAt, label: "Sent" },
               { at: currentStartedAt + 1200, label: "First model token" },
@@ -173,7 +174,7 @@ Deno.test({
         .click();
       const stats = page.getByRole("dialog", { name: "Output stats" });
       await expect(stats.locator(".output-stats-heading"))
-        .toContainText("34.2 tps");
+        .toContainText("34.2 tps with fixture-model");
       await expect(stats.locator(".output-stats-heading"))
         .not.toContainText("total");
       await expect(stats).not.toContainText("Time to first output");

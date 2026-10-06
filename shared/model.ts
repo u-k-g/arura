@@ -143,6 +143,7 @@ export interface TurnStats {
   firstOutputAt?: number; // Older saved turns used visible output timing.
   outputTokens?: number;
   tokensPerSecond?: number;
+  model?: string;
   milestones: TurnMilestone[];
   answerId?: string;
 }

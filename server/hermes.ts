@@ -513,6 +513,9 @@ export class Hermes extends EventEmitter {
       if (turn.stats) {
         turn.stats.milestones.push({ at: turn.finishedAt, label: "Finished" });
         const usage = record(payload.usage);
+        if (typeof usage.model === "string" && usage.model) {
+          turn.stats.model = usage.model;
+        }
         if (
           typeof usage.avg_tps === "number" &&
           Number.isFinite(usage.avg_tps) &&
