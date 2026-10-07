@@ -173,8 +173,10 @@ Deno.test({
         })
         .click();
       const stats = page.getByRole("dialog", { name: "Output stats" });
+      await expect(stats.locator(".output-stats-heading"))
+        .toContainText("34.2 tps");
       await expect(stats.locator(".output-stats-note"))
-        .toContainText("34.2 tps with fixture-model");
+        .toContainText("fixture-model");
       await expect(stats.locator(".output-stats-heading"))
         .not.toContainText("total");
       await expect(stats).not.toContainText("Time to first output");

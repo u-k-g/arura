@@ -2511,6 +2511,9 @@ export default function Chat(props: {
                     <>
                       <div class="output-stats-heading">
                         <h3>Timeline</h3>
+                        <Show when={stats().tokensPerSecond}>
+                          {(speed) => <span>{speed().toFixed(1)} tps</span>}
+                        </Show>
                       </div>
                       <ol class="output-stats-timeline">
                         <For each={phases()}>
@@ -2560,15 +2563,8 @@ export default function Chat(props: {
                           )}
                         </For>
                       </ol>
-                      <Show when={stats().tokensPerSecond}>
-                        {(speed) => (
-                          <p class="output-stats-note">
-                            {speed().toFixed(1)} tps
-                            <Show when={stats().model}>
-                              {(model) => ` with ${model()}`}
-                            </Show>
-                          </p>
-                        )}
+                      <Show when={stats().model}>
+                        {(model) => <p class="output-stats-note">{model()}</p>}
                       </Show>
                     </>
                   );

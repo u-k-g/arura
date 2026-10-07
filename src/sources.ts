@@ -30,8 +30,9 @@ export function splitSourcesSection(text: string) {
         sourceNote(tokens[end]) ||
         sourceList(tokens[end]) ||
         sourceCitation(tokens[end]))
-    )
+    ) {
       end++;
+    }
     return end;
   };
 
@@ -39,17 +40,17 @@ export function splitSourcesSection(text: string) {
     const token = tokens[index];
     if (token.type !== "paragraph" && token.type !== "heading") continue;
 
-    const inline =
-      token.type === "paragraph"
-        ? token.raw.trim().match(/^(?:\*\*|__)?Sources:(?:\*\*|__)?\s+(.+)$/is)
-        : null;
+    const inline = token.type === "paragraph"
+      ? token.raw.trim().match(/^(?:\*\*|__)?Sources:(?:\*\*|__)?\s+(.+)$/is)
+      : null;
     if (inline && /https?:\/\/|\[[0-9]+\]/i.test(inline[1])) {
       let end = index + 1;
       while (
         end < tokens.length &&
         (tokens[end].type === "space" || sourceNote(tokens[end]))
-      )
+      ) {
         end++;
+      }
       const after = raw(tokens.slice(end));
       return {
         answer: raw(tokens.slice(0, index)),
@@ -71,8 +72,9 @@ export function splitSourcesSection(text: string) {
     if (
       !tokens[first] ||
       !(sourceList(tokens[first]) || sourceCitation(tokens[first]))
-    )
+    ) {
       continue;
+    }
     const end = sourceEnd(first);
     const after = raw(tokens.slice(end));
     return {

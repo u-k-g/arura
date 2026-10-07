@@ -35,10 +35,8 @@ test("numbered sources fold, while ordinary and unfinished text stays visible", 
 test("a closing note stays visible after a collapsed sources list", () => {
   render(() => (
     <AnswerMarkdown
-      text={
-        "Answer.\n\nSources:\n- https://example.com/one\n\n" +
-        "This is a closing note."
-      }
+      text={"Answer.\n\nSources:\n- https://example.com/one\n\n" +
+        "This is a closing note."}
     />
   ));
   const details = screen.getByText("Sources").closest("details");
@@ -66,12 +64,10 @@ test("single-line source citations fold without changing the link", () => {
 test("a source note after numbered citations stays in the disclosure", () => {
   render(() => (
     <AnswerMarkdown
-      text={
-        "Answer stays visible.\n\nSources:\n" +
+      text={"Answer stays visible.\n\nSources:\n" +
         "[4] https://example.com/four — fourth source\n" +
         "[5] https://example.com/five — fifth source\n\n" +
-        "Sources [1]–[3] from the previous answer also apply."
-      }
+        "Sources [1]–[3] from the previous answer also apply."}
     />
   ));
   const details = screen.getByText("Sources").closest("details");
@@ -86,10 +82,8 @@ test("a source note after numbered citations stays in the disclosure", () => {
 test("a sources heading collapses and its markers become superscripts", () => {
   render(() => (
     <AnswerMarkdown
-      text={
-        "The line is a bond fault.[16]\n\n## Sources\n\n" +
-        "[16] https://example.com/sixteen — sixteenth source"
-      }
+      text={"The line is a bond fault.[16]\n\n## Sources\n\n" +
+        "[16] https://example.com/sixteen — sixteenth source"}
     />
   ));
   const details = screen.getByText("Sources").closest("details");
@@ -106,16 +100,12 @@ test("a sources heading collapses and its markers become superscripts", () => {
 test("numbered citations link to current and earlier sources", () => {
   render(() => (
     <AnswerMarkdown
-      text={
-        "Current claim.[1][5] Keep `code [1]` unchanged.\n\n" +
-        "Sources:\n[1] https://current.example/one — current source"
-      }
-      previousReferences={
-        new Map([
-          ["1", "https://old.example/one"],
-          ["5", "https://earlier.example/five"],
-        ])
-      }
+      text={"Current claim.[1][5] Keep `code [1]` unchanged.\n\n" +
+        "Sources:\n[1] https://current.example/one — current source"}
+      previousReferences={new Map([
+        ["1", "https://old.example/one"],
+        ["5", "https://earlier.example/five"],
+      ])}
     />
   ));
   const current = screen.getByRole("link", { name: "Source 1" });

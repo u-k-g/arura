@@ -2127,7 +2127,16 @@ progress {
   font-weight: 500;
 }
 .output-stats-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 5px;
+}
+.output-stats-heading span {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 .output-stats-dialog h3 {
   margin: 0;

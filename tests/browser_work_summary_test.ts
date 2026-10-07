@@ -52,9 +52,13 @@ Deno.test({
       await expect(stats).not.toContainText("Time to first output");
       await expect(stats).toContainText("Timeline");
       await expect(stats.locator(".output-stats-heading"))
-        .not.toContainText("tps");
+        .toContainText(/\d+\.\d tps/);
+      await expect(stats.locator(".output-stats-heading"))
+        .not.toContainText("fixture-model");
       await expect(stats.locator(".output-stats-note"))
-        .toContainText(/\d+\.\d tps with fixture-model/);
+        .toContainText("fixture-model");
+      await expect(stats.locator(".output-stats-note"))
+        .not.toContainText("tps");
       await expect(stats).not.toContainText("LLM includes processing");
       await page.screenshot({ path: "/var/tmp/arura-output-stats-layout.png" });
       await stats.getByRole("button", { name: "Close" }).click();
