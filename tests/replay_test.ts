@@ -151,12 +151,20 @@ Deno.test("assistant speed excludes tool calls and uses the answer step", async 
       name: "web_search",
       tool_call_id: "search-1",
     });
-    fixture.event("session.usage", answer.sourceId, {
-      usage: { output: 5000, reasoning: 1000, model: "fixture-model" },
-    });
     fixture.event("tool.complete", answer.sourceId, {
       name: "web_search",
       tool_call_id: "search-1",
+    });
+    fixture.event("tool.start", answer.sourceId, {
+      name: "web_extract",
+      tool_call_id: "search-2",
+    });
+    fixture.event("tool.complete", answer.sourceId, {
+      name: "web_extract",
+      tool_call_id: "search-2",
+    });
+    fixture.event("session.usage", answer.sourceId, {
+      usage: { output: 5000, reasoning: 1000, model: "fixture-model" },
     });
     await new Promise((resolve) => setTimeout(resolve, 40));
     fixture.event("reasoning.delta", answer.sourceId, { text: "private" });
@@ -192,6 +200,41 @@ Deno.test("assistant speed excludes tool calls and uses the answer step", async 
       );
     }
     equal(stats.model, "fixture-model");
+
+    fixture.event("message.start", answer.sourceId, {});
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    fixture.event("message.delta", answer.sourceId, { text: "Next" });
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    fixture.event("message.complete", answer.sourceId, {
+      text: "Next",
+      usage: { output: 5300, reasoning: 1080, model: "fixture-model" },
+    });
+    await until(() => {
+      const speed = turns.get(answer.key)?.stats?.tokensPerSecond;
+      return typeof speed === "number" && speed > 10;
+    });
+    const followUp = turns.get(answer.key)?.stats;
+    const followStart = followUp?.milestones.find((item) =>
+      item.label === "First model token"
+    )?.at;
+    const followEnd = followUp?.milestones.findLast((item) =>
+      item.label === "Finished"
+    )?.at;
+    if (
+      followStart === undefined || followEnd === undefined ||
+      !followUp?.tokensPerSecond
+    ) {
+      throw new Error("missing follow-up speed");
+    }
+    const followExpected = 200 / ((followEnd - followStart) / 1000);
+    if (
+      followUp.tokensPerSecond < followExpected * 0.5 ||
+      followUp.tokensPerSecond > followExpected * 1.5
+    ) {
+      throw new Error(
+        `follow-up speed ${followUp.tokensPerSecond} is outside ${followExpected}`,
+      );
+    }
 
     const toolsOnly = await hermes.create("default");
     fixture.event("message.start", toolsOnly.sourceId, {});

@@ -29,20 +29,34 @@ Deno.test("output phases span parallel tool batches and model time", () => {
       .map((name) => ({ at: 16100, label: `${name} started` })),
     ...["skill_view", "web_search", "web_search", "web_search", "web_search"]
       .map((name) => ({ at: 18700, label: `${name} returned` })),
+    { at: 21000, label: "Model resumed" },
     ...["web_search", "web_search", "web_search", "web_extract"]
       .map((name) => ({ at: 27700, label: `${name} started` })),
     ...["web_search", "web_search", "web_search", "web_extract"]
       .map((name) => ({ at: 35000, label: `${name} returned` })),
-    { at: 85800, label: "First output" },
+    { at: 40000, label: "Model resumed" },
     { at: 99500, label: "Finished" },
   ];
   deepStrictEqual(turnPhases({ milestones }, 0), [
-    { kind: "LLM", startedAt: 100, endedAt: 16100 },
+    { kind: "LLM", startedAt: 3100, endedAt: 16100 },
     { kind: "Tools", startedAt: 16100, endedAt: 18700, toolCalls: 5 },
-    { kind: "LLM", startedAt: 18700, endedAt: 27700 },
+    { kind: "LLM", startedAt: 21000, endedAt: 27700 },
     { kind: "Tools", startedAt: 27700, endedAt: 35000, toolCalls: 4 },
-    { kind: "LLM", startedAt: 35000, endedAt: 99500 },
+    { kind: "LLM", startedAt: 40000, endedAt: 99500 },
   ]);
+  deepStrictEqual(
+    turnPhases({
+      milestones: [
+        { at: 0, label: "Sent" },
+        { at: 10, label: "Model started" },
+        { at: 5000, label: "First model token" },
+        { at: 5000, label: "web_search started" },
+        { at: 8000, label: "web_search returned" },
+        { at: 9000, label: "Finished" },
+      ],
+    }, 0),
+    [{ kind: "Tools", startedAt: 5000, endedAt: 8000, toolCalls: 1 }],
+  );
 });
 
 Deno.test("assistant speed counts output and reasoning and skips empty steps", () => {

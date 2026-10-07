@@ -30,6 +30,7 @@ type TokenCounts = { output: number; reasoning: number };
 type OpenAssistantStep = {
   firstTokenAt: number;
   toolCall: boolean;
+  settled?: boolean;
   outputTokens?: number;
   reasoningTokens?: number;
 };
@@ -428,7 +429,9 @@ export class Hermes extends EventEmitter {
         at: Date.now(),
         label: "Model started",
       });
-      if (!this.speed.has(key)) this.beginAssistantSpeed(key, sid);
+      if (type === "message.start" || !this.speed.has(key)) {
+        this.beginAssistantSpeed(key, sid);
+      }
       this.emit("started", key);
     }
     if (!turn) return;
@@ -592,7 +595,12 @@ export class Hermes extends EventEmitter {
       (result) => {
         if (this.speed.get(key) !== state || state.applied) return;
         const counts = tokenCounts(result);
-        if (counts) state.cursor = counts;
+        if (
+          counts && counts.output >= state.cursor.output &&
+          counts.reasoning >= state.cursor.reasoning
+        ) {
+          state.cursor = counts;
+        }
       },
       () => {},
     );
@@ -616,20 +624,17 @@ export class Hermes extends EventEmitter {
     if (type === "tool.generating" || type === "tool.start") {
       this.noteToolCall(state, at);
     }
-    if (
-      type === "tool.complete" && state.open?.toolCall &&
-      state.open.outputTokens === undefined
-    ) {
-      state.waiting.push(state.open);
-      state.open = undefined;
+    if (type === "tool.complete" && state.open?.toolCall) {
+      state.open.settled = true;
     }
     if (type === "session.usage") {
       this.observeUsage(key, payload.usage ?? payload, at);
     }
   }
   private noteAssistantText(state: AssistantSpeed, at: number) {
-    if (state.open && state.open.outputTokens === undefined) return;
-    if (state.open) state.waiting.push(state.open);
+    const open = state.open;
+    if (open && open.outputTokens === undefined && !open.settled) return;
+    if (open) state.waiting.push(open);
     state.open = { firstTokenAt: at, toolCall: false };
   }
   private noteToolCall(state: AssistantSpeed, at: number) {
@@ -640,6 +645,7 @@ export class Hermes extends EventEmitter {
       state.open = open;
     }
     open.toolCall = true;
+    open.settled = false;
   }
   private observeUsage(key: string, usage: unknown, at: number) {
     const counts = tokenCounts(usage);

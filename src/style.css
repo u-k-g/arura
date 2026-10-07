@@ -2126,20 +2126,8 @@ progress {
   font-size: 15px;
   font-weight: 500;
 }
-.output-stats-note {
-  color: var(--muted);
-}
 .output-stats-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
   margin-bottom: 5px;
-}
-.output-stats-heading span {
-  color: var(--muted);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
 }
 .output-stats-dialog h3 {
   margin: 0;
@@ -2192,8 +2180,9 @@ progress {
 }
 .output-stats-note {
   margin: 12px 0 0;
-  font-size: 11px;
-  line-height: 1.45;
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 @media (max-width: 720px), (pointer: coarse) and (hover: none) {
   .output-stats-dialog {

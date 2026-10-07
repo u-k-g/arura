@@ -2511,16 +2511,6 @@ export default function Chat(props: {
                     <>
                       <div class="output-stats-heading">
                         <h3>Timeline</h3>
-                        <Show when={stats().tokensPerSecond}>
-                          {(speed) => (
-                            <span>
-                              {speed().toFixed(1)} tps
-                              <Show when={stats().model}>
-                                {(model) => ` with ${model()}`}
-                              </Show>
-                            </span>
-                          )}
-                        </Show>
                       </div>
                       <ol class="output-stats-timeline">
                         <For each={phases()}>
@@ -2570,14 +2560,16 @@ export default function Chat(props: {
                           )}
                         </For>
                       </ol>
-                      <p class="output-stats-note">
-                        LLM includes processing and writing. Tools spans each
-                        batch from first start to last result. Times are based
-                        on events received by Arura.
-                        {stats().tokensPerSecond
-                          ? " TPS is output and reasoning tokens for each assistant step, from the first streamed token to completion. Tool calls are left out."
-                          : ""}
-                      </p>
+                      <Show when={stats().tokensPerSecond}>
+                        {(speed) => (
+                          <p class="output-stats-note">
+                            {speed().toFixed(1)} tps
+                            <Show when={stats().model}>
+                              {(model) => ` with ${model()}`}
+                            </Show>
+                          </p>
+                        )}
+                      </Show>
                     </>
                   );
                 }}
