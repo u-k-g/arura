@@ -124,6 +124,103 @@ Deno.test("first model token precedes visible output when reasoning or a tool ca
   }
 });
 
+Deno.test("assistant speed excludes tool calls and uses the answer step", async () => {
+  const fixture = hermesFixture(0);
+  const before = Deno.env.get("HERMES_URL");
+  Deno.env.set("HERMES_URL", `http://127.0.0.1:${fixture.server.addr.port}`);
+  const hermes = new Hermes();
+  const turns = new Map<string, Turn>();
+  hermes.on("turn", (turn: Turn) => turns.set(turn.conversation, turn));
+  const until = async (check: () => boolean) => {
+    const end = Date.now() + 5000;
+    while (!check()) {
+      if (Date.now() > end) {
+        throw new Error("Timed out waiting for Hermes event");
+      }
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  };
+  try {
+    await hermes.connect();
+    const answer = await hermes.create("default");
+    fixture.event("message.start", answer.sourceId, {});
+    fixture.event("reasoning.delta", answer.sourceId, {
+      text: "plan the search",
+    });
+    fixture.event("tool.start", answer.sourceId, {
+      name: "web_search",
+      tool_call_id: "search-1",
+    });
+    fixture.event("session.usage", answer.sourceId, {
+      usage: { output: 5000, reasoning: 1000, model: "fixture-model" },
+    });
+    fixture.event("tool.complete", answer.sourceId, {
+      name: "web_search",
+      tool_call_id: "search-1",
+    });
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    fixture.event("reasoning.delta", answer.sourceId, { text: "private" });
+    fixture.event("message.delta", answer.sourceId, { text: "Answer" });
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    fixture.event("message.complete", answer.sourceId, {
+      text: "Answer",
+      usage: { output: 5100, reasoning: 1040, model: "fixture-model" },
+    });
+    await until(() =>
+      typeof turns.get(answer.key)?.stats?.tokensPerSecond === "number"
+    );
+    const stats = turns.get(answer.key)?.stats;
+    const resumed = stats?.milestones.find((item) =>
+      item.label === "Model resumed"
+    )?.at;
+    const finished = stats?.milestones.findLast((item) =>
+      item.label === "Finished"
+    )?.at;
+    if (
+      resumed === undefined || finished === undefined ||
+      !stats?.tokensPerSecond
+    ) {
+      throw new Error("missing answer speed");
+    }
+    const expected = 100 / ((finished - resumed) / 1000);
+    if (
+      stats.tokensPerSecond < expected * 0.5 ||
+      stats.tokensPerSecond > expected * 1.5
+    ) {
+      throw new Error(
+        `speed ${stats.tokensPerSecond} is outside the answer step (${expected})`,
+      );
+    }
+    equal(stats.model, "fixture-model");
+
+    const toolsOnly = await hermes.create("default");
+    fixture.event("message.start", toolsOnly.sourceId, {});
+    fixture.event("tool.start", toolsOnly.sourceId, {
+      name: "web_search",
+      tool_call_id: "only",
+    });
+    fixture.event("session.usage", toolsOnly.sourceId, {
+      usage: { output: 80, reasoning: 20 },
+    });
+    fixture.event("tool.complete", toolsOnly.sourceId, {
+      name: "web_search",
+      tool_call_id: "only",
+    });
+    fixture.event("message.complete", toolsOnly.sourceId, {
+      text: "",
+      usage: { output: 80, reasoning: 20, model: "fixture-model" },
+    });
+    await until(() => turns.get(toolsOnly.key)?.state === "complete");
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    equal(turns.get(toolsOnly.key)?.stats?.tokensPerSecond, undefined);
+  } finally {
+    hermes.close();
+    await fixture.close();
+    if (before === undefined) Deno.env.delete("HERMES_URL");
+    else Deno.env.set("HERMES_URL", before);
+  }
+});
+
 Deno.test("live deltas arriving during replay do not overtake missing deltas", async () => {
   let sid = "",
     turn: Turn | undefined;

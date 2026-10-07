@@ -216,6 +216,11 @@ export function hermesFixture(
     >
   >();
   const sessionSettings = new Map<string, Record<string, string>>();
+  const usageLive = new Map<string, { output: number; reasoning: number }>();
+  const usageBaseline = new Map<
+    string,
+    { output: number; reasoning: number }
+  >();
   const controlledRuns = new Map<
     string,
     {
@@ -228,6 +233,10 @@ export function hermesFixture(
     s.pendingPersistence = false;
     s.messages.push({ id: rowId++, role: "user", content: text });
     event("message.start", sid, {});
+    usageBaseline.set(
+      sid,
+      usageLive.get(sid) ?? { output: 0, reasoning: 0 },
+    );
     const citationReply = text === "ARURA_TEST_SOURCES_FIRST"
       ? "First reply.[1][5]\n\nSources:\n[1] https://example.com/old — old source\n[5] https://example.com/five — fifth source"
       : text === "ARURA_TEST_SOURCES_SECOND"
@@ -344,11 +353,18 @@ export function hermesFixture(
       tool_call_id: toolCallId,
       name: "Read notes",
     });
-    const reply = `Received: ${text}\n\n[Notes](/fixture/notes.md)`;
-    for (const piece of reply.match(/[\s\S]{1,8}/g) ?? []) {
-      await new Promise((resolve) => setTimeout(resolve, 80));
-      event("message.delta", sid, { text: piece });
-    }
+    const prior = usageBaseline.get(sid) ?? { output: 0, reasoning: 0 };
+    const toolUsage = {
+      output: prior.output + 12,
+      reasoning: prior.reasoning + 4,
+    };
+    const doneUsage = {
+      output: toolUsage.output + 100,
+      reasoning: toolUsage.reasoning + 20,
+    };
+    event("session.usage", sid, {
+      usage: { model: "fixture-model", ...toolUsage },
+    });
     s.messages.push({
       id: rowId++,
       role: "tool",
@@ -356,14 +372,20 @@ export function hermesFixture(
       name: "Read notes",
       tool_call_id: toolCallId,
     });
+    event("tool.complete", sid, { tool_call_id: toolCallId });
+    const reply = `Received: ${text}\n\n[Notes](/fixture/notes.md)`;
+    for (const piece of reply.match(/[\s\S]{1,8}/g) ?? []) {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+      event("message.delta", sid, { text: piece });
+    }
     s.messages.push({ id: rowId++, role: "assistant", content: reply });
     s.last_active = Date.now() / 1000;
-    event("tool.complete", sid, { tool_call_id: toolCallId });
     event("message.complete", sid, {
       text: reply,
       reasoning: "PRIVATE REASONING MUST NOT APPEAR",
-      usage: { model: "fixture-model", avg_tps: 30.8 },
+      usage: { model: "fixture-model", ...doneUsage },
     });
+    usageLive.set(sid, doneUsage);
     event("sessions.changed", "", {});
   }
   const server = Deno.serve(
@@ -813,6 +835,10 @@ export function hermesFixture(
             result = { control: state };
           } else if (method === "session.control.read") {
             result = { control: automations.get(params.session_id) ?? {} };
+          } else if (method === "session.usage") {
+            const base = usageBaseline.get(params.session_id) ??
+              { output: 0, reasoning: 0 };
+            result = { model: "fixture-model", ...base };
           } else if (method === "session.context_breakdown") {
             result = {
               context_used: 2000,

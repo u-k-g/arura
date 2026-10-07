@@ -193,6 +193,31 @@ export function turnPhases(
   if (end !== undefined) phase.endedAt = end;
   return phases;
 }
+
+// Completion counts already include reasoning when the provider reports it as
+// a subset. OpenCode stores that split as output plus reasoning, so a larger
+// reasoning count means the provider reported the buckets separately.
+export function assistantTokensPerSecond(
+  steps: readonly {
+    firstTokenAt: number;
+    completedAt: number;
+    outputTokens: number;
+    reasoningTokens: number;
+  }[],
+): number | undefined {
+  let tokens = 0;
+  let duration = 0;
+  for (const step of steps) {
+    const seconds = (step.completedAt - step.firstTokenAt) / 1000;
+    const output = Math.max(0, step.outputTokens);
+    const reasoning = Math.max(0, step.reasoningTokens);
+    const generated = reasoning <= output ? output : output + reasoning;
+    if (seconds <= 0 || generated <= 0) continue;
+    tokens += generated;
+    duration += seconds;
+  }
+  return tokens > 0 && duration > 0 ? tokens / duration : undefined;
+}
 export interface Interaction {
   id: string;
   kind: "approval" | "clarify" | "secret";

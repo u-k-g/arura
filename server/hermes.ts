@@ -10,6 +10,7 @@ import { EventEmitter } from "node:events";
 import WebSocket from "ws";
 import { fileReferences } from "../shared/artifacts.ts";
 import {
+  assistantTokensPerSecond,
   conversationKey,
   interactionFromEvent,
   normalizeMessages,
@@ -25,6 +26,37 @@ type Pending = {
   reject: (error: Error) => void;
   timer: ReturnType<typeof setTimeout>;
 };
+type TokenCounts = { output: number; reasoning: number };
+type OpenAssistantStep = {
+  firstTokenAt: number;
+  toolCall: boolean;
+  outputTokens?: number;
+  reasoningTokens?: number;
+};
+type AssistantSpeed = {
+  applied: boolean;
+  cursor: TokenCounts;
+  waiting: OpenAssistantStep[];
+  open?: OpenAssistantStep;
+  samples: {
+    firstTokenAt: number;
+    completedAt: number;
+    outputTokens: number;
+    reasoningTokens: number;
+  }[];
+};
+function tokenCounts(value: unknown): TokenCounts | undefined {
+  const usage = record(value);
+  const output = usage.output;
+  if (typeof output !== "number" || !Number.isFinite(output)) return undefined;
+  const reasoning = usage.reasoning;
+  return {
+    output,
+    reasoning: typeof reasoning === "number" && Number.isFinite(reasoning)
+      ? reasoning
+      : 0,
+  };
+}
 function assertSession(
   result: RpcResult,
 ): asserts result is RpcResult & { session_id: string } {
@@ -58,6 +90,7 @@ export class Hermes extends EventEmitter {
   private attaching = new Map<string, Promise<string>>();
   private reverse = new Map<string, string>();
   private turns = new Map<string, Turn>();
+  private speed = new Map<string, AssistantSpeed>();
   private interimStreams = new Map<
     string,
     { interim: string; stream: string }
@@ -395,9 +428,11 @@ export class Hermes extends EventEmitter {
         at: Date.now(),
         label: "Model started",
       });
+      if (!this.speed.has(key)) this.beginAssistantSpeed(key, sid);
       this.emit("started", key);
     }
     if (!turn) return;
+    this.observeAssistant(key, type, payload);
     // Reasoning and tool-call arguments can be the model's first output,
     // before any reply text reaches the user. Hermes does not expose a
     // provider-side token timestamp, so use the first streamed event received.
@@ -516,13 +551,7 @@ export class Hermes extends EventEmitter {
         if (typeof usage.model === "string" && usage.model) {
           turn.stats.model = usage.model;
         }
-        if (
-          typeof usage.avg_tps === "number" &&
-          Number.isFinite(usage.avg_tps) &&
-          usage.avg_tps > 0
-        ) {
-          turn.stats.tokensPerSecond = usage.avg_tps;
-        }
+        this.observeUsage(key, usage, turn.finishedAt);
         const persisted = record(payload.persisted_turn);
         if (typeof persisted.final_assistant_row_id === "number") {
           turn.stats.answerId = String(persisted.final_assistant_row_id);
@@ -545,6 +574,113 @@ export class Hermes extends EventEmitter {
       activity: [...turn.activity],
       interactions: [...turn.interactions],
     });
+  }
+  private beginAssistantSpeed(key: string, sid: string) {
+    const state: AssistantSpeed = {
+      applied: false,
+      cursor: {
+        ...(this.speed.get(key)?.cursor ?? { output: 0, reasoning: 0 }),
+      },
+      waiting: [],
+      samples: [],
+    };
+    this.speed.set(key, state);
+    // The request usually returns before the first model call finishes. Until
+    // then, deltas use the previous turn's totals. A step that already consumed
+    // a delta keeps it; later steps still see the right interval.
+    void this.call("session.usage", { session_id: sid }, 10000).then(
+      (result) => {
+        if (this.speed.get(key) !== state || state.applied) return;
+        const counts = tokenCounts(result);
+        if (counts) state.cursor = counts;
+      },
+      () => {},
+    );
+  }
+  private observeAssistant(
+    key: string,
+    type: string,
+    payload: Record<string, unknown>,
+  ) {
+    const state = this.speed.get(key);
+    if (!state) return;
+    const at = Date.now();
+    const text = typeof payload.text === "string" ? payload.text : "";
+    if (
+      text &&
+      (type === "reasoning.delta" || type === "message.delta" ||
+        type === "message.interim")
+    ) {
+      this.noteAssistantText(state, at);
+    }
+    if (type === "tool.generating" || type === "tool.start") {
+      this.noteToolCall(state, at);
+    }
+    if (
+      type === "tool.complete" && state.open?.toolCall &&
+      state.open.outputTokens === undefined
+    ) {
+      state.waiting.push(state.open);
+      state.open = undefined;
+    }
+    if (type === "session.usage") {
+      this.observeUsage(key, payload.usage ?? payload, at);
+    }
+  }
+  private noteAssistantText(state: AssistantSpeed, at: number) {
+    if (state.open && state.open.outputTokens === undefined) return;
+    if (state.open) state.waiting.push(state.open);
+    state.open = { firstTokenAt: at, toolCall: false };
+  }
+  private noteToolCall(state: AssistantSpeed, at: number) {
+    let open = state.open;
+    if (!open || open.outputTokens !== undefined) {
+      if (open) state.waiting.push(open);
+      open = { firstTokenAt: at, toolCall: true };
+      state.open = open;
+    }
+    open.toolCall = true;
+  }
+  private observeUsage(key: string, usage: unknown, at: number) {
+    const counts = tokenCounts(usage);
+    const state = this.speed.get(key);
+    if (!counts || !state) return;
+    this.applyUsage(state, counts, at);
+    this.publishSpeed(key);
+  }
+  private applyUsage(state: AssistantSpeed, counts: TokenCounts, at: number) {
+    const cursor = state.cursor;
+    if (!cursor) return;
+    if (counts.output < cursor.output || counts.reasoning < cursor.reasoning) {
+      return;
+    }
+    const output = counts.output - cursor.output;
+    const reasoning = counts.reasoning - cursor.reasoning;
+    state.cursor = counts;
+    if (output === 0 && reasoning === 0) return;
+    state.applied = true;
+    const step = state.waiting.shift() ?? state.open;
+    if (!step) return;
+    if (step === state.open) state.open = undefined;
+    step.outputTokens = output;
+    step.reasoningTokens = reasoning;
+    if (!step.toolCall) {
+      state.samples.push({
+        firstTokenAt: step.firstTokenAt,
+        completedAt: at,
+        outputTokens: output,
+        reasoningTokens: reasoning,
+      });
+    }
+  }
+  private publishSpeed(key: string) {
+    const turn = this.turns.get(key);
+    const state = this.speed.get(key);
+    if (!turn?.stats || !state) return undefined;
+    const rate = assistantTokensPerSecond(state.samples);
+    if (rate === undefined) return undefined;
+    turn.stats.tokensPerSecond = rate;
+    return rate;
   }
   private async replay() {
     const sessions = [...this.reverse.keys()];

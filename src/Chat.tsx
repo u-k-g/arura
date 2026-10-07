@@ -2575,7 +2575,7 @@ export default function Chat(props: {
                         batch from first start to last result. Times are based
                         on events received by Arura.
                         {stats().tokensPerSecond
-                          ? " TPS is Hermes's recent-call average."
+                          ? " TPS is output and reasoning tokens for each assistant step, from the first streamed token to completion. Tool calls are left out."
                           : ""}
                       </p>
                     </>

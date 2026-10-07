@@ -2,6 +2,7 @@ import { deepStrictEqual, equal } from "node:assert/strict";
 import { fileReferences } from "../shared/artifacts.ts";
 import {
   archiveAgeStatus,
+  assistantTokensPerSecond,
   type Conversation,
   conversationArchiveActivity,
   groupMessages,
@@ -42,6 +43,54 @@ Deno.test("output phases span parallel tool batches and model time", () => {
     { kind: "Tools", startedAt: 27700, endedAt: 35000, toolCalls: 4 },
     { kind: "LLM", startedAt: 35000, endedAt: 99500 },
   ]);
+});
+
+Deno.test("assistant speed counts output and reasoning and skips empty steps", () => {
+  equal(
+    assistantTokensPerSecond([{
+      firstTokenAt: 0,
+      completedAt: 2000,
+      outputTokens: 100,
+      reasoningTokens: 40,
+    }]),
+    50,
+  );
+  equal(
+    assistantTokensPerSecond([{
+      firstTokenAt: 0,
+      completedAt: 2000,
+      outputTokens: 30,
+      reasoningTokens: 80,
+    }]),
+    55,
+  );
+  equal(
+    assistantTokensPerSecond([
+      {
+        firstTokenAt: 0,
+        completedAt: 2000,
+        outputTokens: 100,
+        reasoningTokens: 0,
+      },
+      {
+        firstTokenAt: 5000,
+        completedAt: 7000,
+        outputTokens: 50,
+        reasoningTokens: 0,
+      },
+    ]),
+    37.5,
+  );
+  equal(
+    assistantTokensPerSecond([{
+      firstTokenAt: 5,
+      completedAt: 5,
+      outputTokens: 100,
+      reasoningTokens: 0,
+    }]),
+    undefined,
+  );
+  equal(assistantTokensPerSecond([]), undefined);
 });
 
 Deno.test("scheduled run identity uses the job ID and run timestamp", () => {
