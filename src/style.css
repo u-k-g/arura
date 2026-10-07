@@ -904,6 +904,17 @@ small {
   border-radius: 50%;
   padding: 6px;
 }
+.composer .send.is-stop {
+  background: var(--danger);
+  color: var(--canvas);
+}
+.composer .send.is-stop:hover,
+.composer .send.is-stop:focus-visible {
+  background: var(--danger);
+}
+.composer .send.is-stop .icon path {
+  fill: currentColor;
+}
 .editing,
 .queue {
   padding: 10px;

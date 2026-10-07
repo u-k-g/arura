@@ -1025,7 +1025,6 @@ dialog.conversation-menu {
   justify-content: flex-end;
 }
 .mobile-send,
-.mobile-stop,
 .composer-bottom .mobile-composer-navigation {
   display: none;
 }
@@ -1121,21 +1120,6 @@ dialog.conversation-menu {
     height: 36px;
     min-width: 36px;
     min-height: 36px;
-  }
-  .composer-entry .mobile-stop {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    flex: none;
-    min-height: 36px;
-    padding: 0 5px;
-    color: var(--muted);
-  }
-  .composer-entry .mobile-stop:hover,
-  .composer-entry .mobile-stop:focus-visible {
-    color: var(--ink);
-    background: var(--hover);
   }
   .composer-bottom {
     display: flex;

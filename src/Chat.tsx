@@ -744,6 +744,16 @@ export default function Chat(props: {
   }
   let submission: { signature: string; id: string } | undefined;
   let submitPending = false;
+  const sendIsStop = () => turn()?.state === "running" && !text().trim();
+  const sendLabel = () =>
+    sendIsStop()
+      ? "Stop"
+      : turn()?.state === "running"
+      ? "Queue message"
+      : "Send message";
+  const sendDisabled = () =>
+    sendIsStop() ? !connected() : !text().trim() || !connected() || sending() ||
+      pendingUploads().some((item) => !item.error);
   async function send() {
     if (
       !text().trim() ||
@@ -2230,29 +2240,17 @@ export default function Chat(props: {
               }}
               onPasteFiles={(files) => void run(() => upload(files))}
             />
-            <Show when={turn()?.state === "running"}>
-              <button
-                type="button"
-                class="text-button mobile-stop"
-                aria-label="Stop response"
-                onClick={() => void run(() => rpc("session.interrupt"))}
-              >
-                <Icon name="square" />
-                Stop
-              </button>
-            </Show>
             <button
               class="send mobile-send"
-              type="submit"
-              aria-label={turn()?.state === "running"
-                ? "Queue message"
-                : "Send message"}
-              disabled={!text().trim() ||
-                !connected() ||
-                sending() ||
-                pendingUploads().some((item) => !item.error)}
+              classList={{ "is-stop": sendIsStop() }}
+              type={sendIsStop() ? "button" : "submit"}
+              aria-label={sendLabel()}
+              disabled={sendDisabled()}
+              onClick={() => {
+                if (sendIsStop()) void run(() => rpc("session.interrupt"));
+              }}
             >
-              <Icon name="send" />
+              <Icon name={sendIsStop() ? "square" : "send"} />
             </button>
           </div>
           <div class="composer-bottom">
@@ -2333,28 +2331,17 @@ export default function Chat(props: {
               onClick={() => fileInput.click()}
             />
             <div>
-              <Show when={turn()?.state === "running"}>
-                <button
-                  type="button"
-                  class="text-button desktop-stop"
-                  onClick={() => void run(() => rpc("session.interrupt"))}
-                >
-                  <Icon name="square" />
-                  Stop
-                </button>
-              </Show>
               <button
                 class="send desktop-send"
-                type="submit"
-                aria-label={turn()?.state === "running"
-                  ? "Queue message"
-                  : "Send message"}
-                disabled={!text().trim() ||
-                  !connected() ||
-                  sending() ||
-                  pendingUploads().some((item) => !item.error)}
+                classList={{ "is-stop": sendIsStop() }}
+                type={sendIsStop() ? "button" : "submit"}
+                aria-label={sendLabel()}
+                disabled={sendDisabled()}
+                onClick={() => {
+                  if (sendIsStop()) void run(() => rpc("session.interrupt"));
+                }}
               >
-                <Icon name="send" />
+                <Icon name={sendIsStop() ? "square" : "send"} />
               </button>
             </div>
           </div>

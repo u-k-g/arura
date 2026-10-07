@@ -151,21 +151,21 @@ Deno.test({
       ).toHaveCount(1);
       await expect(page.locator('[data-message-id="interim"]')).toHaveCount(0);
       await expect(page.getByText(/Working for/)).toBeVisible();
-      const mobileStop = page.getByRole("button", { name: "Stop response" });
-      const mobileSend = page.getByRole("button", { name: "Queue message" });
+      const mobileStop = page.getByRole("button", {
+        name: "Stop",
+        exact: true,
+      });
       await expect(mobileStop).toBeVisible();
-      await expect(page.locator(".composer-bottom .desktop-stop")).toBeHidden();
+      await expect(mobileStop).toHaveClass(/is-stop/);
+      await expect(
+        page.getByRole("button", { name: "Queue message", exact: true }),
+      ).toHaveCount(0);
       const stopBounds = requireValue(
         await mobileStop.boundingBox(),
         "stop bounds",
       );
-      const sendBounds = requireValue(
-        await mobileSend.boundingBox(),
-        "send bounds",
-      );
-      expect(stopBounds.x + stopBounds.width).toBeLessThanOrEqual(
-        sendBounds.x + 8,
-      );
+      expect(stopBounds.width).toBe(36);
+      expect(stopBounds.height).toBe(36);
       await page
         .locator(".live-message .message-actions")
         .getByRole("button", {
