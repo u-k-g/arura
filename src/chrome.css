@@ -1031,17 +1031,23 @@ dialog.conversation-menu {
 
 @media (max-width: 720px), (pointer: coarse) and (hover: none) {
   .topbar:has(.mobile-thread-title) {
+    position: relative;
     height: 38px;
     padding: 0 10px;
     gap: 4px;
   }
   .mobile-thread-title {
+    /* Center on the full bar, not the space left of the archive button. */
+    position: absolute;
+    top: 50%;
+    left: 46px;
+    right: 46px;
+    transform: translateY(-50%);
     min-width: 0;
-    flex: 1;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-align: left;
+    text-align: center;
     color: var(--ink);
     font-size: 13px;
     border: 0;
